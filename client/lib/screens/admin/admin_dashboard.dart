@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
+import '../../core/utils/theme_helper.dart';
+import '../../core/utils/dialog_helper.dart';
 import '../../widgets/gradient_card.dart';
+import '../../widgets/theme_toggle.dart';
+import '../role_selection/role_selection_screen.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -23,29 +27,35 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: _screens[_selectedIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: (index) => setState(() => _selectedIndex = index),
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard_rounded),
-            label: 'Dashboard',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.people_rounded),
-            label: 'Users',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.approval_rounded),
-            label: 'Approvals',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.admin_panel_settings_rounded),
-            label: 'Admin',
-          ),
-        ],
+    return WillPopScope(
+      onWillPop: () async {
+        final shouldExit = await DialogHelper.showExitDialog(context);
+        return shouldExit;
+      },
+      child: Scaffold(
+        body: _screens[_selectedIndex],
+        bottomNavigationBar: BottomNavigationBar(
+          currentIndex: _selectedIndex,
+          onTap: (index) => setState(() => _selectedIndex = index),
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.dashboard_rounded),
+              label: 'Dashboard',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.people_rounded),
+              label: 'Users',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.approval_rounded),
+              label: 'Approvals',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.admin_panel_settings_rounded),
+              label: 'Admin',
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -57,7 +67,8 @@ class AdminHomeTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(gradient: AppColors.backgroundGradient),
+      decoration:
+          BoxDecoration(gradient: ThemeHelper.getBackgroundGradient(context)),
       child: SafeArea(
         child: CustomScrollView(
           slivers: [
@@ -273,7 +284,8 @@ class UsersManagementTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(gradient: AppColors.backgroundGradient),
+      decoration:
+          BoxDecoration(gradient: ThemeHelper.getBackgroundGradient(context)),
       child: SafeArea(
         child: Column(
           children: [
@@ -323,7 +335,8 @@ class ShopkeepersApprovalTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(gradient: AppColors.backgroundGradient),
+      decoration:
+          BoxDecoration(gradient: ThemeHelper.getBackgroundGradient(context)),
       child: SafeArea(
         child: Column(
           children: [
@@ -426,13 +439,17 @@ class AdminProfileTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(gradient: AppColors.backgroundGradient),
+      decoration:
+          BoxDecoration(gradient: ThemeHelper.getBackgroundGradient(context)),
       child: SafeArea(
         child: Column(
           children: [
             AppBar(
               backgroundColor: Colors.transparent,
               title: const Text('Admin Profile'),
+              actions: const [
+                ThemeToggleButton(),
+              ],
             ),
             const SizedBox(height: 20),
             const CircleAvatar(
@@ -450,8 +467,55 @@ class AdminProfileTab extends StatelessWidget {
               'admin@doffers.com',
               style: Theme.of(context).textTheme.bodyMedium,
             ),
+            const SizedBox(height: 32),
+            Expanded(
+              child: ListView(
+                children: [
+                  const ThemeToggle(),
+                  _buildProfileOption(
+                      context, Icons.edit_rounded, 'Edit Profile'),
+                  _buildProfileOption(
+                      context, Icons.security_rounded, 'Security'),
+                  _buildProfileOption(
+                      context, Icons.settings_rounded, 'Settings'),
+                  _buildProfileOption(
+                      context, Icons.help_rounded, 'Help & Support'),
+                  _buildProfileOption(context, Icons.logout_rounded, 'Logout',
+                      isDestructive: true),
+                ],
+              ),
+            ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildProfileOption(BuildContext context, IconData icon, String title,
+      {bool isDestructive = false}) {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: ListTile(
+        leading: Icon(icon,
+            color: isDestructive ? AppColors.error : AppColors.primary),
+        title: Text(
+          title,
+          style: TextStyle(color: isDestructive ? AppColors.error : null),
+        ),
+        trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16),
+        onTap: () async {
+          if (title == 'Logout') {
+            final shouldLogout = await DialogHelper.showLogoutDialog(context);
+            if (shouldLogout && context.mounted) {
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (_) => const RoleSelectionScreen()),
+                (route) => false,
+              );
+              DialogHelper.showSuccessSnackBar(
+                  context, 'Logged out successfully');
+            }
+          }
+        },
       ),
     );
   }

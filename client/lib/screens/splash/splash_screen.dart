@@ -30,10 +30,14 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: AppColors.backgroundGradient,
+        decoration: BoxDecoration(
+          gradient: isDark
+              ? AppColors.backgroundGradient
+              : AppColors.lightBackgroundGradient,
         ),
         child: Center(
           child: Column(
@@ -43,8 +47,8 @@ class _SplashScreenState extends State<SplashScreen> {
                 duration: const Duration(milliseconds: 1000),
                 child: Image.asset(
                   'assets/Dofferlogo.png',
-                  width: 150,
-                  height: 150,
+                  width: 200,
+                  height: 200,
                 ),
               ),
               const SizedBox(height: 24),

@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/utils/theme_helper.dart';
+import '../../core/utils/dialog_helper.dart';
 import '../../widgets/gradient_card.dart';
+import '../../widgets/theme_toggle.dart';
+import '../role_selection/role_selection_screen.dart';
 
 class ShopDashboard extends StatefulWidget {
   const ShopDashboard({super.key});
@@ -22,37 +26,43 @@ class _ShopDashboardState extends State<ShopDashboard> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: _screens[_selectedIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: (index) => setState(() => _selectedIndex = index),
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard_rounded),
-            label: 'Dashboard',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.local_offer_rounded),
-            label: 'Offers',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.people_rounded),
-            label: 'Leads',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.store_rounded),
-            label: 'Shop',
-          ),
-        ],
+    return WillPopScope(
+      onWillPop: () async {
+        final shouldExit = await DialogHelper.showExitDialog(context);
+        return shouldExit;
+      },
+      child: Scaffold(
+        body: _screens[_selectedIndex],
+        bottomNavigationBar: BottomNavigationBar(
+          currentIndex: _selectedIndex,
+          onTap: (index) => setState(() => _selectedIndex = index),
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.dashboard_rounded),
+              label: 'Dashboard',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.local_offer_rounded),
+              label: 'Offers',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.people_rounded),
+              label: 'Leads',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.store_rounded),
+              label: 'Shop',
+            ),
+          ],
+        ),
+        floatingActionButton: _selectedIndex == 1
+            ? FloatingActionButton.extended(
+                onPressed: () {},
+                icon: const Icon(Icons.add_rounded),
+                label: const Text('Add Offer'),
+              )
+            : null,
       ),
-      floatingActionButton: _selectedIndex == 1
-          ? FloatingActionButton.extended(
-              onPressed: () {},
-              icon: const Icon(Icons.add_rounded),
-              label: const Text('Add Offer'),
-            )
-          : null,
     );
   }
 }
@@ -63,7 +73,8 @@ class ShopHomeTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(gradient: AppColors.backgroundGradient),
+      decoration:
+          BoxDecoration(gradient: ThemeHelper.getBackgroundGradient(context)),
       child: SafeArea(
         child: CustomScrollView(
           slivers: [
@@ -259,7 +270,8 @@ class OffersManagementTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(gradient: AppColors.backgroundGradient),
+      decoration:
+          BoxDecoration(gradient: ThemeHelper.getBackgroundGradient(context)),
       child: SafeArea(
         child: Column(
           children: [
@@ -314,7 +326,8 @@ class LeadsTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(gradient: AppColors.backgroundGradient),
+      decoration:
+          BoxDecoration(gradient: ThemeHelper.getBackgroundGradient(context)),
       child: SafeArea(
         child: Column(
           children: [
@@ -343,13 +356,17 @@ class ShopProfileTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(gradient: AppColors.backgroundGradient),
+      decoration:
+          BoxDecoration(gradient: ThemeHelper.getBackgroundGradient(context)),
       child: SafeArea(
         child: Column(
           children: [
             AppBar(
               backgroundColor: Colors.transparent,
               title: const Text('Shop Profile'),
+              actions: const [
+                ThemeToggleButton(),
+              ],
             ),
             const SizedBox(height: 20),
             const CircleAvatar(
@@ -366,8 +383,55 @@ class ShopProfileTab extends StatelessWidget {
               'Electronics & Gadgets',
               style: Theme.of(context).textTheme.bodyMedium,
             ),
+            const SizedBox(height: 32),
+            Expanded(
+              child: ListView(
+                children: [
+                  const ThemeToggle(),
+                  _buildProfileOption(
+                      context, Icons.edit_rounded, 'Edit Shop Profile'),
+                  _buildProfileOption(
+                      context, Icons.business_rounded, 'Business Details'),
+                  _buildProfileOption(
+                      context, Icons.settings_rounded, 'Settings'),
+                  _buildProfileOption(
+                      context, Icons.help_rounded, 'Help & Support'),
+                  _buildProfileOption(context, Icons.logout_rounded, 'Logout',
+                      isDestructive: true),
+                ],
+              ),
+            ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildProfileOption(BuildContext context, IconData icon, String title,
+      {bool isDestructive = false}) {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: ListTile(
+        leading: Icon(icon,
+            color: isDestructive ? AppColors.error : AppColors.primary),
+        title: Text(
+          title,
+          style: TextStyle(color: isDestructive ? AppColors.error : null),
+        ),
+        trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16),
+        onTap: () async {
+          if (title == 'Logout') {
+            final shouldLogout = await DialogHelper.showLogoutDialog(context);
+            if (shouldLogout && context.mounted) {
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (_) => const RoleSelectionScreen()),
+                (route) => false,
+              );
+              DialogHelper.showSuccessSnackBar(
+                  context, 'Logged out successfully');
+            }
+          }
+        },
       ),
     );
   }

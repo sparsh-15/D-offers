@@ -52,10 +52,14 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: AppColors.backgroundGradient,
+        decoration: BoxDecoration(
+          gradient: isDark
+              ? AppColors.backgroundGradient
+              : AppColors.lightBackgroundGradient,
         ),
         child: SafeArea(
           child: SingleChildScrollView(

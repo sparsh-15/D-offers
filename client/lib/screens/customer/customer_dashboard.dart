@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
+import '../../core/utils/dialog_helper.dart';
+import '../../widgets/theme_toggle.dart';
+import '../role_selection/role_selection_screen.dart';
 
 class CustomerDashboard extends StatefulWidget {
   const CustomerDashboard({super.key});
@@ -22,39 +25,45 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: _screens[_selectedIndex],
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.3),
-              blurRadius: 10,
-              offset: const Offset(0, -2),
-            ),
-          ],
-        ),
-        child: BottomNavigationBar(
-          currentIndex: _selectedIndex,
-          onTap: (index) => setState(() => _selectedIndex = index),
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home_rounded),
-              label: 'Home',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.local_offer_rounded),
-              label: 'Offers',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.favorite_rounded),
-              label: 'Favorites',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person_rounded),
-              label: 'Profile',
-            ),
-          ],
+    return WillPopScope(
+      onWillPop: () async {
+        final shouldExit = await DialogHelper.showExitDialog(context);
+        return shouldExit;
+      },
+      child: Scaffold(
+        body: _screens[_selectedIndex],
+        bottomNavigationBar: Container(
+          decoration: BoxDecoration(
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.3),
+                blurRadius: 10,
+                offset: const Offset(0, -2),
+              ),
+            ],
+          ),
+          child: BottomNavigationBar(
+            currentIndex: _selectedIndex,
+            onTap: (index) => setState(() => _selectedIndex = index),
+            items: const [
+              BottomNavigationBarItem(
+                icon: Icon(Icons.home_rounded),
+                label: 'Home',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.local_offer_rounded),
+                label: 'Offers',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.favorite_rounded),
+                label: 'Favorites',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.person_rounded),
+                label: 'Profile',
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -66,9 +75,13 @@ class HomeTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
-      decoration: const BoxDecoration(
-        gradient: AppColors.backgroundGradient,
+      decoration: BoxDecoration(
+        gradient: isDark
+            ? AppColors.backgroundGradient
+            : AppColors.lightBackgroundGradient,
       ),
       child: SafeArea(
         child: CustomScrollView(
@@ -146,8 +159,14 @@ class OffersTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
-      decoration: const BoxDecoration(gradient: AppColors.backgroundGradient),
+      decoration: BoxDecoration(
+        gradient: isDark
+            ? AppColors.backgroundGradient
+            : AppColors.lightBackgroundGradient,
+      ),
       child: SafeArea(
         child: Column(
           children: [
@@ -175,8 +194,14 @@ class FavoritesTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
-      decoration: const BoxDecoration(gradient: AppColors.backgroundGradient),
+      decoration: BoxDecoration(
+        gradient: isDark
+            ? AppColors.backgroundGradient
+            : AppColors.lightBackgroundGradient,
+      ),
       child: SafeArea(
         child: Column(
           children: [
@@ -204,14 +229,23 @@ class ProfileTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
-      decoration: const BoxDecoration(gradient: AppColors.backgroundGradient),
+      decoration: BoxDecoration(
+        gradient: isDark
+            ? AppColors.backgroundGradient
+            : AppColors.lightBackgroundGradient,
+      ),
       child: SafeArea(
         child: Column(
           children: [
             AppBar(
               backgroundColor: Colors.transparent,
               title: const Text('Profile'),
+              actions: const [
+                ThemeToggleButton(),
+              ],
             ),
             const SizedBox(height: 20),
             const CircleAvatar(
@@ -228,9 +262,57 @@ class ProfileTab extends StatelessWidget {
               '+91 9876543210',
               style: Theme.of(context).textTheme.bodyMedium,
             ),
+            const SizedBox(height: 32),
+            Expanded(
+              child: ListView(
+                children: [
+                  const ThemeToggle(),
+                  _buildProfileOption(
+                      context, Icons.edit_rounded, 'Edit Profile'),
+                  _buildProfileOption(
+                      context, Icons.location_on_rounded, 'My Addresses'),
+                  _buildProfileOption(
+                      context, Icons.settings_rounded, 'Settings'),
+                  _buildProfileOption(
+                      context, Icons.help_rounded, 'Help & Support'),
+                  _buildProfileOption(context, Icons.info_rounded, 'About'),
+                  _buildProfileOption(context, Icons.logout_rounded, 'Logout',
+                      isDestructive: true),
+                ],
+              ),
+            ),
           ],
         ),
       ),
     );
   }
+}
+
+Widget _buildProfileOption(BuildContext context, IconData icon, String title,
+    {bool isDestructive = false}) {
+  return Card(
+    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+    child: ListTile(
+      leading: Icon(icon,
+          color: isDestructive ? AppColors.error : AppColors.primary),
+      title: Text(
+        title,
+        style: TextStyle(color: isDestructive ? AppColors.error : null),
+      ),
+      trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16),
+      onTap: () async {
+        if (title == 'Logout') {
+          final shouldLogout = await DialogHelper.showLogoutDialog(context);
+          if (shouldLogout && context.mounted) {
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(builder: (_) => const RoleSelectionScreen()),
+              (route) => false,
+            );
+            DialogHelper.showSuccessSnackBar(
+                context, 'Logged out successfully');
+          }
+        }
+      },
+    ),
+  );
 }

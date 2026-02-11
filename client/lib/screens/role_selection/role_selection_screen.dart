@@ -11,10 +11,14 @@ class RoleSelectionScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: AppColors.backgroundGradient,
+        decoration: BoxDecoration(
+          gradient: isDark
+              ? AppColors.backgroundGradient
+              : AppColors.lightBackgroundGradient,
         ),
         child: SafeArea(
           child: Padding(
@@ -25,8 +29,8 @@ class RoleSelectionScreen extends StatelessWidget {
                 FadeInDown(
                   child: Image.asset(
                     'assets/Dofferlogo.png',
-                    width: 100,
-                    height: 100,
+                    width: 120,
+                    height: 120,
                   ),
                 ),
                 const SizedBox(height: 16),

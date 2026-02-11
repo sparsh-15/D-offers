@@ -60,10 +60,14 @@ class _OtpScreenState extends State<OtpScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: AppColors.backgroundGradient,
+        decoration: BoxDecoration(
+          gradient: isDark
+              ? AppColors.backgroundGradient
+              : AppColors.lightBackgroundGradient,
         ),
         child: SafeArea(
           child: SingleChildScrollView(
@@ -173,16 +177,18 @@ class _OtpScreenState extends State<OtpScreen> {
   }
 
   Widget _buildOtpField(int index) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       width: 50,
       height: 60,
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: isDark ? AppColors.surface : AppColors.lightSurface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: _otpControllers[index].text.isNotEmpty
               ? AppColors.primary
-              : Colors.transparent,
+              : (isDark ? Colors.white24 : Colors.black12),
           width: 2,
         ),
       ),
@@ -192,10 +198,15 @@ class _OtpScreenState extends State<OtpScreen> {
         textAlign: TextAlign.center,
         keyboardType: TextInputType.number,
         maxLength: 1,
-        style: Theme.of(context).textTheme.headlineMedium,
+        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+              color:
+                  isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
+              fontWeight: FontWeight.bold,
+            ),
         decoration: const InputDecoration(
           counterText: '',
           border: InputBorder.none,
+          contentPadding: EdgeInsets.zero,
         ),
         inputFormatters: [FilteringTextInputFormatter.digitsOnly],
         onChanged: (value) {

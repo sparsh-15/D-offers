@@ -44,4 +44,21 @@ class AppColors {
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
   );
+
+  // Light Theme Colors
+  static const Color lightBackground = Color(0xFFF5F7FA);
+  static const Color lightSurface = Color(0xFFFFFFFF);
+  static const Color lightCardBackground = Color(0xFFFFFFFF);
+
+  // Light Theme Text Colors
+  static const Color lightTextPrimary = Color(0xFF1A1D2E);
+  static const Color lightTextSecondary = Color(0xFF6C6F7F);
+  static const Color lightTextHint = Color(0xFF9E9E9E);
+
+  // Light Theme Gradient
+  static const LinearGradient lightBackgroundGradient = LinearGradient(
+    colors: [Color(0xFFF5F7FA), Color(0xFFE8EAF6)],
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+  );
 }
