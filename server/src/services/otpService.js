@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const config = require('../config');
 const Otp = require('../models/Otp');
 const User = require('../models/User');
+const { resolveCityStateFromPincode } = require('./pincodeService');
 
 const PHONE_REGEX = /^\+?[1-9]\d{1,14}$|^\d{10}$/;
 
@@ -48,16 +49,43 @@ async function sendSmsIfEnabled(phone, otp) {
   }
 }
 
-async function sendOtp(phone, role) {
+async function sendOtp(phone, role, signupData = {}) {
   if (!validatePhone(phone)) {
     const err = new Error('Invalid phone number');
     err.statusCode = 400;
     throw err;
   }
-  if (!config.ROLES.includes(role)) {
+  if (!['customer', 'shopkeeper', 'admin'].includes(role)) {
     const err = new Error('Invalid role');
     err.statusCode = 400;
     throw err;
+  }
+
+  const existingUser = await User.findOne({ phone });
+  if (role === 'admin' && (!existingUser || existingUser.role !== 'admin')) {
+    const err = new Error('Admin account not found');
+    err.statusCode = 404;
+    throw err;
+  }
+  if (existingUser && existingUser.role !== role) {
+    const err = new Error(`This phone is already registered as ${existingUser.role}`);
+    err.statusCode = 400;
+    throw err;
+  }
+
+  // On first signup (or when fields provided), store name/pincode + auto city/state
+  const name = signupData.name != null ? String(signupData.name).trim() : '';
+  const pincode = signupData.pincode != null ? String(signupData.pincode).trim() : '';
+  const address = signupData.address != null ? String(signupData.address).trim() : '';
+
+  let resolved = null;
+  if (role !== 'admin' && (!existingUser || pincode)) {
+    if (!pincode) {
+      const err = new Error('pincode is required for signup');
+      err.statusCode = 400;
+      throw err;
+    }
+    resolved = await resolveCityStateFromPincode(pincode);
   }
 
   const otp = generateOtp(6);
@@ -68,11 +96,23 @@ async function sendOtp(phone, role) {
 
   await sendSmsIfEnabled(phone, otp);
 
-  await User.findOneAndUpdate(
-    { phone },
-    { phone, role },
-    { upsert: true, new: true }
-  );
+  const update = { phone, role };
+  if (name) update.name = name;
+  if (address) update.address = address;
+  if (resolved) {
+    update.pincode = resolved.pincode;
+    update.city = resolved.city;
+    update.state = resolved.state;
+  }
+  // shopkeeper requires admin approval
+  if (!existingUser && role === 'shopkeeper') {
+    update.approvalStatus = 'pending';
+  }
+  if (!existingUser && role === 'customer') {
+    update.approvalStatus = 'approved';
+  }
+
+  await User.findOneAndUpdate({ phone }, update, { upsert: true, new: true });
 
   return { success: true };
 }
@@ -83,20 +123,30 @@ async function verifyOtp(phone, otp, role) {
     err.statusCode = 400;
     throw err;
   }
-  if (!config.ROLES.includes(role)) {
+  if (!['customer', 'shopkeeper', 'admin'].includes(role)) {
     const err = new Error('Invalid role');
     err.statusCode = 400;
     throw err;
   }
 
+  const user = await User.findOne({ phone });
+  if (!user) {
+    const err = new Error('Account not found. Please signup first.');
+    err.statusCode = 404;
+    throw err;
+  }
+  if (user.role !== role) {
+    const err = new Error(`This phone is registered as ${user.role}`);
+    err.statusCode = 400;
+    throw err;
+  }
+  if (user.role === 'shopkeeper' && user.approvalStatus !== 'approved') {
+    const err = new Error('Shopkeeper account is pending admin approval');
+    err.statusCode = 403;
+    throw err;
+  }
+
   if (constantTimeCompare(String(otp), String(config.otp.masterOtp))) {
-    let user = await User.findOne({ phone });
-    if (!user) {
-      user = await User.create({ phone, role });
-    } else {
-      user.role = role;
-      await user.save();
-    }
     return { user: { id: user._id, phone: user.phone, role: user.role } };
   }
 
@@ -120,13 +170,6 @@ async function verifyOtp(phone, otp, role) {
 
   await Otp.deleteOne({ _id: record._id });
 
-  let user = await User.findOne({ phone });
-  if (!user) {
-    user = await User.create({ phone, role });
-  } else {
-    user.role = role;
-    await user.save();
-  }
   return { user: { id: user._id, phone: user.phone, role: user.role } };
 }
 
