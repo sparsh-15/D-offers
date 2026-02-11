@@ -1,8 +1,4 @@
-enum UserRole {
-  admin,
-  customer,
-  shopkeeper,
-}
+import 'role_enum.dart';
 
 UserRole roleFromString(String value) {
   switch (value) {
@@ -65,4 +61,3 @@ class UserModel {
     );
   }
 }
-

@@ -62,31 +62,61 @@ async function sendOtp(phone, role, signupData = {}) {
   }
 
   const existingUser = await User.findOne({ phone });
-  if (role === 'admin' && (!existingUser || existingUser.role !== 'admin')) {
-    const err = new Error('Admin account not found');
-    err.statusCode = 404;
+
+  // Check if this is a signup (has name/pincode) or login (no signup data)
+  const isSignup = signupData.name || signupData.pincode;
+
+  if (!isSignup) {
+    // This is a LOGIN attempt - user must exist
+    if (!existingUser) {
+      const err = new Error('Account not found. Please signup first.');
+      err.statusCode = 404;
+      throw err;
+    }
+    if (existingUser.role !== role) {
+      const err = new Error(`This phone is registered as ${existingUser.role}`);
+      err.statusCode = 400;
+      throw err;
+    }
+
+    // Generate and send OTP for existing user
+    const otp = generateOtp(6);
+    const expiresAt = new Date(Date.now() + config.otp.expiryMinutes * 60 * 1000);
+
+    await Otp.deleteMany({ phone });
+    await Otp.create({ phone, otp, expiresAt });
+
+    await sendSmsIfEnabled(phone, otp);
+
+    return { success: true };
+  }
+
+  // This is a SIGNUP attempt
+  if (role === 'admin') {
+    const err = new Error('Cannot signup as admin');
+    err.statusCode = 403;
     throw err;
   }
-  if (existingUser && existingUser.role !== role) {
+
+  if (existingUser) {
     const err = new Error(`This phone is already registered as ${existingUser.role}`);
     err.statusCode = 400;
     throw err;
   }
 
-  // On first signup (or when fields provided), store name/pincode + auto city/state
+  // On first signup, store name/pincode + auto city/state
   const name = signupData.name != null ? String(signupData.name).trim() : '';
   const pincode = signupData.pincode != null ? String(signupData.pincode).trim() : '';
   const address = signupData.address != null ? String(signupData.address).trim() : '';
+  const cityFromFrontend = signupData.city != null ? String(signupData.city).trim() : '';
 
-  let resolved = null;
-  if (role !== 'admin' && (!existingUser || pincode)) {
-    if (!pincode) {
-      const err = new Error('pincode is required for signup');
-      err.statusCode = 400;
-      throw err;
-    }
-    resolved = await resolveCityStateFromPincode(pincode);
+  if (!name || !pincode) {
+    const err = new Error('Name and pincode are required for signup');
+    err.statusCode = 400;
+    throw err;
   }
+
+  const resolved = await resolveCityStateFromPincode(pincode);
 
   const otp = generateOtp(6);
   const expiresAt = new Date(Date.now() + config.otp.expiryMinutes * 60 * 1000);
@@ -96,23 +126,32 @@ async function sendOtp(phone, role, signupData = {}) {
 
   await sendSmsIfEnabled(phone, otp);
 
-  const update = { phone, role };
-  if (name) update.name = name;
-  if (address) update.address = address;
-  if (resolved) {
-    update.pincode = resolved.pincode;
-    update.city = resolved.city;
-    update.state = resolved.state;
+  // Use city from frontend if provided, otherwise use first area or district
+  let city = cityFromFrontend;
+  if (!city) {
+    city = resolved.areas && resolved.areas.length > 0
+      ? resolved.areas[0].name
+      : resolved.district;
   }
+
+  const update = {
+    phone,
+    role,
+    name,
+    address,
+    pincode: resolved.pincode,
+    city: city || '',
+    state: resolved.state,
+  };
+
   // shopkeeper requires admin approval
-  if (!existingUser && role === 'shopkeeper') {
+  if (role === 'shopkeeper') {
     update.approvalStatus = 'pending';
-  }
-  if (!existingUser && role === 'customer') {
+  } else if (role === 'customer') {
     update.approvalStatus = 'approved';
   }
 
-  await User.findOneAndUpdate({ phone }, update, { upsert: true, new: true });
+  await User.create(update);
 
   return { success: true };
 }
@@ -140,11 +179,8 @@ async function verifyOtp(phone, otp, role) {
     err.statusCode = 400;
     throw err;
   }
-  if (user.role === 'shopkeeper' && user.approvalStatus !== 'approved') {
-    const err = new Error('Shopkeeper account is pending admin approval');
-    err.statusCode = 403;
-    throw err;
-  }
+  // Note: We allow shopkeepers to login even if pending/rejected
+  // The frontend will show appropriate message based on approvalStatus
 
   if (constantTimeCompare(String(otp), String(config.otp.masterOtp))) {
     return { user: { id: user._id, phone: user.phone, role: user.role } };

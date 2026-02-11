@@ -8,6 +8,7 @@ import '../role_selection/role_selection_screen.dart';
 import '../../services/auth_service.dart';
 import '../../services/auth_store.dart';
 import '../../models/offer_model.dart';
+import '../../models/user_model.dart';
 
 class CustomerDashboard extends StatefulWidget {
   const CustomerDashboard({super.key});
@@ -308,8 +309,21 @@ class FavoritesTab extends StatelessWidget {
   }
 }
 
-class ProfileTab extends StatelessWidget {
+class ProfileTab extends StatefulWidget {
   const ProfileTab({super.key});
+
+  @override
+  State<ProfileTab> createState() => _ProfileTabState();
+}
+
+class _ProfileTabState extends State<ProfileTab> {
+  late Future<UserModel> _userFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _userFuture = AuthService.instance.fetchCurrentUser();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -322,50 +336,68 @@ class ProfileTab extends StatelessWidget {
             : AppColors.lightBackgroundGradient,
       ),
       child: SafeArea(
-        child: Column(
-          children: [
-            AppBar(
-              backgroundColor: Colors.transparent,
-              title: const Text('Profile'),
-              actions: const [
-                ThemeToggleButton(),
-              ],
-            ),
-            const SizedBox(height: 20),
-            const CircleAvatar(
-              radius: 50,
-              backgroundColor: AppColors.primary,
-              child: Icon(Icons.person_rounded, size: 50, color: Colors.white),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Customer Name',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            Text(
-              '+91 9876543210',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 32),
-            Expanded(
-              child: ListView(
-                children: [
-                  const ThemeToggle(),
-                  _buildProfileOption(
-                      context, Icons.edit_rounded, 'Edit Profile'),
-                  _buildProfileOption(
-                      context, Icons.location_on_rounded, 'My Addresses'),
-                  _buildProfileOption(
-                      context, Icons.settings_rounded, 'Settings'),
-                  _buildProfileOption(
-                      context, Icons.help_rounded, 'Help & Support'),
-                  _buildProfileOption(context, Icons.info_rounded, 'About'),
-                  _buildProfileOption(context, Icons.logout_rounded, 'Logout',
-                      isDestructive: true),
+        child: FutureBuilder<UserModel>(
+          future: _userFuture,
+          builder: (context, snapshot) {
+            final user = snapshot.data;
+            final displayName = user?.name.isEmpty == true || user == null
+                ? 'Customer'
+                : user.name;
+            final displayPhone = user?.phone ?? '';
+
+            return Column(
+              children: [
+                AppBar(
+                  backgroundColor: Colors.transparent,
+                  title: const Text('Profile'),
+                  actions: const [
+                    ThemeToggleButton(),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                const CircleAvatar(
+                  radius: 50,
+                  backgroundColor: AppColors.primary,
+                  child:
+                      Icon(Icons.person_rounded, size: 50, color: Colors.white),
+                ),
+                const SizedBox(height: 16),
+                if (snapshot.connectionState == ConnectionState.waiting)
+                  const CircularProgressIndicator()
+                else ...[
+                  Text(
+                    displayName,
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  if (displayPhone.isNotEmpty)
+                    Text(
+                      '+91 $displayPhone',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
                 ],
-              ),
-            ),
-          ],
+                const SizedBox(height: 32),
+                Expanded(
+                  child: ListView(
+                    children: [
+                      const ThemeToggle(),
+                      _buildProfileOption(
+                          context, Icons.edit_rounded, 'Edit Profile'),
+                      _buildProfileOption(
+                          context, Icons.location_on_rounded, 'My Addresses'),
+                      _buildProfileOption(
+                          context, Icons.settings_rounded, 'Settings'),
+                      _buildProfileOption(
+                          context, Icons.help_rounded, 'Help & Support'),
+                      _buildProfileOption(context, Icons.info_rounded, 'About'),
+                      _buildProfileOption(
+                          context, Icons.logout_rounded, 'Logout',
+                          isDestructive: true),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
@@ -388,6 +420,7 @@ Widget _buildProfileOption(BuildContext context, IconData icon, String title,
         if (title == 'Logout') {
           final shouldLogout = await DialogHelper.showLogoutDialog(context);
           if (shouldLogout && context.mounted) {
+            AuthStore.clear();
             Navigator.of(context).pushAndRemoveUntil(
               MaterialPageRoute(builder: (_) => const RoleSelectionScreen()),
               (route) => false,

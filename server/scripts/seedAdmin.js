@@ -14,9 +14,19 @@ async function main() {
   if (!phone) throw new Error('ADMIN_PHONE is required');
   if (!pincode) throw new Error('ADMIN_PINCODE is required');
 
-  const { city, state } = await resolveCityStateFromPincode(pincode);
+  const { state, district, areas } = await resolveCityStateFromPincode(pincode);
+
+  // Get city from first area or fallback to district
+  const city = areas && areas.length > 0 ? areas[0].name : district;
 
   await mongoose.connect(config.mongodbUri);
+
+  // Check if any admin already exists
+  const existingAdmin = await User.findOne({ role: 'admin' });
+  if (existingAdmin && existingAdmin.phone !== phone) {
+    console.log('⚠️  Admin already exists with phone:', existingAdmin.phone);
+    console.log('Only one admin is allowed. Updating existing admin...');
+  }
 
   const user = await User.findOneAndUpdate(
     { phone },
@@ -25,7 +35,7 @@ async function main() {
       role: 'admin',
       name,
       pincode: String(pincode).trim(),
-      city,
+      city: city || '',
       state,
       address,
       approvalStatus: 'approved',
@@ -33,7 +43,7 @@ async function main() {
     { upsert: true, new: true, runValidators: true }
   );
 
-  console.log('Seeded admin:', { id: user._id.toString(), phone: user.phone, name: user.name });
+  console.log('✅ Seeded admin:', { id: user._id.toString(), phone: user.phone, name: user.name, city: user.city });
 }
 
 main()

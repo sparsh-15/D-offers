@@ -14,6 +14,7 @@ class CustomTextField extends StatelessWidget {
   final List<TextInputFormatter>? inputFormatters;
   final int? maxLength;
   final int maxLines;
+  final bool enabled;
 
   const CustomTextField({
     super.key,
@@ -29,6 +30,7 @@ class CustomTextField extends StatelessWidget {
     this.inputFormatters,
     this.maxLength,
     this.maxLines = 1,
+    this.enabled = true,
   });
 
   @override
@@ -41,6 +43,7 @@ class CustomTextField extends StatelessWidget {
       inputFormatters: inputFormatters,
       maxLength: maxLength,
       maxLines: maxLines,
+      enabled: enabled,
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,

@@ -1,5 +1,62 @@
 const mongoose = require('mongoose');
 const User = require('../models/User');
+const Offer = require('../models/Offer');
+
+async function getStats(req, res, next) {
+  try {
+    const totalUsers = await User.countDocuments();
+    const totalShopkeepers = await User.countDocuments({ role: 'shopkeeper' });
+    const pendingShopkeepers = await User.countDocuments({ role: 'shopkeeper', approvalStatus: 'pending' });
+    const activeOffers = await Offer.countDocuments({ status: 'active' });
+
+    res.status(200).json({
+      success: true,
+      stats: {
+        totalUsers,
+        totalShopkeepers,
+        pendingShopkeepers,
+        activeOffers,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function listUsers(req, res, next) {
+  try {
+    const { role, limit, skip } = req.query;
+    const filter = {};
+    if (role) filter.role = role;
+
+    const limitNum = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 100);
+    const skipNum = Math.max(parseInt(skip, 10) || 0, 0);
+
+    const users = await User.find(filter)
+      .select('name phone role pincode city state approvalStatus createdAt')
+      .sort({ createdAt: -1 })
+      .skip(skipNum)
+      .limit(limitNum)
+      .lean();
+
+    res.status(200).json({
+      success: true,
+      users: users.map((u) => ({
+        id: u._id,
+        name: u.name,
+        phone: u.phone,
+        role: u.role,
+        pincode: u.pincode,
+        city: u.city,
+        state: u.state,
+        approvalStatus: u.approvalStatus,
+        createdAt: u.createdAt,
+      })),
+    });
+  } catch (err) {
+    next(err);
+  }
+}
 
 async function listShopkeepers(req, res, next) {
   try {
@@ -91,6 +148,8 @@ async function rejectShopkeeper(req, res, next) {
 }
 
 module.exports = {
+  getStats,
+  listUsers,
   listShopkeepers,
   approveShopkeeper,
   rejectShopkeeper,

@@ -8,7 +8,6 @@ import '../../widgets/gradient_card.dart';
 import '../../widgets/theme_toggle.dart';
 import '../../services/auth_service.dart';
 import '../../services/auth_store.dart';
-import '../../core/utils/dialog_helper.dart';
 import '../../models/user_model.dart';
 import '../role_selection/role_selection_screen.dart';
 
@@ -65,8 +64,21 @@ class _AdminDashboardState extends State<AdminDashboard> {
   }
 }
 
-class AdminHomeTab extends StatelessWidget {
+class AdminHomeTab extends StatefulWidget {
   const AdminHomeTab({super.key});
+
+  @override
+  State<AdminHomeTab> createState() => _AdminHomeTabState();
+}
+
+class _AdminHomeTabState extends State<AdminHomeTab> {
+  late Future<Map<String, dynamic>> _statsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _statsFuture = AuthService.instance.getAdminStats();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -100,119 +112,155 @@ class AdminHomeTab extends StatelessWidget {
               ],
             ),
             SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    FadeInDown(
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: _buildStatCard(
-                              context,
-                              'Total Users',
-                              '1,234',
-                              Icons.people_rounded,
-                              AppColors.primaryGradient,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _buildStatCard(
-                              context,
-                              'Shopkeepers',
-                              '156',
-                              Icons.store_rounded,
-                              AppColors.accentGradient,
-                            ),
-                          ),
-                        ],
+              child: FutureBuilder<Map<String, dynamic>>(
+                future: _statsFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Padding(
+                      padding: EdgeInsets.all(32.0),
+                      child: Center(child: CircularProgressIndicator()),
+                    );
+                  }
+                  if (snapshot.hasError) {
+                    return Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Center(
+                        child: Text(
+                          'Failed to load stats\n${snapshot.error}',
+                          textAlign: TextAlign.center,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    FadeInUp(
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: _buildStatCard(
-                              context,
-                              'Active Offers',
-                              '432',
-                              Icons.local_offer_rounded,
-                              const LinearGradient(
-                                colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
+                    );
+                  }
+                  final stats = snapshot.data ?? {};
+                  final totalUsers = stats['totalUsers']?.toString() ?? '0';
+                  final totalShopkeepers =
+                      stats['totalShopkeepers']?.toString() ?? '0';
+                  final activeOffers = stats['activeOffers']?.toString() ?? '0';
+                  final pendingShopkeepers =
+                      stats['pendingShopkeepers']?.toString() ?? '0';
+
+                  return Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        FadeInDown(
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: _buildStatCard(
+                                  context,
+                                  'Total Users',
+                                  totalUsers,
+                                  Icons.people_rounded,
+                                  AppColors.primaryGradient,
+                                ),
                               ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _buildStatCard(
-                              context,
-                              'Pending',
-                              '8',
-                              Icons.pending_rounded,
-                              const LinearGradient(
-                                colors: [Color(0xFFF093FB), Color(0xFFF5576C)],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _buildStatCard(
+                                  context,
+                                  'Shopkeepers',
+                                  totalShopkeepers,
+                                  Icons.store_rounded,
+                                  AppColors.accentGradient,
+                                ),
                               ),
-                            ),
+                            ],
                           ),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(height: 12),
+                        FadeInUp(
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: _buildStatCard(
+                                  context,
+                                  'Active Offers',
+                                  activeOffers,
+                                  Icons.local_offer_rounded,
+                                  const LinearGradient(
+                                    colors: [
+                                      Color(0xFF667EEA),
+                                      Color(0xFF764BA2)
+                                    ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _buildStatCard(
+                                  context,
+                                  'Pending',
+                                  pendingShopkeepers,
+                                  Icons.pending_rounded,
+                                  const LinearGradient(
+                                    colors: [
+                                      Color(0xFFF093FB),
+                                      Color(0xFFF5576C)
+                                    ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        FadeInLeft(
+                          child: Text(
+                            'Quick Actions',
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        FadeInUp(
+                          child: _buildQuickAction(
+                            context,
+                            AppStrings.manageUsers,
+                            'View and manage all users',
+                            Icons.people_rounded,
+                            AppColors.primary,
+                          ),
+                        ),
+                        FadeInUp(
+                          delay: const Duration(milliseconds: 100),
+                          child: _buildQuickAction(
+                            context,
+                            AppStrings.approveShopkeepers,
+                            'Review pending shopkeeper requests',
+                            Icons.approval_rounded,
+                            AppColors.accent,
+                          ),
+                        ),
+                        FadeInUp(
+                          delay: const Duration(milliseconds: 200),
+                          child: _buildQuickAction(
+                            context,
+                            AppStrings.platformAnalytics,
+                            'View detailed platform statistics',
+                            Icons.analytics_rounded,
+                            AppColors.success,
+                          ),
+                        ),
+                        FadeInUp(
+                          delay: const Duration(milliseconds: 300),
+                          child: _buildQuickAction(
+                            context,
+                            AppStrings.reports,
+                            'Generate and view reports',
+                            Icons.assessment_rounded,
+                            AppColors.info,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 24),
-                    FadeInLeft(
-                      child: Text(
-                        'Quick Actions',
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    FadeInUp(
-                      child: _buildQuickAction(
-                        context,
-                        AppStrings.manageUsers,
-                        'View and manage all users',
-                        Icons.people_rounded,
-                        AppColors.primary,
-                      ),
-                    ),
-                    FadeInUp(
-                      delay: const Duration(milliseconds: 100),
-                      child: _buildQuickAction(
-                        context,
-                        AppStrings.approveShopkeepers,
-                        'Review pending shopkeeper requests',
-                        Icons.approval_rounded,
-                        AppColors.accent,
-                      ),
-                    ),
-                    FadeInUp(
-                      delay: const Duration(milliseconds: 200),
-                      child: _buildQuickAction(
-                        context,
-                        AppStrings.platformAnalytics,
-                        'View detailed platform statistics',
-                        Icons.analytics_rounded,
-                        AppColors.success,
-                      ),
-                    ),
-                    FadeInUp(
-                      delay: const Duration(milliseconds: 300),
-                      child: _buildQuickAction(
-                        context,
-                        AppStrings.reports,
-                        'Generate and view reports',
-                        Icons.assessment_rounded,
-                        AppColors.info,
-                      ),
-                    ),
-                  ],
-                ),
+                  );
+                },
               ),
             ),
           ],
@@ -282,8 +330,27 @@ class AdminHomeTab extends StatelessWidget {
   }
 }
 
-class UsersManagementTab extends StatelessWidget {
+class UsersManagementTab extends StatefulWidget {
   const UsersManagementTab({super.key});
+
+  @override
+  State<UsersManagementTab> createState() => _UsersManagementTabState();
+}
+
+class _UsersManagementTabState extends State<UsersManagementTab> {
+  late Future<List<UserModel>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = AuthService.instance.getUsers(limit: 50);
+  }
+
+  Future<void> _refresh() async {
+    setState(() {
+      _future = AuthService.instance.getUsers(limit: 50);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -296,31 +363,79 @@ class UsersManagementTab extends StatelessWidget {
             AppBar(
               backgroundColor: Colors.transparent,
               title: const Text('Manage Users'),
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.refresh_rounded),
+                  onPressed: _refresh,
+                ),
+              ],
             ),
             Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: 10,
-                itemBuilder: (context, index) {
-                  return FadeInUp(
-                    delay: Duration(milliseconds: 50 * index),
-                    child: Card(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: AppColors.primary,
-                          child: Text('U${index + 1}'),
-                        ),
-                        title: Text('User ${index + 1}'),
-                        subtitle: Text('+91 98765432${10 + index}'),
-                        trailing: PopupMenuButton(
-                          itemBuilder: (context) => [
-                            const PopupMenuItem(child: Text('View Details')),
-                            const PopupMenuItem(child: Text('Suspend')),
-                            const PopupMenuItem(child: Text('Delete')),
-                          ],
-                        ),
+              child: FutureBuilder<List<UserModel>>(
+                future: _future,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (snapshot.hasError) {
+                    return Center(
+                      child: Text(
+                        'Failed to load users\n${snapshot.error}',
+                        textAlign: TextAlign.center,
                       ),
+                    );
+                  }
+                  final users = snapshot.data ?? [];
+                  if (users.isEmpty) {
+                    return const Center(child: Text('No users found'));
+                  }
+                  return RefreshIndicator(
+                    onRefresh: _refresh,
+                    child: ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: users.length,
+                      itemBuilder: (context, index) {
+                        final user = users[index];
+                        return FadeInUp(
+                          delay: Duration(milliseconds: 50 * index),
+                          child: Card(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            child: ListTile(
+                              leading: CircleAvatar(
+                                backgroundColor: user.role == 'admin'
+                                    ? AppColors.error
+                                    : user.role == 'shopkeeper'
+                                        ? AppColors.accent
+                                        : AppColors.primary,
+                                child: Icon(
+                                  user.role == 'admin'
+                                      ? Icons.admin_panel_settings_rounded
+                                      : user.role == 'shopkeeper'
+                                          ? Icons.store_rounded
+                                          : Icons.person_rounded,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              title:
+                                  Text(user.name.isEmpty ? 'User' : user.name),
+                              subtitle: Text(
+                                '+91 ${user.phone}\n${user.role} • ${user.approvalStatus}',
+                              ),
+                              isThreeLine: true,
+                              trailing: PopupMenuButton(
+                                itemBuilder: (context) => [
+                                  const PopupMenuItem(
+                                      child: Text('View Details')),
+                                  if (user.role != 'admin')
+                                    const PopupMenuItem(child: Text('Suspend')),
+                                  if (user.role != 'admin')
+                                    const PopupMenuItem(child: Text('Delete')),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   );
                 },
@@ -538,8 +653,21 @@ class _ShopkeepersApprovalBodyState extends State<_ShopkeepersApprovalBody> {
   }
 }
 
-class AdminProfileTab extends StatelessWidget {
+class AdminProfileTab extends StatefulWidget {
   const AdminProfileTab({super.key});
+
+  @override
+  State<AdminProfileTab> createState() => _AdminProfileTabState();
+}
+
+class _AdminProfileTabState extends State<AdminProfileTab> {
+  late Future<UserModel> _userFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _userFuture = AuthService.instance.fetchCurrentUser();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -547,50 +675,67 @@ class AdminProfileTab extends StatelessWidget {
       decoration:
           BoxDecoration(gradient: ThemeHelper.getBackgroundGradient(context)),
       child: SafeArea(
-        child: Column(
-          children: [
-            AppBar(
-              backgroundColor: Colors.transparent,
-              title: const Text('Admin Profile'),
-              actions: const [
-                ThemeToggleButton(),
-              ],
-            ),
-            const SizedBox(height: 20),
-            const CircleAvatar(
-              radius: 50,
-              backgroundColor: AppColors.primary,
-              child: Icon(Icons.admin_panel_settings_rounded,
-                  size: 50, color: Colors.white),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Admin User',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            Text(
-              'admin@doffers.com',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 32),
-            Expanded(
-              child: ListView(
-                children: [
-                  const ThemeToggle(),
-                  _buildProfileOption(
-                      context, Icons.edit_rounded, 'Edit Profile'),
-                  _buildProfileOption(
-                      context, Icons.security_rounded, 'Security'),
-                  _buildProfileOption(
-                      context, Icons.settings_rounded, 'Settings'),
-                  _buildProfileOption(
-                      context, Icons.help_rounded, 'Help & Support'),
-                  _buildProfileOption(context, Icons.logout_rounded, 'Logout',
-                      isDestructive: true),
+        child: FutureBuilder<UserModel>(
+          future: _userFuture,
+          builder: (context, snapshot) {
+            final user = snapshot.data;
+            final displayName = user?.name.isEmpty == true || user == null
+                ? 'Admin User'
+                : user.name;
+            final displayPhone = user?.phone ?? '';
+
+            return Column(
+              children: [
+                AppBar(
+                  backgroundColor: Colors.transparent,
+                  title: const Text('Admin Profile'),
+                  actions: const [
+                    ThemeToggleButton(),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                const CircleAvatar(
+                  radius: 50,
+                  backgroundColor: AppColors.primary,
+                  child: Icon(Icons.admin_panel_settings_rounded,
+                      size: 50, color: Colors.white),
+                ),
+                const SizedBox(height: 16),
+                if (snapshot.connectionState == ConnectionState.waiting)
+                  const CircularProgressIndicator()
+                else ...[
+                  Text(
+                    displayName,
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  if (displayPhone.isNotEmpty)
+                    Text(
+                      '+91 $displayPhone',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
                 ],
-              ),
-            ),
-          ],
+                const SizedBox(height: 32),
+                Expanded(
+                  child: ListView(
+                    children: [
+                      const ThemeToggle(),
+                      _buildProfileOption(
+                          context, Icons.edit_rounded, 'Edit Profile'),
+                      _buildProfileOption(
+                          context, Icons.security_rounded, 'Security'),
+                      _buildProfileOption(
+                          context, Icons.settings_rounded, 'Settings'),
+                      _buildProfileOption(
+                          context, Icons.help_rounded, 'Help & Support'),
+                      _buildProfileOption(
+                          context, Icons.logout_rounded, 'Logout',
+                          isDestructive: true),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
@@ -612,6 +757,7 @@ class AdminProfileTab extends StatelessWidget {
           if (title == 'Logout') {
             final shouldLogout = await DialogHelper.showLogoutDialog(context);
             if (shouldLogout && context.mounted) {
+              AuthStore.clear();
               Navigator.of(context).pushAndRemoveUntil(
                 MaterialPageRoute(builder: (_) => const RoleSelectionScreen()),
                 (route) => false,

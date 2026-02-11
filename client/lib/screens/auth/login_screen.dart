@@ -151,33 +151,34 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  FadeInUp(
-                    delay: const Duration(milliseconds: 600),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          AppStrings.dontHaveAccount,
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                        TextButton(
-                          onPressed: () {
-                            _navigateToRegister();
-                          },
-                          child: Text(
-                            AppStrings.register,
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodyMedium
-                                ?.copyWith(
-                                  color: AppColors.primary,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                  if (widget.role != UserRole.admin)
+                    FadeInUp(
+                      delay: const Duration(milliseconds: 600),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            AppStrings.dontHaveAccount,
+                            style: Theme.of(context).textTheme.bodyMedium,
                           ),
-                        ),
-                      ],
+                          TextButton(
+                            onPressed: () {
+                              _navigateToRegister();
+                            },
+                            child: Text(
+                              AppStrings.register,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(
+                                    color: AppColors.primary,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),

@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 
 import 'api_config.dart';
 import '../models/user_model.dart';
+import '../models/role_enum.dart';
 import '../models/offer_model.dart';
 import '../models/shopkeeper_profile_model.dart';
 import 'auth_store.dart';
@@ -20,6 +21,7 @@ class AuthService {
     required String phone,
     required String name,
     required String pincode,
+    String? city,
     String? address,
   }) async {
     final uri = Uri.parse('${ApiConfig.authUrl}/signup');
@@ -31,6 +33,7 @@ class AuthService {
         'phone': phone,
         'name': name,
         'pincode': pincode,
+        'city': city ?? '',
         'address': address ?? '',
       }),
     );
@@ -168,9 +171,8 @@ class AuthService {
     if (token == null) throw Exception('Not authenticated');
     final user = AuthStore.currentUser;
     final pincode = user?.pincode;
-    final query = (pincode != null && pincode.isNotEmpty)
-        ? '?pincode=$pincode'
-        : '';
+    final query =
+        (pincode != null && pincode.isNotEmpty) ? '?pincode=$pincode' : '';
     final uri = Uri.parse('${ApiConfig.baseUrl}/customer/offers$query');
     final resp = await _client.get(
       uri,
@@ -261,7 +263,70 @@ class AuthService {
     _handleResponse(resp);
   }
 
+  // Pincode lookup
+  Future<Map<String, dynamic>> lookupPincode(String pincode) async {
+    final uri = Uri.parse('${ApiConfig.metaUrl}/pincode/$pincode');
+    final resp = await _client.get(uri);
+    final data = _handleResponse(resp) as Map<String, dynamic>;
+
+    // Parse areas list
+    final areasList = (data['areas'] as List<dynamic>?)?.map((area) {
+          return {
+            'name': area['name']?.toString() ?? '',
+            'district': area['district']?.toString() ?? '',
+            'block': area['block']?.toString() ?? '',
+          };
+        }).toList() ??
+        [];
+
+    return {
+      'pincode': data['pincode']?.toString() ?? pincode,
+      'state': data['state']?.toString() ?? '',
+      'district': data['district']?.toString() ?? '',
+      'areas': areasList,
+    };
+  }
+
   // Admin shopkeepers
+  Future<Map<String, dynamic>> getAdminStats() async {
+    final token = AuthStore.token;
+    if (token == null) throw Exception('Not authenticated');
+    final uri = Uri.parse('${ApiConfig.adminUrl}/stats');
+    final resp = await _client.get(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $token',
+      },
+    );
+    final data = _handleResponse(resp) as Map<String, dynamic>;
+    return data['stats'] as Map<String, dynamic>;
+  }
+
+  Future<List<UserModel>> getUsers(
+      {String? role, int? limit, int? skip}) async {
+    final token = AuthStore.token;
+    if (token == null) throw Exception('Not authenticated');
+    final queryParams = <String, String>{};
+    if (role != null) queryParams['role'] = role;
+    if (limit != null) queryParams['limit'] = limit.toString();
+    if (skip != null) queryParams['skip'] = skip.toString();
+    final query = queryParams.isEmpty
+        ? ''
+        : '?${queryParams.entries.map((e) => '${e.key}=${e.value}').join('&')}';
+    final uri = Uri.parse('${ApiConfig.adminUrl}/users$query');
+    final resp = await _client.get(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $token',
+      },
+    );
+    final data = _handleResponse(resp) as Map<String, dynamic>;
+    final list = (data['users'] as List<dynamic>? ?? []);
+    return list
+        .map((e) => UserModel.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
   Future<List<UserModel>> getShopkeepers({String? status}) async {
     final token = AuthStore.token;
     if (token == null) throw Exception('Not authenticated');
@@ -316,4 +381,3 @@ class AuthService {
     return data;
   }
 }
-

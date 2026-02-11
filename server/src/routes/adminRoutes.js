@@ -8,6 +8,8 @@ const router = express.Router();
 router.use(authMiddleware);
 router.use(requireRole(['admin']));
 
+router.get('/stats', adminController.getStats);
+router.get('/users', adminController.listUsers);
 router.get('/shopkeepers', adminController.listShopkeepers);
 router.patch('/shopkeepers/:id/approve', adminController.approveShopkeeper);
 router.patch('/shopkeepers/:id/reject', adminController.rejectShopkeeper);

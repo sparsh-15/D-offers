@@ -24,17 +24,94 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _pincodeController = TextEditingController();
+  final _cityController = TextEditingController();
+  final _stateController = TextEditingController();
   final _addressController = TextEditingController();
 
   bool _isLoading = false;
+  bool _isLoadingPincode = false;
+  List<Map<String, dynamic>> _availableAreas = [];
+  String? _selectedArea;
+
+  @override
+  void initState() {
+    super.initState();
+    _pincodeController.addListener(_onPincodeChanged);
+  }
 
   @override
   void dispose() {
+    _pincodeController.removeListener(_onPincodeChanged);
     _nameController.dispose();
     _phoneController.dispose();
     _pincodeController.dispose();
+    _cityController.dispose();
+    _stateController.dispose();
     _addressController.dispose();
     super.dispose();
+  }
+
+  void _onPincodeChanged() {
+    final pincode = _pincodeController.text;
+    if (pincode.length == 6) {
+      _lookupPincode(pincode);
+    } else {
+      setState(() {
+        _cityController.clear();
+        _stateController.clear();
+        _availableAreas = [];
+        _selectedArea = null;
+      });
+    }
+  }
+
+  Future<void> _lookupPincode(String pincode) async {
+    setState(() => _isLoadingPincode = true);
+    try {
+      final result = await AuthService.instance.lookupPincode(pincode);
+      if (!mounted) return;
+
+      final areas = result['areas'] as List<Map<String, dynamic>>? ?? [];
+
+      setState(() {
+        _stateController.text = result['state']?.toString() ?? '';
+        _availableAreas = areas;
+
+        // Auto-select first area if only one available
+        if (areas.length == 1) {
+          _selectedArea = areas[0]['name'];
+          _cityController.text = areas[0]['name'] ?? '';
+        } else if (areas.isEmpty) {
+          // Fallback to district if no areas
+          _cityController.text = result['district']?.toString() ?? '';
+        } else {
+          // Multiple areas - user needs to select
+          _cityController.clear();
+          _selectedArea = null;
+        }
+      });
+    } catch (e) {
+      if (!mounted) return;
+      // Silently fail - user can enter manually
+      setState(() {
+        _cityController.clear();
+        _stateController.clear();
+        _availableAreas = [];
+        _selectedArea = null;
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingPincode = false);
+      }
+    }
+  }
+
+  void _onAreaSelected(String? areaName) {
+    if (areaName == null) return;
+    setState(() {
+      _selectedArea = areaName;
+      _cityController.text = areaName;
+    });
   }
 
   String _title() {
@@ -144,6 +221,99 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     },
                   ),
                   const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _availableAreas.length > 1
+                            ? DropdownButtonFormField<String>(
+                                value: _selectedArea,
+                                decoration: InputDecoration(
+                                  labelText: 'City / Area',
+                                  prefixIcon:
+                                      const Icon(Icons.location_city_rounded),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                hint: const Text('Select your area'),
+                                items: _availableAreas.map((area) {
+                                  return DropdownMenuItem<String>(
+                                    value: area['name'],
+                                    child: Text(area['name'] ?? ''),
+                                  );
+                                }).toList(),
+                                onChanged:
+                                    _isLoadingPincode ? null : _onAreaSelected,
+                                validator: (value) {
+                                  if (value == null || value.trim().isEmpty) {
+                                    return 'Please select area';
+                                  }
+                                  return null;
+                                },
+                              )
+                            : CustomTextField(
+                                controller: _cityController,
+                                label: 'City',
+                                hint: _availableAreas.isEmpty
+                                    ? 'Enter city'
+                                    : 'Auto-filled',
+                                prefixIcon: Icons.location_city_rounded,
+                                enabled: !_isLoadingPincode,
+                                validator: (value) {
+                                  if (value == null || value.trim().isEmpty) {
+                                    return 'City required';
+                                  }
+                                  return null;
+                                },
+                              ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: CustomTextField(
+                          controller: _stateController,
+                          label: 'State',
+                          hint: 'Auto-filled',
+                          prefixIcon: Icons.map_rounded,
+                          enabled: !_isLoadingPincode,
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'State required';
+                            }
+                            return null;
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (_isLoadingPincode)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Row(
+                        children: [
+                          const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Looking up pincode...',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
+                      ),
+                    ),
+                  if (_availableAreas.length > 1 && !_isLoadingPincode)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        '${_availableAreas.length} areas found. Please select your area.',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: AppColors.primary,
+                            ),
+                      ),
+                    ),
+                  const SizedBox(height: 16),
                   CustomTextField(
                     controller: _addressController,
                     label: 'Address (optional)',
@@ -177,6 +347,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
         phone: _phoneController.text,
         name: _nameController.text.trim(),
         pincode: _pincodeController.text,
+        city: _cityController.text.trim().isEmpty
+            ? null
+            : _cityController.text.trim(),
         address: _addressController.text.trim().isEmpty
             ? null
             : _addressController.text.trim(),
@@ -202,4 +375,3 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 }
-

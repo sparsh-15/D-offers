@@ -4,11 +4,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/utils/theme_helper.dart';
 import '../../core/utils/dialog_helper.dart';
 import '../../widgets/gradient_card.dart';
-import '../../widgets/theme_toggle.dart';
-import '../role_selection/role_selection_screen.dart';
 import '../../services/auth_service.dart';
-import '../../services/auth_store.dart';
-import '../../core/utils/dialog_helper.dart';
 import '../../models/offer_model.dart';
 import 'shop_profile_body.dart';
 
@@ -21,13 +17,20 @@ class ShopDashboard extends StatefulWidget {
 
 class _ShopDashboardState extends State<ShopDashboard> {
   int _selectedIndex = 0;
+  final GlobalKey<_OffersManagementBodyState> _offersKey = GlobalKey();
 
-  final List<Widget> _screens = [
-    const ShopHomeTab(),
-    const OffersManagementTab(),
-    const LeadsTab(),
-    const ShopProfileTab(),
-  ];
+  final List<Widget> _screens = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _screens.addAll([
+      const ShopHomeTab(),
+      OffersManagementTab(key: _offersKey),
+      const LeadsTab(),
+      const ShopProfileTab(),
+    ]);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -62,7 +65,9 @@ class _ShopDashboardState extends State<ShopDashboard> {
         ),
         floatingActionButton: _selectedIndex == 1
             ? FloatingActionButton.extended(
-                onPressed: () {},
+                onPressed: () {
+                  _offersKey.currentState?._openEditDialog(context);
+                },
                 icon: const Icon(Icons.add_rounded),
                 label: const Text('Add Offer'),
               )
@@ -72,8 +77,21 @@ class _ShopDashboardState extends State<ShopDashboard> {
   }
 }
 
-class ShopHomeTab extends StatelessWidget {
+class ShopHomeTab extends StatefulWidget {
   const ShopHomeTab({super.key});
+
+  @override
+  State<ShopHomeTab> createState() => _ShopHomeTabState();
+}
+
+class _ShopHomeTabState extends State<ShopHomeTab> {
+  late Future<List<OfferModel>> _offersFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _offersFuture = AuthService.instance.getShopkeeperOffers();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -107,99 +125,93 @@ class ShopHomeTab extends StatelessWidget {
               ],
             ),
             SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    FadeInDown(
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: _buildStatCard(
-                              context,
-                              'Active Offers',
-                              '12',
-                              Icons.local_offer_rounded,
-                              AppColors.primaryGradient,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _buildStatCard(
-                              context,
-                              'Total Leads',
-                              '48',
-                              Icons.people_rounded,
-                              AppColors.accentGradient,
-                            ),
-                          ),
-                        ],
+              child: FutureBuilder<List<OfferModel>>(
+                future: _offersFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Padding(
+                      padding: EdgeInsets.all(32.0),
+                      child: Center(child: CircularProgressIndicator()),
+                    );
+                  }
+                  if (snapshot.hasError) {
+                    return Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Center(
+                        child: Text(
+                          'Failed to load stats\n${snapshot.error}',
+                          textAlign: TextAlign.center,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    FadeInUp(
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: _buildStatCard(
-                              context,
-                              'Views Today',
-                              '156',
-                              Icons.visibility_rounded,
-                              const LinearGradient(
-                                colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
+                    );
+                  }
+                  final offers = snapshot.data ?? [];
+                  final activeOffers = offers
+                      .where((o) => o.status == 'active')
+                      .length
+                      .toString();
+
+                  return Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        FadeInDown(
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: _buildStatCard(
+                                  context,
+                                  'Active Offers',
+                                  activeOffers,
+                                  Icons.local_offer_rounded,
+                                  AppColors.primaryGradient,
+                                ),
                               ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _buildStatCard(
-                              context,
-                              'Rating',
-                              '4.8',
-                              Icons.star_rounded,
-                              const LinearGradient(
-                                colors: [Color(0xFFF093FB), Color(0xFFF5576C)],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _buildStatCard(
+                                  context,
+                                  'Total Offers',
+                                  offers.length.toString(),
+                                  Icons.list_alt_rounded,
+                                  AppColors.accentGradient,
+                                ),
                               ),
-                            ),
+                            ],
                           ),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(height: 24),
+                        FadeInLeft(
+                          child: Text(
+                            'Quick Actions',
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        FadeInUp(
+                          child: _buildQuickAction(
+                            context,
+                            'Add New Offer',
+                            'Create attractive offers for customers',
+                            Icons.add_circle_rounded,
+                            AppColors.primary,
+                          ),
+                        ),
+                        FadeInUp(
+                          delay: const Duration(milliseconds: 100),
+                          child: _buildQuickAction(
+                            context,
+                            'View My Offers',
+                            'Manage your existing offers',
+                            Icons.local_offer_rounded,
+                            AppColors.accent,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 24),
-                    FadeInLeft(
-                      child: Text(
-                        'Quick Actions',
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    FadeInUp(
-                      child: _buildQuickAction(
-                        context,
-                        'Add New Offer',
-                        'Create attractive offers for customers',
-                        Icons.add_circle_rounded,
-                        AppColors.primary,
-                      ),
-                    ),
-                    FadeInUp(
-                      delay: const Duration(milliseconds: 100),
-                      child: _buildQuickAction(
-                        context,
-                        'View Analytics',
-                        'Check your shop performance',
-                        Icons.analytics_rounded,
-                        AppColors.accent,
-                      ),
-                    ),
-                  ],
-                ),
+                  );
+                },
               ),
             ),
           ],
@@ -278,14 +290,14 @@ class OffersManagementTab extends StatelessWidget {
       decoration:
           BoxDecoration(gradient: ThemeHelper.getBackgroundGradient(context)),
       child: SafeArea(
-        child: const _OffersManagementBody(),
+        child: _OffersManagementBody(key: key),
       ),
     );
   }
 }
 
 class _OffersManagementBody extends StatefulWidget {
-  const _OffersManagementBody();
+  const _OffersManagementBody({super.key});
 
   @override
   State<_OffersManagementBody> createState() => _OffersManagementBodyState();
@@ -397,7 +409,8 @@ class _OffersManagementBodyState extends State<_OffersManagementBody> {
     );
   }
 
-  Future<void> _openEditDialog(BuildContext context, {OfferModel? offer}) async {
+  Future<void> _openEditDialog(BuildContext context,
+      {OfferModel? offer}) async {
     final titleController = TextEditingController(text: offer?.title ?? '');
     final descController =
         TextEditingController(text: offer?.description ?? '');
@@ -428,8 +441,7 @@ class _OffersManagementBodyState extends State<_OffersManagementBody> {
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
                   value: discountType,
-                  decoration:
-                      const InputDecoration(labelText: 'Discount Type'),
+                  decoration: const InputDecoration(labelText: 'Discount Type'),
                   items: const [
                     DropdownMenuItem(
                       value: 'percentage',
@@ -573,38 +585,8 @@ class ShopProfileTab extends StatelessWidget {
     return Container(
       decoration:
           BoxDecoration(gradient: ThemeHelper.getBackgroundGradient(context)),
-      child: SafeArea(
-        child: const _ShopProfileBody(),
-      ),
-    );
-  }
-
-  Widget _buildProfileOption(BuildContext context, IconData icon, String title,
-      {bool isDestructive = false}) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: ListTile(
-        leading: Icon(icon,
-            color: isDestructive ? AppColors.error : AppColors.primary),
-        title: Text(
-          title,
-          style: TextStyle(color: isDestructive ? AppColors.error : null),
-        ),
-        trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16),
-        onTap: () async {
-          if (title == 'Logout') {
-            final shouldLogout = await DialogHelper.showLogoutDialog(context);
-            if (shouldLogout && context.mounted) {
-              AuthStore.clear();
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (_) => const RoleSelectionScreen()),
-                (route) => false,
-              );
-              DialogHelper.showSuccessSnackBar(
-                  context, 'Logged out successfully');
-            }
-          }
-        },
+      child: const SafeArea(
+        child: ShopProfileBody(),
       ),
     );
   }
