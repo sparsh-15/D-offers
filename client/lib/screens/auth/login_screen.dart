@@ -7,6 +7,9 @@ import '../../core/constants/app_strings.dart';
 import '../../widgets/custom_text_field.dart';
 import '../../widgets/custom_button.dart';
 import 'otp_screen.dart';
+import 'Register_screen.dart';
+import '../../services/auth_service.dart';
+import '../../core/utils/dialog_helper.dart';
 
 class LoginScreen extends StatefulWidget {
   final UserRole role;
@@ -159,7 +162,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         TextButton(
                           onPressed: () {
-                            // Navigate to register screen
+                            _navigateToRegister();
                           },
                           child: Text(
                             AppStrings.register,
@@ -188,13 +191,13 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
-
-    // Simulate API call
-    await Future.delayed(const Duration(seconds: 2));
-
-    setState(() => _isLoading = false);
-
-    if (mounted) {
+    try {
+      await AuthService.instance.sendOtp(
+        role: widget.role,
+        phone: _phoneController.text,
+      );
+      if (!mounted) return;
+      DialogHelper.showSuccessSnackBar(context, 'OTP sent successfully');
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -204,6 +207,22 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
       );
+    } catch (e) {
+      if (!mounted) return;
+      DialogHelper.showErrorSnackBar(context, e.toString());
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
+  }
+
+  void _navigateToRegister() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => RegisterScreen(role: widget.role),
+      ),
+    );
   }
 }

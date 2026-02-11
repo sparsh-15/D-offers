@@ -5,6 +5,9 @@ import '../../core/constants/app_strings.dart';
 import '../../core/utils/dialog_helper.dart';
 import '../../widgets/theme_toggle.dart';
 import '../role_selection/role_selection_screen.dart';
+import '../../services/auth_service.dart';
+import '../../services/auth_store.dart';
+import '../../models/offer_model.dart';
 
 class CustomerDashboard extends StatefulWidget {
   const CustomerDashboard({super.key});
@@ -167,24 +170,105 @@ class OffersTab extends StatelessWidget {
             ? AppColors.backgroundGradient
             : AppColors.lightBackgroundGradient,
       ),
-      child: SafeArea(
-        child: Column(
-          children: [
-            AppBar(
-              backgroundColor: Colors.transparent,
-              title: const Text('My Offers'),
-            ),
-            Expanded(
-              child: Center(
-                child: Text(
-                  'Your saved offers will appear here',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-              ),
-            ),
-          ],
-        ),
+      child: const SafeArea(
+        child: _CustomerOffersBody(),
       ),
+    );
+  }
+}
+
+class _CustomerOffersBody extends StatefulWidget {
+  const _CustomerOffersBody();
+
+  @override
+  State<_CustomerOffersBody> createState() => _CustomerOffersBodyState();
+}
+
+class _CustomerOffersBodyState extends State<_CustomerOffersBody> {
+  late Future<List<OfferModel>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = AuthService.instance.getCustomerOffers();
+  }
+
+  Future<void> _refresh() async {
+    setState(() {
+      _future = AuthService.instance.getCustomerOffers();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        AppBar(
+          backgroundColor: Colors.transparent,
+          title: const Text('Offers Near You'),
+        ),
+        Expanded(
+          child: FutureBuilder<List<OfferModel>>(
+            future: _future,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (snapshot.hasError) {
+                return Center(
+                  child: Text(
+                    'Failed to load offers\n${snapshot.error}',
+                    textAlign: TextAlign.center,
+                  ),
+                );
+              }
+              final offers = snapshot.data ?? [];
+              if (offers.isEmpty) {
+                return const Center(
+                  child: Text('No offers found for your area yet'),
+                );
+              }
+              return RefreshIndicator(
+                onRefresh: _refresh,
+                child: ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: offers.length,
+                  itemBuilder: (context, index) {
+                    final o = offers[index];
+                    return FadeInUp(
+                      delay: Duration(milliseconds: 80 * index),
+                      child: Card(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        child: ListTile(
+                          leading: Container(
+                            width: 50,
+                            height: 50,
+                            decoration: BoxDecoration(
+                              gradient: AppColors.primaryGradient,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(Icons.local_offer_rounded,
+                                color: Colors.white),
+                          ),
+                          title: Text(o.title),
+                          subtitle: Text(
+                            '${o.discountType} • ${o.status}',
+                          ),
+                          trailing: const Icon(Icons.arrow_forward_ios_rounded,
+                              size: 16),
+                          onTap: () {
+                            // Later: navigate to offer detail / shop detail
+                          },
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }

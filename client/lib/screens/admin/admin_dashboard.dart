@@ -6,6 +6,10 @@ import '../../core/utils/theme_helper.dart';
 import '../../core/utils/dialog_helper.dart';
 import '../../widgets/gradient_card.dart';
 import '../../widgets/theme_toggle.dart';
+import '../../services/auth_service.dart';
+import '../../services/auth_store.dart';
+import '../../core/utils/dialog_helper.dart';
+import '../../models/user_model.dart';
 import '../role_selection/role_selection_screen.dart';
 
 class AdminDashboard extends StatefulWidget {
@@ -338,98 +342,199 @@ class ShopkeepersApprovalTab extends StatelessWidget {
       decoration:
           BoxDecoration(gradient: ThemeHelper.getBackgroundGradient(context)),
       child: SafeArea(
-        child: Column(
-          children: [
-            AppBar(
-              backgroundColor: Colors.transparent,
-              title: const Text('Pending Approvals'),
-            ),
-            Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: 5,
-                itemBuilder: (context, index) {
-                  return FadeInUp(
-                    delay: Duration(milliseconds: 100 * index),
-                    child: Card(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                const CircleAvatar(
-                                  backgroundColor: AppColors.accent,
-                                  child: Icon(Icons.store_rounded,
-                                      color: Colors.white),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Shop ${index + 1}',
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .titleMedium,
-                                      ),
-                                      Text(
-                                        'Electronics Store',
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .bodySmall,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: ElevatedButton.icon(
-                                    onPressed: () {},
-                                    icon: const Icon(Icons.check_rounded,
-                                        size: 18),
-                                    label: const Text('Approve'),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: AppColors.success,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: OutlinedButton.icon(
-                                    onPressed: () {},
-                                    icon: const Icon(Icons.close_rounded,
-                                        size: 18),
-                                    label: const Text('Reject'),
-                                    style: OutlinedButton.styleFrom(
-                                      foregroundColor: AppColors.error,
-                                      side: const BorderSide(
-                                          color: AppColors.error),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
+        child: _ShopkeepersApprovalBody(),
       ),
     );
+  }
+}
+
+class _ShopkeepersApprovalBody extends StatefulWidget {
+  @override
+  State<_ShopkeepersApprovalBody> createState() =>
+      _ShopkeepersApprovalBodyState();
+}
+
+class _ShopkeepersApprovalBodyState extends State<_ShopkeepersApprovalBody> {
+  late Future<List<UserModel>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = AuthService.instance.getShopkeepers(status: 'pending');
+  }
+
+  Future<void> _refresh() async {
+    setState(() {
+      _future = AuthService.instance.getShopkeepers(status: 'pending');
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        AppBar(
+          backgroundColor: Colors.transparent,
+          title: const Text('Pending Approvals'),
+        ),
+        Expanded(
+          child: FutureBuilder<List<UserModel>>(
+            future: _future,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (snapshot.hasError) {
+                return Center(
+                  child: Text(
+                    'Failed to load shopkeepers\n${snapshot.error}',
+                    textAlign: TextAlign.center,
+                  ),
+                );
+              }
+              final items = snapshot.data ?? [];
+              if (items.isEmpty) {
+                return const Center(
+                  child: Text('No pending shopkeepers'),
+                );
+              }
+              return RefreshIndicator(
+                onRefresh: _refresh,
+                child: ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: items.length,
+                  itemBuilder: (context, index) {
+                    final s = items[index];
+                    return FadeInUp(
+                      delay: Duration(milliseconds: 100 * index),
+                      child: Card(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const CircleAvatar(
+                                    backgroundColor: AppColors.accent,
+                                    child: Icon(Icons.store_rounded,
+                                        color: Colors.white),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          s.name.isEmpty
+                                              ? 'Shopkeeper'
+                                              : s.name,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .titleMedium,
+                                        ),
+                                        Text(
+                                          '+91 ${s.phone}',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodySmall,
+                                        ),
+                                        if (s.city.isNotEmpty)
+                                          Text(
+                                            '${s.city}, ${s.state} (${s.pincode})',
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .bodySmall,
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: ElevatedButton.icon(
+                                      onPressed: () =>
+                                          _approve(context, s.id, s.name),
+                                      icon: const Icon(Icons.check_rounded,
+                                          size: 18),
+                                      label: const Text('Approve'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: AppColors.success,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: OutlinedButton.icon(
+                                      onPressed: () =>
+                                          _reject(context, s.id, s.name),
+                                      icon: const Icon(Icons.close_rounded,
+                                          size: 18),
+                                      label: const Text('Reject'),
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: AppColors.error,
+                                        side: const BorderSide(
+                                            color: AppColors.error),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _approve(
+      BuildContext context, String id, String displayName) async {
+    try {
+      await AuthService.instance.approveShopkeeper(id);
+      if (!mounted) return;
+      DialogHelper.showSuccessSnackBar(
+          context, 'Approved $displayName successfully');
+      await _refresh();
+    } catch (e) {
+      if (!mounted) return;
+      DialogHelper.showErrorSnackBar(context, e.toString());
+    }
+  }
+
+  Future<void> _reject(
+      BuildContext context, String id, String displayName) async {
+    final confirm = await DialogHelper.showConfirmDialog(
+      context: context,
+      title: 'Reject Shopkeeper',
+      message: 'Are you sure you want to reject $displayName?',
+      confirmText: 'Reject',
+      cancelText: 'Cancel',
+      isDestructive: true,
+    );
+    if (!confirm) return;
+    try {
+      await AuthService.instance.rejectShopkeeper(id);
+      if (!mounted) return;
+      DialogHelper.showSuccessSnackBar(
+          context, 'Rejected $displayName successfully');
+      await _refresh();
+    } catch (e) {
+      if (!mounted) return;
+      DialogHelper.showErrorSnackBar(context, e.toString());
+    }
   }
 }
 

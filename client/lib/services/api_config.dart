@@ -1,41 +1,37 @@
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 
-/// Centralized API Configuration
-/// Toggle between local and production backend
+/// Centralized API Configuration for Node/Express backend (port 3000, /api prefix)
 class ApiConfig {
   /// Toggle between environments
   /// Set to false for local development
   /// Set to true for production/deployed backend
   ///
-  /// NOTE: If you're getting "Failed host lookup" errors with the production server,
-  /// it might be because the free Render server is sleeping. Try:
-  /// 1. Wait 30-60 seconds and retry
-  /// 2. Set useProduction = false to use local backend
-  /// 3. Make sure your local backend is running on port 5000
-  static const bool useProduction = false; // Using production backend on Render
+  static const bool useProduction = false;
 
   static String get baseUrl {
     if (useProduction) {
-      //  Your live backend on Render
-      // Note: If DNS fails on emulator, try restarting with: flutter run --host-vmservice-port 0
-      return 'https://d-offers.onrender.com';
+      // TODO: set your deployed Node backend URL, e.g. https://api.doffers.com/api
+      return 'https://d-offers.onrender.com/api';
     } else {
-      // Local testing - PHP backend on port 8000
-      if (kIsWeb) return 'http://localhost:8000';
+      // Local Node backend on port 3000 with /api prefix
+      if (kIsWeb) return 'http://localhost:3000/api';
       try {
         if (Platform.isAndroid) {
-          // Try multiple Android emulator IPs
-          return 'http://10.0.2.2:8000'; // Android Emulator
+          // Android emulator talks to host via 10.0.2.2
+          return 'http://10.0.2.2:3000/api';
         } else {
-          return 'http://localhost:8000'; // Physical Device / iOS
+          return 'http://localhost:3000/api'; // iOS simulator / physical on same machine
         }
       } catch (_) {
-        return 'http://localhost:8000';
+        return 'http://localhost:3000/api';
       }
     }
   }
 
   // Endpoints
   static String get authUrl => '$baseUrl/auth';
+  static String get shopkeeperUrl => '$baseUrl/shopkeeper';
+  static String get adminUrl => '$baseUrl/admin';
+  static String get metaUrl => '$baseUrl/meta';
 }

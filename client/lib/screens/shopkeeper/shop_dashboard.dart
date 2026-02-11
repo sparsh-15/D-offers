@@ -6,6 +6,11 @@ import '../../core/utils/dialog_helper.dart';
 import '../../widgets/gradient_card.dart';
 import '../../widgets/theme_toggle.dart';
 import '../role_selection/role_selection_screen.dart';
+import '../../services/auth_service.dart';
+import '../../services/auth_store.dart';
+import '../../core/utils/dialog_helper.dart';
+import '../../models/offer_model.dart';
+import 'shop_profile_body.dart';
 
 class ShopDashboard extends StatefulWidget {
   const ShopDashboard({super.key});
@@ -273,50 +278,260 @@ class OffersManagementTab extends StatelessWidget {
       decoration:
           BoxDecoration(gradient: ThemeHelper.getBackgroundGradient(context)),
       child: SafeArea(
-        child: Column(
-          children: [
-            AppBar(
-              backgroundColor: Colors.transparent,
-              title: const Text('My Offers'),
-            ),
-            Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: 5,
-                itemBuilder: (context, index) {
-                  return FadeInUp(
-                    delay: Duration(milliseconds: 100 * index),
-                    child: Card(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      child: ListTile(
-                        leading: Container(
-                          width: 50,
-                          height: 50,
-                          decoration: BoxDecoration(
-                            gradient: AppColors.primaryGradient,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Icon(Icons.local_offer_rounded,
-                              color: Colors.white),
-                        ),
-                        title: Text('Offer ${index + 1}'),
-                        subtitle: Text('${20 + index * 10}% OFF • Active'),
-                        trailing: PopupMenuButton(
-                          itemBuilder: (context) => [
-                            const PopupMenuItem(child: Text('Edit')),
-                            const PopupMenuItem(child: Text('Delete')),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
+        child: const _OffersManagementBody(),
+      ),
+    );
+  }
+}
+
+class _OffersManagementBody extends StatefulWidget {
+  const _OffersManagementBody();
+
+  @override
+  State<_OffersManagementBody> createState() => _OffersManagementBodyState();
+}
+
+class _OffersManagementBodyState extends State<_OffersManagementBody> {
+  late Future<List<OfferModel>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = AuthService.instance.getShopkeeperOffers();
+  }
+
+  Future<void> _refresh() async {
+    setState(() {
+      _future = AuthService.instance.getShopkeeperOffers();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        AppBar(
+          backgroundColor: Colors.transparent,
+          title: const Text('My Offers'),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.refresh_rounded),
+              onPressed: _refresh,
             ),
           ],
         ),
-      ),
+        Expanded(
+          child: FutureBuilder<List<OfferModel>>(
+            future: _future,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (snapshot.hasError) {
+                return Center(
+                  child: Text(
+                    'Failed to load offers\n${snapshot.error}',
+                    textAlign: TextAlign.center,
+                  ),
+                );
+              }
+              final offers = snapshot.data ?? [];
+              if (offers.isEmpty) {
+                return const Center(child: Text('No offers yet'));
+              }
+              return RefreshIndicator(
+                onRefresh: _refresh,
+                child: ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: offers.length,
+                  itemBuilder: (context, index) {
+                    final o = offers[index];
+                    return FadeInUp(
+                      delay: Duration(milliseconds: 100 * index),
+                      child: Card(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        child: ListTile(
+                          leading: Container(
+                            width: 50,
+                            height: 50,
+                            decoration: BoxDecoration(
+                              gradient: AppColors.primaryGradient,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(Icons.local_offer_rounded,
+                                color: Colors.white),
+                          ),
+                          title: Text(o.title),
+                          subtitle: Text(
+                            '${o.discountType} • ${o.status}',
+                          ),
+                          trailing: PopupMenuButton(
+                            onSelected: (value) {
+                              if (value == 'edit') {
+                                _openEditDialog(context, offer: o);
+                              } else if (value == 'delete') {
+                                _deleteOffer(context, o);
+                              }
+                            },
+                            itemBuilder: (context) => const [
+                              PopupMenuItem(
+                                value: 'edit',
+                                child: Text('Edit'),
+                              ),
+                              PopupMenuItem(
+                                value: 'delete',
+                                child: Text('Delete'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
+  }
+
+  Future<void> _openEditDialog(BuildContext context, {OfferModel? offer}) async {
+    final titleController = TextEditingController(text: offer?.title ?? '');
+    final descController =
+        TextEditingController(text: offer?.description ?? '');
+    String discountType = offer?.discountType.isNotEmpty == true
+        ? offer!.discountType
+        : 'percentage';
+    final discountController = TextEditingController(
+      text: offer?.discountValue?.toString() ?? '',
+    );
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(offer == null ? 'Add Offer' : 'Edit Offer'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: titleController,
+                  decoration: const InputDecoration(labelText: 'Title'),
+                ),
+                TextField(
+                  controller: descController,
+                  decoration: const InputDecoration(labelText: 'Description'),
+                ),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  value: discountType,
+                  decoration:
+                      const InputDecoration(labelText: 'Discount Type'),
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'percentage',
+                      child: Text('Percentage'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'fixed',
+                      child: Text('Fixed Amount'),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) {
+                      discountType = value;
+                    }
+                  },
+                ),
+                TextField(
+                  controller: discountController,
+                  keyboardType: TextInputType.number,
+                  decoration:
+                      const InputDecoration(labelText: 'Discount Value'),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (result != true) return;
+    if (titleController.text.trim().isEmpty) {
+      DialogHelper.showErrorSnackBar(context, 'Title is required');
+      return;
+    }
+
+    try {
+      if (offer == null) {
+        await AuthService.instance.createOffer(
+          title: titleController.text.trim(),
+          description: descController.text.trim().isEmpty
+              ? null
+              : descController.text.trim(),
+          discountType: discountType,
+          discountValue: discountController.text.isEmpty
+              ? null
+              : double.tryParse(discountController.text) ??
+                  discountController.text,
+        );
+        if (!mounted) return;
+        DialogHelper.showSuccessSnackBar(context, 'Offer created');
+      } else {
+        await AuthService.instance.updateOffer(
+          id: offer.id,
+          title: titleController.text.trim(),
+          description: descController.text.trim().isEmpty
+              ? null
+              : descController.text.trim(),
+          discountType: discountType,
+          discountValue: discountController.text.isEmpty
+              ? null
+              : double.tryParse(discountController.text) ??
+                  discountController.text,
+        );
+        if (!mounted) return;
+        DialogHelper.showSuccessSnackBar(context, 'Offer updated');
+      }
+      await _refresh();
+    } catch (e) {
+      if (!mounted) return;
+      DialogHelper.showErrorSnackBar(context, e.toString());
+    }
+  }
+
+  Future<void> _deleteOffer(BuildContext context, OfferModel offer) async {
+    final confirm = await DialogHelper.showConfirmDialog(
+      context: context,
+      title: 'Delete Offer',
+      message: 'Are you sure you want to delete "${offer.title}"?',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      isDestructive: true,
+    );
+    if (!confirm) return;
+    try {
+      await AuthService.instance.deleteOffer(offer.id);
+      if (!mounted) return;
+      DialogHelper.showSuccessSnackBar(context, 'Offer deleted');
+      await _refresh();
+    } catch (e) {
+      if (!mounted) return;
+      DialogHelper.showErrorSnackBar(context, e.toString());
+    }
   }
 }
 
@@ -359,50 +574,7 @@ class ShopProfileTab extends StatelessWidget {
       decoration:
           BoxDecoration(gradient: ThemeHelper.getBackgroundGradient(context)),
       child: SafeArea(
-        child: Column(
-          children: [
-            AppBar(
-              backgroundColor: Colors.transparent,
-              title: const Text('Shop Profile'),
-              actions: const [
-                ThemeToggleButton(),
-              ],
-            ),
-            const SizedBox(height: 20),
-            const CircleAvatar(
-              radius: 50,
-              backgroundColor: AppColors.primary,
-              child: Icon(Icons.store_rounded, size: 50, color: Colors.white),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'My Shop Name',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            Text(
-              'Electronics & Gadgets',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 32),
-            Expanded(
-              child: ListView(
-                children: [
-                  const ThemeToggle(),
-                  _buildProfileOption(
-                      context, Icons.edit_rounded, 'Edit Shop Profile'),
-                  _buildProfileOption(
-                      context, Icons.business_rounded, 'Business Details'),
-                  _buildProfileOption(
-                      context, Icons.settings_rounded, 'Settings'),
-                  _buildProfileOption(
-                      context, Icons.help_rounded, 'Help & Support'),
-                  _buildProfileOption(context, Icons.logout_rounded, 'Logout',
-                      isDestructive: true),
-                ],
-              ),
-            ),
-          ],
-        ),
+        child: const _ShopProfileBody(),
       ),
     );
   }
@@ -423,6 +595,7 @@ class ShopProfileTab extends StatelessWidget {
           if (title == 'Logout') {
             final shouldLogout = await DialogHelper.showLogoutDialog(context);
             if (shouldLogout && context.mounted) {
+              AuthStore.clear();
               Navigator.of(context).pushAndRemoveUntil(
                 MaterialPageRoute(builder: (_) => const RoleSelectionScreen()),
                 (route) => false,

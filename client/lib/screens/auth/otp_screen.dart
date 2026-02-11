@@ -8,6 +8,9 @@ import '../../widgets/custom_button.dart';
 import '../customer/customer_dashboard.dart';
 import '../shopkeeper/shop_dashboard.dart';
 import '../admin/admin_dashboard.dart';
+import '../../services/auth_service.dart';
+import '../../services/auth_store.dart';
+import '../../core/utils/dialog_helper.dart';
 
 class OtpScreen extends StatefulWidget {
   final String phoneNumber;
@@ -231,14 +234,34 @@ class _OtpScreenState extends State<OtpScreen> {
     }
 
     setState(() => _isLoading = true);
-
-    // Simulate API call
-    await Future.delayed(const Duration(seconds: 2));
-
-    setState(() => _isLoading = false);
-
-    if (mounted) {
+    try {
+      await AuthService.instance.verifyOtp(
+        role: widget.role,
+        phone: widget.phoneNumber,
+        otp: otp,
+      );
+      if (!mounted) return;
+      final user = AuthStore.currentUser;
+      if (user == null) {
+        DialogHelper.showErrorSnackBar(context, 'Login failed. Please try again.');
+        return;
+      }
+      if (user.role == UserRole.shopkeeper &&
+          user.approvalStatus != 'approved') {
+        DialogHelper.showInfoSnackBar(
+          context,
+          'Your shopkeeper account is ${user.approvalStatus}. Please wait for admin approval.',
+        );
+        return;
+      }
       _navigateByRole();
+    } catch (e) {
+      if (!mounted) return;
+      DialogHelper.showErrorSnackBar(context, e.toString());
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
