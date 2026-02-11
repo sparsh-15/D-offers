@@ -17,6 +17,7 @@ const authLimiter = rateLimit({
 router.post('/send-otp', authLimiter, authController.sendOtp);
 router.post('/verify-otp', authLimiter, authController.verifyOtp);
 router.get('/me', authMiddleware, authController.me);
+router.post('/signup', authLimiter, authController.signup);
 
 if (config.isDev) {
   router.get('/dev/last-otp', authController.getLastOtpDev);
