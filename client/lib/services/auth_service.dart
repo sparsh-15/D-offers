@@ -190,15 +190,23 @@ class AuthService {
         .toList();
   }
 
-  // Customer offers (by pincode or user's pincode)
-  Future<List<OfferModel>> getCustomerOffers() async {
+  // Customer offers with optional filters
+  Future<List<OfferModel>> getCustomerOffers({
+    String? state,
+    String? city,
+    String? pincode,
+  }) async {
     final token = AuthStore.token;
     if (token == null) throw Exception('Not authenticated');
-    final user = AuthStore.currentUser;
-    final pincode = user?.pincode;
-    final query =
-        (pincode != null && pincode.isNotEmpty) ? '?pincode=$pincode' : '';
-    final uri = Uri.parse('${ApiConfig.baseUrl}/customer/offers$query');
+    final params = <String, String>{};
+    if (pincode != null && pincode.isNotEmpty) {
+      params['pincode'] = pincode;
+    } else {
+      if (city != null && city.isNotEmpty) params['city'] = city;
+      if (state != null && state.isNotEmpty) params['state'] = state;
+    }
+    final uri = Uri.parse('${ApiConfig.baseUrl}/customer/offers')
+        .replace(queryParameters: params.isEmpty ? null : params);
     final resp = await _client.get(
       uri,
       headers: {

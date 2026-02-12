@@ -7,6 +7,7 @@ import '../../widgets/gradient_card.dart';
 import '../../services/auth_service.dart';
 import '../../models/offer_model.dart';
 import 'shop_profile_body.dart';
+import '../../widgets/offer_card.dart';
 
 class ShopDashboard extends StatefulWidget {
   const ShopDashboard({super.key});
@@ -360,42 +361,26 @@ class _OffersManagementBodyState extends State<_OffersManagementBody> {
                     final o = offers[index];
                     return FadeInUp(
                       delay: Duration(milliseconds: 100 * index),
-                      child: Card(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        child: ListTile(
-                          leading: Container(
-                            width: 50,
-                            height: 50,
-                            decoration: BoxDecoration(
-                              gradient: AppColors.primaryGradient,
-                              borderRadius: BorderRadius.circular(8),
+                      child: OfferCard(
+                        offer: o,
+                        trailing: PopupMenuButton(
+                          onSelected: (value) {
+                            if (value == 'edit') {
+                              _openEditDialog(context, offer: o);
+                            } else if (value == 'delete') {
+                              _deleteOffer(context, o);
+                            }
+                          },
+                          itemBuilder: (context) => const [
+                            PopupMenuItem(
+                              value: 'edit',
+                              child: Text('Edit'),
                             ),
-                            child: const Icon(Icons.local_offer_rounded,
-                                color: Colors.white),
-                          ),
-                          title: Text(o.title),
-                          subtitle: Text(
-                            '${o.discountType} • ${o.status}',
-                          ),
-                          trailing: PopupMenuButton(
-                            onSelected: (value) {
-                              if (value == 'edit') {
-                                _openEditDialog(context, offer: o);
-                              } else if (value == 'delete') {
-                                _deleteOffer(context, o);
-                              }
-                            },
-                            itemBuilder: (context) => const [
-                              PopupMenuItem(
-                                value: 'edit',
-                                child: Text('Edit'),
-                              ),
-                              PopupMenuItem(
-                                value: 'delete',
-                                child: Text('Delete'),
-                              ),
-                            ],
-                          ),
+                            PopupMenuItem(
+                              value: 'delete',
+                              child: Text('Delete'),
+                            ),
+                          ],
                         ),
                       ),
                     );

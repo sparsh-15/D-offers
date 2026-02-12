@@ -9,6 +9,11 @@ import '../../services/auth_service.dart';
 import '../../services/auth_store.dart';
 import '../../models/offer_model.dart';
 import '../../models/user_model.dart';
+import '../../widgets/offer_card.dart';
+import '../../services/auth_service.dart';
+import '../../services/auth_store.dart';
+import '../../models/offer_model.dart';
+import '../../models/user_model.dart';
 
 class CustomerDashboard extends StatefulWidget {
   const CustomerDashboard({super.key});
@@ -187,6 +192,18 @@ class _CustomerOffersBody extends StatefulWidget {
 
 class _CustomerOffersBodyState extends State<_CustomerOffersBody> {
   late Future<List<OfferModel>> _future;
+  String? _stateFilter;
+  String? _cityFilter;
+  String? _pincodeFilter;
+  final _cityController = TextEditingController();
+  final _pincodeController = TextEditingController();
+
+  @override
+  void dispose() {
+    _cityController.dispose();
+    _pincodeController.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -196,7 +213,11 @@ class _CustomerOffersBodyState extends State<_CustomerOffersBody> {
 
   Future<void> _refresh() async {
     setState(() {
-      _future = AuthService.instance.getCustomerOffers();
+      _future = AuthService.instance.getCustomerOffers(
+        state: _stateFilter,
+        city: _cityFilter,
+        pincode: _pincodeFilter,
+      );
     });
   }
 
@@ -208,6 +229,7 @@ class _CustomerOffersBodyState extends State<_CustomerOffersBody> {
           backgroundColor: Colors.transparent,
           title: const Text('Offers Near You'),
         ),
+        _buildFilters(context),
         Expanded(
           child: FutureBuilder<List<OfferModel>>(
             future: _future,
@@ -226,42 +248,54 @@ class _CustomerOffersBodyState extends State<_CustomerOffersBody> {
               final offers = snapshot.data ?? [];
               if (offers.isEmpty) {
                 return const Center(
-                  child: Text('No offers found for your area yet'),
+                  child: Text('No offers found for the selected filters yet'),
                 );
               }
               return RefreshIndicator(
                 onRefresh: _refresh,
-                child: ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: offers.length,
-                  itemBuilder: (context, index) {
-                    final o = offers[index];
-                    return FadeInUp(
-                      delay: Duration(milliseconds: 80 * index),
-                      child: Card(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        child: ListTile(
-                          leading: Container(
-                            width: 50,
-                            height: 50,
-                            decoration: BoxDecoration(
-                              gradient: AppColors.primaryGradient,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Icon(Icons.local_offer_rounded,
-                                color: Colors.white),
-                          ),
-                          title: Text(o.title),
-                          subtitle: Text(
-                            '${o.discountType} • ${o.status}',
-                          ),
-                          trailing: const Icon(Icons.arrow_forward_ios_rounded,
-                              size: 16),
-                          onTap: () {
-                            // Later: navigate to offer detail / shop detail
-                          },
-                        ),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final width = constraints.maxWidth;
+                    int crossAxisCount;
+                    if (width < 500) {
+                      crossAxisCount = 1;
+                    } else if (width < 900) {
+                      crossAxisCount = 2;
+                    } else {
+                      crossAxisCount = 3;
+                    }
+
+                    if (crossAxisCount == 1) {
+                      return ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: offers.length,
+                        itemBuilder: (context, index) {
+                          final o = offers[index];
+                          return FadeInUp(
+                            delay: Duration(milliseconds: 80 * index),
+                            child: OfferCard(offer: o),
+                          );
+                        },
+                      );
+                    }
+
+                    return GridView.builder(
+                      padding: const EdgeInsets.all(16),
+                      gridDelegate:
+                          SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: crossAxisCount,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                        childAspectRatio: 4 / 3,
                       ),
+                      itemCount: offers.length,
+                      itemBuilder: (context, index) {
+                        final o = offers[index];
+                        return FadeInUp(
+                          delay: Duration(milliseconds: 80 * index),
+                          child: OfferCard(offer: o),
+                        );
+                      },
                     );
                   },
                 ),
@@ -271,6 +305,128 @@ class _CustomerOffersBodyState extends State<_CustomerOffersBody> {
         ),
       ],
     );
+  }
+
+  Widget _buildFilters(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    final isNarrow = width < 480;
+
+    final user = AuthStore.currentUser;
+    final defaultPincode = user?.pincode ?? '';
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          isNarrow
+              ? Column(
+                  children: _buildFilterFields(defaultPincode),
+                )
+              : Row(
+                  children: _buildFilterFields(defaultPincode),
+                ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: [
+              if (_stateFilter != null && _stateFilter!.isNotEmpty)
+                Chip(label: Text('State: $_stateFilter')),
+              if (_cityFilter != null && _cityFilter!.isNotEmpty)
+                Chip(label: Text('City: $_cityFilter')),
+              if (_pincodeFilter != null && _pincodeFilter!.isNotEmpty)
+                Chip(label: Text('Pincode: $_pincodeFilter')),
+              if ((_stateFilter == null || _stateFilter!.isEmpty) &&
+                  (_cityFilter == null || _cityFilter!.isEmpty) &&
+                  (_pincodeFilter == null || _pincodeFilter!.isEmpty))
+                const Text('Showing all active offers'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _buildFilterFields(String defaultPincode) {
+    return [
+      Expanded(
+        child: DropdownButtonFormField<String>(
+          value: _stateFilter,
+          decoration: const InputDecoration(
+            labelText: 'State',
+            isDense: true,
+          ),
+          items: const [
+            DropdownMenuItem(value: null, child: Text('All States')),
+            DropdownMenuItem(value: 'Karnataka', child: Text('Karnataka')),
+            DropdownMenuItem(value: 'Delhi', child: Text('Delhi')),
+            DropdownMenuItem(value: 'Maharashtra', child: Text('Maharashtra')),
+          ],
+          onChanged: (value) {
+            setState(() {
+              _stateFilter = value;
+            });
+          },
+        ),
+      ),
+      const SizedBox(width: 8),
+      Expanded(
+        child: TextField(
+          controller: _cityController,
+          decoration: const InputDecoration(
+            labelText: 'City',
+            isDense: true,
+          ),
+        ),
+      ),
+      const SizedBox(width: 8),
+      Expanded(
+        child: TextField(
+          controller: _pincodeController,
+          keyboardType: TextInputType.number,
+          decoration: InputDecoration(
+            labelText: 'Pincode',
+            hintText: defaultPincode.isNotEmpty ? defaultPincode : null,
+            isDense: true,
+          ),
+        ),
+      ),
+      const SizedBox(width: 8),
+      ElevatedButton(
+        onPressed: () {
+          setState(() {
+            _stateFilter = _stateFilter; // already bound by dropdown
+            _cityFilter = _cityController.text.trim().isEmpty
+                ? null
+                : _cityController.text.trim();
+            _pincodeFilter = _pincodeController.text.trim().isEmpty
+                ? null
+                : _pincodeController.text.trim();
+            _future = AuthService.instance.getCustomerOffers(
+              state: _stateFilter,
+              city: _cityFilter,
+              pincode: _pincodeFilter,
+            );
+          });
+        },
+        child: const Text('Apply'),
+      ),
+      const SizedBox(width: 4),
+      TextButton(
+        onPressed: () {
+          setState(() {
+            _stateFilter = null;
+            _cityFilter = null;
+            _pincodeFilter = null;
+            _cityController.clear();
+            _pincodeController.clear();
+            _future = AuthService.instance.getCustomerOffers();
+          });
+        },
+        child: const Text('Clear'),
+      ),
+    ];
   }
 }
 

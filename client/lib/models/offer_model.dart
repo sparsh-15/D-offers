@@ -8,6 +8,7 @@ class OfferModel {
   final DateTime? validFrom;
   final DateTime? validTo;
   final String status;
+  final int likesCount;
 
   OfferModel({
     required this.id,
@@ -19,6 +20,7 @@ class OfferModel {
     required this.validFrom,
     required this.validTo,
     required this.status,
+    required this.likesCount,
   });
 
   factory OfferModel.fromJson(Map<String, dynamic> json) {
@@ -32,6 +34,7 @@ class OfferModel {
       validFrom: json['validFrom'] != null ? DateTime.tryParse(json['validFrom'].toString()) : null,
       validTo: json['validTo'] != null ? DateTime.tryParse(json['validTo'].toString()) : null,
       status: json['status']?.toString() ?? '',
+      likesCount: int.tryParse(json['likesCount']?.toString() ?? '0') ?? 0,
     );
   }
 }

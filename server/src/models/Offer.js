@@ -41,6 +41,10 @@ const offerSchema = new mongoose.Schema(
       enum: OFFER_STATUS,
       default: 'active',
     },
+    likesCount: {
+      type: Number,
+      default: 0,
+    },
   },
   {
     timestamps: true,
