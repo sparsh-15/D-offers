@@ -212,7 +212,16 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (e) {
       if (!mounted) return;
       final errorMessage = e.toString().toLowerCase();
-      if (errorMessage.contains('not found') || 
+      
+      // Handle rate limit errors specifically
+      if (errorMessage.contains('too many') || 
+          errorMessage.contains('429') ||
+          errorMessage.contains('rate limit')) {
+        DialogHelper.showErrorSnackBar(
+          context, 
+          'Too many login attempts. Please wait 15 minutes before trying again.',
+        );
+      } else if (errorMessage.contains('not found') || 
           errorMessage.contains('account not found') ||
           errorMessage.contains('please signup')) {
         DialogHelper.showErrorSnackBar(
@@ -220,7 +229,9 @@ class _LoginScreenState extends State<LoginScreen> {
           'User not found, please register',
         );
       } else {
-        DialogHelper.showErrorSnackBar(context, e.toString());
+        // Remove "Exception: " prefix if present
+        final cleanMessage = errorMessage.replaceFirst('exception: ', '');
+        DialogHelper.showErrorSnackBar(context, cleanMessage);
       }
     } finally {
       if (mounted) {

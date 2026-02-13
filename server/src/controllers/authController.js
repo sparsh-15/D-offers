@@ -31,12 +31,20 @@ async function signup(req, res, next) {
 async function sendOtp(req, res, next) {
   try {
     const { phone, role, name, pincode, address } = req.body;
+    const clientIp = req.ip || req.connection.remoteAddress;
+    
+    console.log(`[AUTH] sendOtp request - Role: ${role}, Phone: ${phone?.substring(0, 3)}***, IP: ${clientIp}`);
+    
     if (!phone || !role) {
+      console.warn(`[AUTH] sendOtp validation failed - Missing phone or role`);
       return res.status(400).json({ success: false, message: 'Phone and role are required' });
     }
+    
     await otpService.sendOtp(phone.trim(), role, { name, pincode, address });
+    console.log(`[AUTH] sendOtp success - Role: ${role}, Phone: ${phone?.substring(0, 3)}***`);
     res.status(200).json({ success: true, message: 'OTP sent' });
   } catch (err) {
+    console.error(`[AUTH] sendOtp error - Role: ${req.body?.role}, Phone: ${req.body?.phone?.substring(0, 3)}***, Error: ${err.message}`);
     next(err);
   }
 }
@@ -44,17 +52,25 @@ async function sendOtp(req, res, next) {
 async function verifyOtp(req, res, next) {
   try {
     const { phone, otp, role } = req.body;
+    const clientIp = req.ip || req.connection.remoteAddress;
+    
+    console.log(`[AUTH] verifyOtp request - Role: ${role}, Phone: ${phone?.substring(0, 3)}***, IP: ${clientIp}`);
+    
     if (!phone || otp === undefined || otp === null || !role) {
+      console.warn(`[AUTH] verifyOtp validation failed - Missing required fields`);
       return res.status(400).json({ success: false, message: 'Phone, otp and role are required' });
     }
+    
     const { user } = await otpService.verifyOtp(phone.trim(), String(otp), role);
     const token = issueToken(user);
+    console.log(`[AUTH] verifyOtp success - Role: ${role}, Phone: ${phone?.substring(0, 3)}***, UserId: ${user.id}`);
     res.status(200).json({
       success: true,
       token,
       user: { id: user.id, phone: user.phone, role: user.role },
     });
   } catch (err) {
+    console.error(`[AUTH] verifyOtp error - Role: ${req.body?.role}, Phone: ${req.body?.phone?.substring(0, 3)}***, Error: ${err.message}, StatusCode: ${err.statusCode || 500}`);
     next(err);
   }
 }

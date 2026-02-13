@@ -70,15 +70,29 @@ class AuthService {
     required String phone,
   }) async {
     final uri = Uri.parse('${ApiConfig.authUrl}/send-otp');
-    final resp = await _makeRequest(() => _client.post(
-          uri,
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'role': roleToString(role),
-            'phone': phone,
-          }),
-        ));
-    _handleResponse(resp);
+    print('[AUTH] Sending OTP - Role: ${roleToString(role)}, Phone: ${phone.substring(0, 3)}***');
+    
+    try {
+      final resp = await _makeRequest(() => _client.post(
+            uri,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'role': roleToString(role),
+              'phone': phone,
+            }),
+          ));
+      
+      if (resp.statusCode == 429) {
+        print('[AUTH] Rate limit exceeded (429) - Role: ${roleToString(role)}, Phone: ${phone.substring(0, 3)}***');
+        throw Exception('Too many login attempts. Please wait 15 minutes before trying again.');
+      }
+      
+      _handleResponse(resp);
+      print('[AUTH] OTP sent successfully - Role: ${roleToString(role)}, Phone: ${phone.substring(0, 3)}***');
+    } catch (e) {
+      print('[AUTH] sendOtp error - Role: ${roleToString(role)}, Phone: ${phone.substring(0, 3)}***, Error: $e');
+      rethrow;
+    }
   }
 
   Future<void> verifyOtp({
@@ -87,23 +101,39 @@ class AuthService {
     required String otp,
   }) async {
     final uri = Uri.parse('${ApiConfig.authUrl}/verify-otp');
-    final resp = await _client.post(
-      uri,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'role': roleToString(role),
-        'phone': phone,
-        'otp': otp,
-      }),
-    );
-    final data = _handleResponse(resp) as Map<String, dynamic>;
-    final token = data['token']?.toString();
-    if (token == null) {
-      throw Exception('Token not returned from server');
+    print('[AUTH] Verifying OTP - Role: ${roleToString(role)}, Phone: ${phone.substring(0, 3)}***');
+    
+    try {
+      final resp = await _makeRequest(() => _client.post(
+            uri,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'role': roleToString(role),
+              'phone': phone,
+              'otp': otp,
+            }),
+          ));
+      
+      if (resp.statusCode == 429) {
+        print('[AUTH] Rate limit exceeded (429) during OTP verification - Role: ${roleToString(role)}, Phone: ${phone.substring(0, 3)}***');
+        throw Exception('Too many verification attempts. Please wait 15 minutes before trying again.');
+      }
+      
+      final data = _handleResponse(resp) as Map<String, dynamic>;
+      final token = data['token']?.toString();
+      if (token == null) {
+        print('[AUTH] verifyOtp error - Token not returned from server');
+        throw Exception('Token not returned from server');
+      }
+      AuthStore.token = token;
+      print('[AUTH] OTP verified successfully - Role: ${roleToString(role)}, Phone: ${phone.substring(0, 3)}***');
+      // Fetch full user profile via /me so we get approvalStatus etc.
+      AuthStore.currentUser = await fetchCurrentUser();
+      print('[AUTH] User profile fetched successfully - Role: ${roleToString(role)}');
+    } catch (e) {
+      print('[AUTH] verifyOtp error - Role: ${roleToString(role)}, Phone: ${phone.substring(0, 3)}***, Error: $e');
+      rethrow;
     }
-    AuthStore.token = token;
-    // Fetch full user profile via /me so we get approvalStatus etc.
-    AuthStore.currentUser = await fetchCurrentUser();
   }
 
   Future<UserModel> fetchCurrentUser() async {
@@ -428,17 +458,30 @@ class AuthService {
 
   Object _handleResponse(http.Response resp) {
     if (resp.statusCode < 200 || resp.statusCode >= 300) {
+      print('[AUTH] HTTP Error - Status: ${resp.statusCode}, Body: ${resp.body}');
       try {
         final data = jsonDecode(resp.body);
         final message = data['message']?.toString() ?? 'Request failed';
+        
+        // Handle 429 specifically
+        if (resp.statusCode == 429) {
+          throw Exception('Too many attempts. Please wait 15 minutes before trying again.');
+        }
+        
         throw Exception(message);
-      } catch (_) {
+      } catch (e) {
+        if (e is Exception) rethrow;
         throw Exception('Request failed with status ${resp.statusCode}');
       }
     }
     if (resp.body.isEmpty) return {};
-    final data = jsonDecode(resp.body);
-    return data;
+    try {
+      final data = jsonDecode(resp.body);
+      return data;
+    } catch (e) {
+      print('[AUTH] JSON decode error - Body: ${resp.body}');
+      throw Exception('Invalid response from server');
+    }
   }
 }
 

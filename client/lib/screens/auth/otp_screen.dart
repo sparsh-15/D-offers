@@ -281,7 +281,21 @@ class _OtpScreenState extends State<OtpScreen> {
       _navigateByRole();
     } catch (e) {
       if (!mounted) return;
-      DialogHelper.showErrorSnackBar(context, e.toString());
+      final errorMessage = e.toString().toLowerCase();
+      
+      // Handle rate limit errors specifically
+      if (errorMessage.contains('too many') || 
+          errorMessage.contains('429') ||
+          errorMessage.contains('rate limit')) {
+        DialogHelper.showErrorSnackBar(
+          context, 
+          'Too many verification attempts. Please wait 15 minutes before trying again.',
+        );
+      } else {
+        // Remove "Exception: " prefix if present
+        final cleanMessage = errorMessage.replaceFirst('exception: ', '');
+        DialogHelper.showErrorSnackBar(context, cleanMessage);
+      }
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -289,12 +303,53 @@ class _OtpScreenState extends State<OtpScreen> {
     }
   }
 
-  void _handleResendOtp() {
-    setState(() => _resendTimer = 30);
+  Future<void> _handleResendOtp() async {
+    if (_resendTimer > 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please wait ${_resendTimer} seconds before resending')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _resendTimer = 30;
+    });
     _startResendTimer();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('OTP sent successfully')),
-    );
+
+    try {
+      await AuthService.instance.sendOtp(
+        role: widget.role,
+        phone: widget.phoneNumber,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('OTP sent successfully')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      final errorMessage = e.toString().toLowerCase();
+      
+      // Handle rate limit errors specifically
+      if (errorMessage.contains('too many') || 
+          errorMessage.contains('429') ||
+          errorMessage.contains('rate limit')) {
+        DialogHelper.showErrorSnackBar(
+          context, 
+          'Too many OTP requests. Please wait 15 minutes before trying again.',
+        );
+        setState(() => _resendTimer = 900); // Set to 15 minutes
+      } else {
+        DialogHelper.showErrorSnackBar(
+          context, 
+          'Failed to resend OTP. Please try again.',
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   void _navigateByRole() {
