@@ -101,9 +101,17 @@ class HomeTab extends StatelessWidget {
               title: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Hello, Customer!',
-                    style: Theme.of(context).textTheme.titleMedium,
+                  Builder(
+                    builder: (context) {
+                      final user = AuthStore.currentUser;
+                      final name = (user != null && user.name.isNotEmpty)
+                          ? user.name
+                          : 'Customer';
+                      return Text(
+                        'Hello, $name!',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      );
+                    },
                   ),
                   Text(
                     AppStrings.exploreOffers,
@@ -481,6 +489,12 @@ class _ProfileTabState extends State<ProfileTab> {
     _userFuture = AuthService.instance.fetchCurrentUser();
   }
 
+  Future<void> _reload() async {
+    setState(() {
+      _userFuture = AuthService.instance.fetchCurrentUser();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -537,17 +551,55 @@ class _ProfileTabState extends State<ProfileTab> {
                     children: [
                       const ThemeToggle(),
                       _buildProfileOption(
-                          context, Icons.edit_rounded, 'Edit Profile'),
+                        context,
+                        icon: Icons.edit_rounded,
+                        title: 'Edit Profile',
+                        onTap: () => _openEditProfileDialog(context, user),
+                      ),
                       _buildProfileOption(
-                          context, Icons.location_on_rounded, 'My Addresses'),
+                        context,
+                        icon: Icons.location_on_rounded,
+                        title: 'My Addresses',
+                        onTap: () => _openEditProfileDialog(context, user),
+                      ),
                       _buildProfileOption(
-                          context, Icons.settings_rounded, 'Settings'),
+                        context,
+                        icon: Icons.settings_rounded,
+                        title: 'Settings',
+                        onTap: () => _openSettingsDialog(context),
+                      ),
                       _buildProfileOption(
-                          context, Icons.help_rounded, 'Help & Support'),
-                      _buildProfileOption(context, Icons.info_rounded, 'About'),
+                        context,
+                        icon: Icons.help_rounded,
+                        title: 'Help & Support',
+                        onTap: () => _openHelpDialog(context),
+                      ),
                       _buildProfileOption(
-                          context, Icons.logout_rounded, 'Logout',
-                          isDestructive: true),
+                        context,
+                        icon: Icons.info_rounded,
+                        title: 'About',
+                        onTap: () => _openAboutDialog(context),
+                      ),
+                      _buildProfileOption(
+                        context,
+                        icon: Icons.logout_rounded,
+                        title: 'Logout',
+                        isDestructive: true,
+                        onTap: () async {
+                          final shouldLogout =
+                              await DialogHelper.showLogoutDialog(context);
+                          if (shouldLogout && context.mounted) {
+                            AuthStore.clear();
+                            Navigator.of(context).pushAndRemoveUntil(
+                              MaterialPageRoute(
+                                  builder: (_) => const RoleSelectionScreen()),
+                              (route) => false,
+                            );
+                            DialogHelper.showSuccessSnackBar(
+                                context, 'Logged out successfully');
+                          }
+                        },
+                      ),
                     ],
                   ),
                 ),
@@ -558,34 +610,161 @@ class _ProfileTabState extends State<ProfileTab> {
       ),
     );
   }
-}
 
-Widget _buildProfileOption(BuildContext context, IconData icon, String title,
-    {bool isDestructive = false}) {
-  return Card(
-    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-    child: ListTile(
-      leading: Icon(icon,
-          color: isDestructive ? AppColors.error : AppColors.primary),
-      title: Text(
-        title,
-        style: TextStyle(color: isDestructive ? AppColors.error : null),
+  Widget _buildProfileOption(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    bool isDestructive = false,
+    required VoidCallback onTap,
+  }) {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: ListTile(
+        leading: Icon(icon,
+            color: isDestructive ? AppColors.error : AppColors.primary),
+        title: Text(
+          title,
+          style: TextStyle(color: isDestructive ? AppColors.error : null),
+        ),
+        trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16),
+        onTap: onTap,
       ),
-      trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16),
-      onTap: () async {
-        if (title == 'Logout') {
-          final shouldLogout = await DialogHelper.showLogoutDialog(context);
-          if (shouldLogout && context.mounted) {
-            AuthStore.clear();
-            Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(builder: (_) => const RoleSelectionScreen()),
-              (route) => false,
-            );
-            DialogHelper.showSuccessSnackBar(
-                context, 'Logged out successfully');
-          }
-        }
+    );
+  }
+
+  Future<void> _openEditProfileDialog(
+      BuildContext context, UserModel? user) async {
+    final nameController =
+        TextEditingController(text: user?.name ?? '');
+    final pincodeController =
+        TextEditingController(text: user?.pincode ?? '');
+    final addressController =
+        TextEditingController(text: user?.address ?? '');
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Edit Profile'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  decoration:
+                      const InputDecoration(labelText: 'Full Name'),
+                ),
+                TextField(
+                  controller: pincodeController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: 'Pincode'),
+                ),
+                TextField(
+                  controller: addressController,
+                  decoration:
+                      const InputDecoration(labelText: 'Address'),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Save'),
+            ),
+          ],
+        );
       },
-    ),
-  );
+    );
+
+    if (result != true) return;
+    if (nameController.text.trim().isEmpty) {
+      DialogHelper.showErrorSnackBar(context, 'Name is required');
+      return;
+    }
+
+    try {
+      await AuthService.instance.updateCurrentUser(
+        name: nameController.text.trim(),
+        address: addressController.text.trim().isEmpty
+            ? null
+            : addressController.text.trim(),
+        pincode: pincodeController.text.trim().isEmpty
+            ? null
+            : pincodeController.text.trim(),
+      );
+      if (!mounted) return;
+      await _reload();
+      DialogHelper.showSuccessSnackBar(context, 'Profile updated');
+    } catch (e) {
+      if (!mounted) return;
+      DialogHelper.showErrorSnackBar(context, e.toString());
+    }
+  }
+
+  void _openSettingsDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Settings'),
+          content: const Text(
+            'Use the theme toggle on this screen to switch between light and dark mode. Additional settings can be added here later.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _openHelpDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Help & Support'),
+          content: const Text(
+            'For support, contact D\'Offer support team or your administrator. This screen can be extended with chat, email, or FAQ links.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _openAboutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('About D\'Offer'),
+          content: const Text(
+            'D\'Offer helps you discover hyperlocal deals near you.\n\nVersion 1.0.0',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
 }

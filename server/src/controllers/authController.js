@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const config = require('../config');
 const otpService = require('../services/otpService');
 const User = require('../models/User');
+const { resolveCityStateFromPincode } = require('../services/pincodeService');
 
 function issueToken(user) {
   return jwt.sign(
@@ -86,6 +87,51 @@ async function me(req, res, next) {
   }
 }
 
+async function updateMe(req, res, next) {
+  try {
+    const { name, address, pincode } = req.body;
+    const user = await User.findById(req.user.userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    if (name !== undefined) {
+      user.name = String(name).trim();
+    }
+    if (address !== undefined) {
+      user.address = String(address).trim();
+    }
+    if (pincode !== undefined && String(pincode).trim()) {
+      const resolved = await resolveCityStateFromPincode(pincode);
+      user.pincode = resolved.pincode;
+      user.city =
+        (resolved.areas && resolved.areas[0] && resolved.areas[0].name) ||
+        user.city;
+      user.state = resolved.state || user.state;
+    }
+
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      user: {
+        id: user._id,
+        name: user.name,
+        phone: user.phone,
+        role: user.role,
+        pincode: user.pincode,
+        city: user.city,
+        state: user.state,
+        address: user.address,
+        approvalStatus: user.approvalStatus,
+        createdAt: user.createdAt,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 async function getLastOtpDev(req, res, next) {
   try {
     const { phone } = req.query;
@@ -107,5 +153,6 @@ module.exports = {
   sendOtp,
   verifyOtp,
   me,
+  updateMe,
   getLastOtpDev,
 };

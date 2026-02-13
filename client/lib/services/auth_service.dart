@@ -120,6 +120,33 @@ class AuthService {
     return UserModel.fromJson(data['user'] as Map<String, dynamic>);
   }
 
+  Future<UserModel> updateCurrentUser({
+    String? name,
+    String? address,
+    String? pincode,
+  }) async {
+    final token = AuthStore.token;
+    if (token == null) throw Exception('Not authenticated');
+    final uri = Uri.parse('${ApiConfig.authUrl}/me');
+    final body = <String, dynamic>{};
+    if (name != null) body['name'] = name;
+    if (address != null) body['address'] = address;
+    if (pincode != null) body['pincode'] = pincode;
+    final resp = await _client.put(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode(body),
+    );
+    final data = _handleResponse(resp) as Map<String, dynamic>;
+    final user =
+        UserModel.fromJson(data['user'] as Map<String, dynamic>);
+    AuthStore.currentUser = user;
+    return user;
+  }
+
   // Shopkeeper profile
   Future<ShopkeeperProfileModel?> getShopkeeperProfile() async {
     final token = AuthStore.token;
