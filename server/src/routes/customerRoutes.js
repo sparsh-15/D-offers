@@ -9,5 +9,7 @@ router.use(authMiddleware);
 router.use(requireRole(['customer', 'admin']));
 
 router.get('/offers', customerController.listOffers);
+router.post('/offers/:id/like', customerController.toggleLike);
+router.get('/offers/liked', customerController.getLikedOffers);
 
 module.exports = router;

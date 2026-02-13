@@ -926,91 +926,99 @@ class _ShopkeepersApprovalBodyState extends State<_ShopkeepersApprovalBody>
   Widget build(BuildContext context) {
     return Column(
       children: [
-        AppBar(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            title: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+        SafeArea(
+          bottom: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16.0, 8.0, 8.0, 0.0),
+            child: Row(
               children: [
-                Text(
-                  'Shopkeeper Approvals',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                ),
-                Text(
-                  'Review and manage shopkeeper requests',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ],
-            ),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.refresh_rounded),
-                onPressed: _refresh,
-                tooltip: 'Refresh',
-              ),
-            ],
-            bottom: TabBar(
-              controller: _tabController,
-              indicatorColor: AppColors.primary,
-              labelColor: AppColors.primary,
-              unselectedLabelColor: ThemeHelper.getTextColor(context).withOpacity(0.6),
-              tabs: [
-                Tab(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.pending_rounded, size: 18),
-                      const SizedBox(width: 6),
-                      FutureBuilder<List<UserModel>>(
-                        future: _pendingFuture,
-                        builder: (context, snapshot) {
-                          final count = snapshot.data?.length ?? 0;
-                          return Badge(
-                            label: Text('$count'),
-                            isLabelVisible: count > 0,
-                            child: const Text('Pending'),
-                          );
-                        },
+                      Text(
+                        'Shopkeeper Approvals',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Review and manage shopkeeper requests',
+                        style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ],
                   ),
                 ),
-                Tab(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.check_circle_rounded, size: 18),
-                      const SizedBox(width: 6),
-                      const Text('Approved'),
-                    ],
-                  ),
-                ),
-                Tab(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.cancel_rounded, size: 18),
-                      const SizedBox(width: 6),
-                      const Text('Rejected'),
-                    ],
-                  ),
+                IconButton(
+                  icon: const Icon(Icons.refresh_rounded),
+                  onPressed: _refresh,
+                  tooltip: 'Refresh',
                 ),
               ],
             ),
           ),
+        ),
+        TabBar(
+          controller: _tabController,
+          indicatorColor: AppColors.primary,
+          labelColor: AppColors.primary,
+          unselectedLabelColor: ThemeHelper.getTextColor(context).withOpacity(0.6),
+          tabs: [
+              Tab(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.pending_rounded, size: 18),
+                    const SizedBox(width: 6),
+                    FutureBuilder<List<UserModel>>(
+                      future: _pendingFuture,
+                      builder: (context, snapshot) {
+                        final count = snapshot.data?.length ?? 0;
+                        return Badge(
+                          label: Text('$count'),
+                          isLabelVisible: count > 0,
+                          child: const Text('Pending'),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              Tab(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.check_circle_rounded, size: 18),
+                    const SizedBox(width: 6),
+                    const Text('Approved'),
+                  ],
+                ),
+              ),
+              Tab(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.cancel_rounded, size: 18),
+                    const SizedBox(width: 6),
+                    const Text('Rejected'),
+                  ],
+                ),
+              ),
+            ],
+        ),
         Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              physics: const AlwaysScrollableScrollPhysics(),
-              children: [
+          child: TabBarView(
+            controller: _tabController,
+            physics: const AlwaysScrollableScrollPhysics(),
+            children: [
                 _buildShopkeeperList(_pendingFuture, 0),
                 _buildShopkeeperList(_approvedFuture, 1),
                 _buildShopkeeperList(_rejectedFuture, 2),
               ],
-            ),
           ),
+        ),
         ],
     );
   }

@@ -264,12 +264,85 @@ class AuthService {
     }
     final uri = Uri.parse('${ApiConfig.baseUrl}/customer/offers')
         .replace(queryParameters: params.isEmpty ? null : params);
-    final resp = await _client.get(
-      uri,
-      headers: {
-        'Authorization': 'Bearer $token',
-      },
-    );
+    
+    print('[CUSTOMER_OFFERS] Fetching offers - URL: $uri, Filters: ${params.isEmpty ? 'none' : params}');
+    
+    try {
+      final resp = await _makeRequest(() => _client.get(
+            uri,
+            headers: {
+              'Authorization': 'Bearer $token',
+            },
+          ));
+      
+      if (resp.statusCode == 429) {
+        print('[CUSTOMER_OFFERS] Rate limit exceeded (429)');
+        throw Exception('Too many requests. Please wait a moment and try again.');
+      }
+      
+      print('[CUSTOMER_OFFERS] Response status: ${resp.statusCode}');
+      print('[CUSTOMER_OFFERS] Response body: ${resp.body}');
+      
+      final data = _handleResponse(resp) as Map<String, dynamic>;
+      print('[CUSTOMER_OFFERS] Parsed data keys: ${data.keys.toList()}');
+      print('[CUSTOMER_OFFERS] Data content: $data');
+      
+      final list = (data['offers'] as List<dynamic>? ?? []);
+      print('[CUSTOMER_OFFERS] Received ${list.length} offers');
+      
+      if (list.isNotEmpty) {
+        print('[CUSTOMER_OFFERS] First offer sample: ${list[0]}');
+      }
+      
+      final offers = list
+          .map((e) {
+            try {
+              print('[CUSTOMER_OFFERS] Parsing offer: $e');
+              return OfferModel.fromJson(e as Map<String, dynamic>);
+            } catch (parseError) {
+              print('[CUSTOMER_OFFERS] Error parsing offer: $parseError, Data: $e');
+              rethrow;
+            }
+          })
+          .toList();
+      
+      print('[CUSTOMER_OFFERS] Successfully parsed ${offers.length} offers');
+      return offers;
+    } catch (e) {
+      print('[CUSTOMER_OFFERS] Error fetching offers: $e');
+      print('[CUSTOMER_OFFERS] Error stack: ${StackTrace.current}');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> toggleOfferLike(String offerId) async {
+    final token = AuthStore.token;
+    if (token == null) throw Exception('Not authenticated');
+    final uri = Uri.parse('${ApiConfig.baseUrl}/customer/offers/$offerId/like');
+    final resp = await _makeRequest(() => _client.post(
+          uri,
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+        ));
+    final data = _handleResponse(resp) as Map<String, dynamic>;
+    return {
+      'isLiked': data['isLiked'] as bool? ?? false,
+      'likesCount': data['likesCount'] as int? ?? 0,
+    };
+  }
+
+  Future<List<OfferModel>> getLikedOffers() async {
+    final token = AuthStore.token;
+    if (token == null) throw Exception('Not authenticated');
+    final uri = Uri.parse('${ApiConfig.baseUrl}/customer/offers/liked');
+    final resp = await _makeRequest(() => _client.get(
+          uri,
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ));
     final data = _handleResponse(resp) as Map<String, dynamic>;
     final list = (data['offers'] as List<dynamic>? ?? []);
     return list
@@ -474,13 +547,18 @@ class AuthService {
         throw Exception('Request failed with status ${resp.statusCode}');
       }
     }
-    if (resp.body.isEmpty) return {};
+    if (resp.body.isEmpty) {
+      print('[AUTH] Empty response body');
+      return {};
+    }
     try {
       final data = jsonDecode(resp.body);
+      print('[AUTH] Successfully decoded JSON response');
       return data;
     } catch (e) {
       print('[AUTH] JSON decode error - Body: ${resp.body}');
-      throw Exception('Invalid response from server');
+      print('[AUTH] JSON decode error details: $e');
+      throw Exception('Invalid response from server: $e');
     }
   }
 }

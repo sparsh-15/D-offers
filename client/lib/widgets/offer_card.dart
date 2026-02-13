@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 
 import '../core/constants/app_colors.dart';
 import '../models/offer_model.dart';
+import '../services/auth_service.dart';
+import '../core/utils/dialog_helper.dart';
 
-class OfferCard extends StatelessWidget {
+class OfferCard extends StatefulWidget {
   final OfferModel offer;
   final VoidCallback? onTap;
   final Widget? trailing;
   final bool showLikes;
+  final VoidCallback? onLikeChanged;
 
   const OfferCard({
     super.key,
@@ -15,7 +18,87 @@ class OfferCard extends StatelessWidget {
     this.onTap,
     this.trailing,
     this.showLikes = true,
+    this.onLikeChanged,
   });
+
+  @override
+  State<OfferCard> createState() => _OfferCardState();
+}
+
+class _OfferCardState extends State<OfferCard> with SingleTickerProviderStateMixin {
+  late bool _isLiked;
+  late int _likesCount;
+  bool _isToggling = false;
+  late AnimationController _animationController;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _isLiked = widget.offer.isLiked;
+    _likesCount = widget.offer.likesCount;
+    
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 200),
+      vsync: this,
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.3).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
+    );
+  }
+
+  @override
+  void didUpdateWidget(OfferCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.offer.id != widget.offer.id ||
+        oldWidget.offer.isLiked != widget.offer.isLiked ||
+        oldWidget.offer.likesCount != widget.offer.likesCount) {
+      _isLiked = widget.offer.isLiked;
+      _likesCount = widget.offer.likesCount;
+    }
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _toggleLike() async {
+    if (_isToggling) return;
+
+    setState(() {
+      _isToggling = true;
+      _isLiked = !_isLiked;
+      _likesCount += _isLiked ? 1 : -1;
+    });
+
+    _animationController.forward().then((_) {
+      _animationController.reverse();
+    });
+
+    try {
+      final result = await AuthService.instance.toggleOfferLike(widget.offer.id);
+      setState(() {
+        _isLiked = result['isLiked'] as bool;
+        _likesCount = result['likesCount'] as int;
+        _isToggling = false;
+      });
+      if (widget.onLikeChanged != null) {
+        widget.onLikeChanged!();
+      }
+    } catch (e) {
+      // Revert on error
+      setState(() {
+        _isLiked = !_isLiked;
+        _likesCount += _isLiked ? -1 : 1;
+        _isToggling = false;
+      });
+      if (mounted) {
+        DialogHelper.showErrorSnackBar(context, 'Failed to update like: $e');
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,16 +106,16 @@ class OfferCard extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
 
     String discountLabel;
-    if (offer.discountType == 'percentage' && offer.discountValue != null) {
-      discountLabel = '${offer.discountValue}% OFF';
-    } else if (offer.discountType == 'fixed' && offer.discountValue != null) {
-      discountLabel = '₹${offer.discountValue} OFF';
+    if (widget.offer.discountType == 'percentage' && widget.offer.discountValue != null) {
+      discountLabel = '${widget.offer.discountValue}% OFF';
+    } else if (widget.offer.discountType == 'fixed' && widget.offer.discountValue != null) {
+      discountLabel = '₹${widget.offer.discountValue} OFF';
     } else {
       discountLabel = 'Offer';
     }
 
     Color statusColor;
-    switch (offer.status) {
+    switch (widget.offer.status) {
       case 'inactive':
         statusColor = AppColors.info;
         break;
@@ -46,8 +129,12 @@ class OfferCard extends StatelessWidget {
     return Card(
       elevation: 2,
       margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: InkWell(
-        onTap: onTap,
+        onTap: widget.onTap,
+        borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Column(
@@ -74,17 +161,17 @@ class OfferCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          offer.title,
+                          widget.offer.title,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.titleMedium
                               ?.copyWith(fontWeight: FontWeight.bold),
                         ),
-                        if (offer.description.isNotEmpty)
+                        if (widget.offer.description.isNotEmpty)
                           Padding(
                             padding: const EdgeInsets.only(top: 4.0),
                             child: Text(
-                              offer.description,
+                              widget.offer.description,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: theme.textTheme.bodySmall,
@@ -93,7 +180,20 @@ class OfferCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  if (trailing != null) trailing!,
+                  if (widget.trailing != null) 
+                    widget.trailing!
+                  else
+                    ScaleTransition(
+                      scale: _scaleAnimation,
+                      child: IconButton(
+                        icon: Icon(
+                          _isLiked ? Icons.favorite : Icons.favorite_border,
+                          color: _isLiked ? Colors.red : (isDark ? Colors.grey : Colors.grey[600]),
+                        ),
+                        onPressed: _toggleLike,
+                        tooltip: _isLiked ? 'Unlike' : 'Like',
+                      ),
+                    ),
                 ],
               ),
               const SizedBox(height: 8),
@@ -104,24 +204,35 @@ class OfferCard extends StatelessWidget {
                   Chip(
                     label: Text(
                       discountLabel,
-                      style: const TextStyle(color: Colors.white),
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                     ),
                     backgroundColor: AppColors.primary,
                     visualDensity: VisualDensity.compact,
                   ),
                   Chip(
                     label: Text(
-                      offer.status.toUpperCase(),
+                      widget.offer.status.toUpperCase(),
                       style: const TextStyle(color: Colors.white),
                     ),
                     backgroundColor: statusColor,
                     visualDensity: VisualDensity.compact,
                   ),
-                  if (showLikes)
+                  if (widget.showLikes)
                     Chip(
-                      label: Text(
-                        '❤️ ${offer.likesCount}',
-                        style: const TextStyle(color: Colors.white),
+                      label: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.favorite,
+                            size: 14,
+                            color: Colors.white,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '$_likesCount',
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                        ],
                       ),
                       backgroundColor:
                           isDark ? AppColors.surface : AppColors.accent,
