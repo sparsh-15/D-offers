@@ -362,6 +362,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           builder: (_) => OtpScreen(
             phoneNumber: _phoneController.text,
             role: widget.role,
+            isRegistration: true,
           ),
         ),
       );

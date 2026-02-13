@@ -11,15 +11,18 @@ import '../admin/admin_dashboard.dart';
 import '../../services/auth_service.dart';
 import '../../services/auth_store.dart';
 import '../../core/utils/dialog_helper.dart';
+import 'login_screen.dart';
 
 class OtpScreen extends StatefulWidget {
   final String phoneNumber;
   final UserRole role;
+  final bool isRegistration;
 
   const OtpScreen({
     super.key,
     required this.phoneNumber,
     required this.role,
+    this.isRegistration = false,
   });
 
   @override
@@ -246,6 +249,27 @@ class _OtpScreenState extends State<OtpScreen> {
         DialogHelper.showErrorSnackBar(context, 'Login failed. Please try again.');
         return;
       }
+      // If this is a registration flow, show success and redirect to login
+      if (widget.isRegistration) {
+        if (!mounted) return;
+        DialogHelper.showSuccessSnackBar(
+          context,
+          'Registration successful!',
+        );
+        // Clear auth store since we're redirecting to login
+        AuthStore.clear();
+        // Navigate back to login screen
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+            builder: (_) => LoginScreen(role: widget.role),
+          ),
+          (route) => false,
+        );
+        return;
+      }
+
+      // For login flow, check shopkeeper approval status
       if (user.role == UserRole.shopkeeper &&
           user.approvalStatus != 'approved') {
         DialogHelper.showInfoSnackBar(

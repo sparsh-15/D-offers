@@ -9,6 +9,7 @@ import '../../widgets/theme_toggle.dart';
 import '../../services/auth_service.dart';
 import '../../services/auth_store.dart';
 import '../../models/user_model.dart';
+import '../../models/role_enum.dart';
 import '../role_selection/role_selection_screen.dart';
 
 class AdminDashboard extends StatefulWidget {
@@ -339,17 +340,81 @@ class UsersManagementTab extends StatefulWidget {
 
 class _UsersManagementTabState extends State<UsersManagementTab> {
   late Future<List<UserModel>> _future;
+  final TextEditingController _searchController = TextEditingController();
+  String _selectedRole = 'all';
+  String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
     _future = AuthService.instance.getUsers(limit: 50);
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged() {
+    setState(() {
+      _searchQuery = _searchController.text.toLowerCase();
+    });
   }
 
   Future<void> _refresh() async {
     setState(() {
       _future = AuthService.instance.getUsers(limit: 50);
     });
+  }
+
+  List<UserModel> _filterUsers(List<UserModel> users) {
+    return users.where((user) {
+      final matchesRole = _selectedRole == 'all' ||
+          user.role.toString().split('.').last == _selectedRole;
+      final matchesSearch = _searchQuery.isEmpty ||
+          user.name.toLowerCase().contains(_searchQuery) ||
+          user.phone.contains(_searchQuery) ||
+          (user.city.isNotEmpty &&
+              user.city.toLowerCase().contains(_searchQuery));
+      return matchesRole && matchesSearch;
+    }).toList();
+  }
+
+  Color _getRoleColor(UserRole role) {
+    switch (role) {
+      case UserRole.admin:
+        return AppColors.error;
+      case UserRole.shopkeeper:
+        return AppColors.accent;
+      case UserRole.customer:
+        return AppColors.primary;
+    }
+  }
+
+  IconData _getRoleIcon(UserRole role) {
+    switch (role) {
+      case UserRole.admin:
+        return Icons.admin_panel_settings_rounded;
+      case UserRole.shopkeeper:
+        return Icons.store_rounded;
+      case UserRole.customer:
+        return Icons.person_rounded;
+    }
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'approved':
+        return AppColors.success;
+      case 'pending':
+        return AppColors.warning;
+      case 'rejected':
+        return AppColors.error;
+      default:
+        return AppColors.textSecondary;
+    }
   }
 
   @override
@@ -362,75 +427,405 @@ class _UsersManagementTabState extends State<UsersManagementTab> {
           children: [
             AppBar(
               backgroundColor: Colors.transparent,
-              title: const Text('Manage Users'),
+              elevation: 0,
+              title: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Manage Users',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
+                  Text(
+                    'View and manage all platform users',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+              ),
               actions: [
                 IconButton(
                   icon: const Icon(Icons.refresh_rounded),
                   onPressed: _refresh,
+                  tooltip: 'Refresh',
                 ),
               ],
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Column(
+                children: [
+                  // Search Bar
+                  Container(
+                    decoration: BoxDecoration(
+                      color: ThemeHelper.getSurfaceColor(context),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        hintText: 'Search by name, phone, or city...',
+                        prefixIcon: const Icon(Icons.search_rounded),
+                        suffixIcon: _searchQuery.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear_rounded),
+                                onPressed: () {
+                                  _searchController.clear();
+                                },
+                              )
+                            : null,
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // Role Filter Chips
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        _buildFilterChip('all', 'All Users', Icons.people_rounded),
+                        const SizedBox(width: 8),
+                        _buildFilterChip('customer', 'Customers', Icons.person_rounded),
+                        const SizedBox(width: 8),
+                        _buildFilterChip('shopkeeper', 'Shopkeepers', Icons.store_rounded),
+                        const SizedBox(width: 8),
+                        _buildFilterChip('admin', 'Admins', Icons.admin_panel_settings_rounded),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
             Expanded(
               child: FutureBuilder<List<UserModel>>(
                 future: _future,
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
+                    return const Center(
+                      child: CircularProgressIndicator(),
+                    );
                   }
                   if (snapshot.hasError) {
                     return Center(
-                      child: Text(
-                        'Failed to load users\n${snapshot.error}',
-                        textAlign: TextAlign.center,
+                      child: Padding(
+                        padding: const EdgeInsets.all(24.0),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.error_outline_rounded,
+                              size: 64,
+                              color: AppColors.error,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Failed to load users',
+                              style: Theme.of(context).textTheme.titleMedium,
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              '${snapshot.error}',
+                              style: Theme.of(context).textTheme.bodySmall,
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 24),
+                            ElevatedButton.icon(
+                              onPressed: _refresh,
+                              icon: const Icon(Icons.refresh_rounded),
+                              label: const Text('Retry'),
+                            ),
+                          ],
+                        ),
                       ),
                     );
                   }
-                  final users = snapshot.data ?? [];
-                  if (users.isEmpty) {
-                    return const Center(child: Text('No users found'));
+                  final allUsers = snapshot.data ?? [];
+                  final filteredUsers = _filterUsers(allUsers);
+
+                  if (filteredUsers.isEmpty) {
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24.0),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              _searchQuery.isNotEmpty
+                                  ? Icons.search_off_rounded
+                                  : Icons.people_outline_rounded,
+                              size: 64,
+                              color: ThemeHelper.getTextColor(context)
+                                  .withOpacity(0.5),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              _searchQuery.isNotEmpty
+                                  ? 'No users found'
+                                  : 'No users available',
+                              style: Theme.of(context).textTheme.titleMedium,
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              _searchQuery.isNotEmpty
+                                  ? 'Try adjusting your search or filters'
+                                  : 'Users will appear here once registered',
+                              style: Theme.of(context).textTheme.bodySmall,
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
                   }
+
                   return RefreshIndicator(
                     onRefresh: _refresh,
                     child: ListView.builder(
                       padding: const EdgeInsets.all(16),
-                      itemCount: users.length,
+                      itemCount: filteredUsers.length,
                       itemBuilder: (context, index) {
-                        final user = users[index];
+                        final user = filteredUsers[index];
                         return FadeInUp(
                           delay: Duration(milliseconds: 50 * index),
                           child: Card(
                             margin: const EdgeInsets.only(bottom: 12),
-                            child: ListTile(
-                              leading: CircleAvatar(
-                                backgroundColor: user.role == 'admin'
-                                    ? AppColors.error
-                                    : user.role == 'shopkeeper'
-                                        ? AppColors.accent
-                                        : AppColors.primary,
-                                child: Icon(
-                                  user.role == 'admin'
-                                      ? Icons.admin_panel_settings_rounded
-                                      : user.role == 'shopkeeper'
-                                          ? Icons.store_rounded
-                                          : Icons.person_rounded,
-                                  color: Colors.white,
+                            elevation: 2,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(16),
+                              onTap: () {
+                                // TODO: Navigate to user details
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Row(
+                                  children: [
+                                    // Avatar
+                                    Container(
+                                      width: 56,
+                                      height: 56,
+                                      decoration: BoxDecoration(
+                                        color: _getRoleColor(user.role)
+                                            .withOpacity(0.2),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(
+                                        _getRoleIcon(user.role),
+                                        color: _getRoleColor(user.role),
+                                        size: 28,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    // User Info
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: Text(
+                                                  user.name.isEmpty
+                                                      ? 'User'
+                                                      : user.name,
+                                                  style: Theme.of(context)
+                                                      .textTheme
+                                                      .titleMedium
+                                                      ?.copyWith(
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                      ),
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                              // Status Badge
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                  horizontal: 8,
+                                                  vertical: 4,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: _getStatusColor(
+                                                          user.approvalStatus)
+                                                      .withOpacity(0.2),
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                ),
+                                                child: Text(
+                                                  user.approvalStatus
+                                                      .toUpperCase(),
+                                                  style: TextStyle(
+                                                    color: _getStatusColor(
+                                                        user.approvalStatus),
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Row(
+                                            children: [
+                                              Icon(
+                                                Icons.phone_rounded,
+                                                size: 14,
+                                                color: ThemeHelper.getTextColor(
+                                                        context)
+                                                    .withOpacity(0.6),
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                '+91 ${user.phone}',
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .bodySmall,
+                                              ),
+                                            ],
+                                          ),
+                                          if (user.city.isNotEmpty) ...[
+                                            const SizedBox(height: 4),
+                                            Row(
+                                              children: [
+                                                Icon(
+                                                  Icons.location_on_rounded,
+                                                  size: 14,
+                                                  color: ThemeHelper.getTextColor(
+                                                          context)
+                                                      .withOpacity(0.6),
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Expanded(
+                                                  child: Text(
+                                                    '${user.city}, ${user.state}',
+                                                    style: Theme.of(context)
+                                                        .textTheme
+                                                        .bodySmall,
+                                                    maxLines: 1,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                          const SizedBox(height: 8),
+                                          // Role Badge
+                                          Container(
+                                            padding:
+                                                const EdgeInsets.symmetric(
+                                              horizontal: 10,
+                                              vertical: 4,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: _getRoleColor(user.role)
+                                                  .withOpacity(0.15),
+                                              borderRadius:
+                                                  BorderRadius.circular(20),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(
+                                                  _getRoleIcon(user.role),
+                                                  size: 14,
+                                                  color:
+                                                      _getRoleColor(user.role),
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Text(
+                                                  user.role
+                                                      .toString()
+                                                      .split('.')
+                                                      .last
+                                                      .toUpperCase(),
+                                                  style: TextStyle(
+                                                    color:
+                                                        _getRoleColor(user.role),
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    // Actions Menu
+                                    PopupMenuButton(
+                                      icon: Icon(
+                                        Icons.more_vert_rounded,
+                                        color: ThemeHelper.getTextColor(context)
+                                            .withOpacity(0.6),
+                                      ),
+                                      itemBuilder: (context) => [
+                                        const PopupMenuItem(
+                                          value: 'view',
+                                          child: Row(
+                                            children: [
+                                              Icon(Icons.visibility_rounded,
+                                                  size: 20),
+                                              SizedBox(width: 8),
+                                              Text('View Details'),
+                                            ],
+                                          ),
+                                        ),
+                                        if (user.role != UserRole.admin)
+                                          const PopupMenuItem(
+                                            value: 'suspend',
+                                            child: Row(
+                                              children: [
+                                                Icon(Icons.block_rounded,
+                                                    size: 20),
+                                                SizedBox(width: 8),
+                                                Text('Suspend'),
+                                              ],
+                                            ),
+                                          ),
+                                        if (user.role != UserRole.admin)
+                                          const PopupMenuItem(
+                                            value: 'delete',
+                                            child: Row(
+                                              children: [
+                                                Icon(Icons.delete_rounded,
+                                                    size: 20,
+                                                    color: AppColors.error),
+                                                SizedBox(width: 8),
+                                                Text('Delete',
+                                                    style: TextStyle(
+                                                        color:
+                                                            AppColors.error)),
+                                              ],
+                                            ),
+                                          ),
+                                      ],
+                                      onSelected: (value) {
+                                        // TODO: Handle actions
+                                      },
+                                    ),
+                                  ],
                                 ),
-                              ),
-                              title:
-                                  Text(user.name.isEmpty ? 'User' : user.name),
-                              subtitle: Text(
-                                '+91 ${user.phone}\n${user.role} • ${user.approvalStatus}',
-                              ),
-                              isThreeLine: true,
-                              trailing: PopupMenuButton(
-                                itemBuilder: (context) => [
-                                  const PopupMenuItem(
-                                      child: Text('View Details')),
-                                  if (user.role != 'admin')
-                                    const PopupMenuItem(child: Text('Suspend')),
-                                  if (user.role != 'admin')
-                                    const PopupMenuItem(child: Text('Delete')),
-                                ],
                               ),
                             ),
                           ),
@@ -443,6 +838,32 @@ class _UsersManagementTabState extends State<UsersManagementTab> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildFilterChip(String value, String label, IconData icon) {
+    final isSelected = _selectedRole == value;
+    return FilterChip(
+      selected: isSelected,
+      label: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16),
+          const SizedBox(width: 6),
+          Text(label),
+        ],
+      ),
+      onSelected: (selected) {
+        setState(() {
+          _selectedRole = value;
+        });
+      },
+      selectedColor: AppColors.primary.withOpacity(0.2),
+      checkmarkColor: AppColors.primary,
+      labelStyle: TextStyle(
+        color: isSelected ? AppColors.primary : null,
+        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
       ),
     );
   }
@@ -469,18 +890,35 @@ class _ShopkeepersApprovalBody extends StatefulWidget {
       _ShopkeepersApprovalBodyState();
 }
 
-class _ShopkeepersApprovalBodyState extends State<_ShopkeepersApprovalBody> {
-  late Future<List<UserModel>> _future;
+class _ShopkeepersApprovalBodyState extends State<_ShopkeepersApprovalBody>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  late Future<List<UserModel>> _pendingFuture;
+  late Future<List<UserModel>> _approvedFuture;
+  late Future<List<UserModel>> _rejectedFuture;
 
   @override
   void initState() {
     super.initState();
-    _future = AuthService.instance.getShopkeepers(status: 'pending');
+    _tabController = TabController(length: 3, vsync: this);
+    _loadData();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  void _loadData() {
+    _pendingFuture = AuthService.instance.getShopkeepers(status: 'pending');
+    _approvedFuture = AuthService.instance.getShopkeepers(status: 'approved');
+    _rejectedFuture = AuthService.instance.getShopkeepers(status: 'rejected');
   }
 
   Future<void> _refresh() async {
     setState(() {
-      _future = AuthService.instance.getShopkeepers(status: 'pending');
+      _loadData();
     });
   }
 
@@ -489,117 +927,401 @@ class _ShopkeepersApprovalBodyState extends State<_ShopkeepersApprovalBody> {
     return Column(
       children: [
         AppBar(
-          backgroundColor: Colors.transparent,
-          title: const Text('Pending Approvals'),
-        ),
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            title: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Shopkeeper Approvals',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+                Text(
+                  'Review and manage shopkeeper requests',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.refresh_rounded),
+                onPressed: _refresh,
+                tooltip: 'Refresh',
+              ),
+            ],
+            bottom: TabBar(
+              controller: _tabController,
+              indicatorColor: AppColors.primary,
+              labelColor: AppColors.primary,
+              unselectedLabelColor: ThemeHelper.getTextColor(context).withOpacity(0.6),
+              tabs: [
+                Tab(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.pending_rounded, size: 18),
+                      const SizedBox(width: 6),
+                      FutureBuilder<List<UserModel>>(
+                        future: _pendingFuture,
+                        builder: (context, snapshot) {
+                          final count = snapshot.data?.length ?? 0;
+                          return Badge(
+                            label: Text('$count'),
+                            isLabelVisible: count > 0,
+                            child: const Text('Pending'),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                Tab(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.check_circle_rounded, size: 18),
+                      const SizedBox(width: 6),
+                      const Text('Approved'),
+                    ],
+                  ),
+                ),
+                Tab(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.cancel_rounded, size: 18),
+                      const SizedBox(width: 6),
+                      const Text('Rejected'),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
         Expanded(
-          child: FutureBuilder<List<UserModel>>(
-            future: _future,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              if (snapshot.hasError) {
-                return Center(
-                  child: Text(
-                    'Failed to load shopkeepers\n${snapshot.error}',
+            child: TabBarView(
+              controller: _tabController,
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: [
+                _buildShopkeeperList(_pendingFuture, 0),
+                _buildShopkeeperList(_approvedFuture, 1),
+                _buildShopkeeperList(_rejectedFuture, 2),
+              ],
+            ),
+          ),
+        ],
+    );
+  }
+
+  Widget _buildShopkeeperList(Future<List<UserModel>> future, int tabIndex) {
+    return FutureBuilder<List<UserModel>>(
+      key: ValueKey('shopkeeper_list_$tabIndex'),
+      future: future,
+      builder: (context, snapshot) {
+        // Show loading indicator while waiting
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(),
+          );
+        }
+        
+        // Show error state if there's an error
+        if (snapshot.hasError) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.error_outline_rounded,
+                    size: 64,
+                    color: AppColors.error,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Failed to load shopkeepers',
+                    style: Theme.of(context).textTheme.titleMedium,
                     textAlign: TextAlign.center,
                   ),
-                );
-              }
-              final items = snapshot.data ?? [];
-              if (items.isEmpty) {
-                return const Center(
-                  child: Text('No pending shopkeepers'),
-                );
-              }
-              return RefreshIndicator(
+                  const SizedBox(height: 8),
+                  Text(
+                    '${snapshot.error}',
+                    style: Theme.of(context).textTheme.bodySmall,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton.icon(
+                    onPressed: _refresh,
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: const Text('Retry'),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+        
+        // Get items, default to empty list if null
+        final items = snapshot.data ?? [];
+        if (items.isEmpty) {
+          final emptyMessages = {
+            0: ('No Pending Requests', 'All shopkeeper requests have been reviewed', Icons.check_circle_outline_rounded),
+            1: ('No Approved Shopkeepers', 'Approved shopkeepers will appear here', Icons.store_outlined),
+            2: ('No Rejected Requests', 'Rejected requests will appear here', Icons.cancel_outlined),
+          };
+          final (title, message, icon) = emptyMessages[tabIndex]!;
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    icon,
+                    size: 64,
+                    color: ThemeHelper.getTextColor(context).withOpacity(0.5),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    title,
+                    style: Theme.of(context).textTheme.titleMedium,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    message,
+                    style: Theme.of(context).textTheme.bodySmall,
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+        return RefreshIndicator(
                 onRefresh: _refresh,
                 child: ListView.builder(
                   padding: const EdgeInsets.all(16),
                   itemCount: items.length,
                   itemBuilder: (context, index) {
-                    final s = items[index];
+                    final shopkeeper = items[index];
                     return FadeInUp(
                       delay: Duration(milliseconds: 100 * index),
                       child: Card(
-                        margin: const EdgeInsets.only(bottom: 12),
+                        margin: const EdgeInsets.only(bottom: 16),
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
                         child: Padding(
-                          padding: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.all(20),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              // Header Row
                               Row(
                                 children: [
-                                  const CircleAvatar(
-                                    backgroundColor: AppColors.accent,
-                                    child: Icon(Icons.store_rounded,
-                                        color: Colors.white),
+                                  Container(
+                                    width: 56,
+                                    height: 56,
+                                    decoration: BoxDecoration(
+                                      gradient: AppColors.accentGradient,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.store_rounded,
+                                      color: Colors.white,
+                                      size: 28,
+                                    ),
                                   ),
-                                  const SizedBox(width: 12),
+                                  const SizedBox(width: 16),
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          s.name.isEmpty
+                                          shopkeeper.name.isEmpty
                                               ? 'Shopkeeper'
-                                              : s.name,
+                                              : shopkeeper.name,
                                           style: Theme.of(context)
                                               .textTheme
-                                              .titleMedium,
+                                              .titleLarge
+                                              ?.copyWith(
+                                                fontWeight: FontWeight.bold,
+                                              ),
                                         ),
-                                        Text(
-                                          '+91 ${s.phone}',
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .bodySmall,
+                                        const SizedBox(height: 4),
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              Icons.phone_rounded,
+                                              size: 16,
+                                              color: ThemeHelper.getTextColor(
+                                                      context)
+                                                  .withOpacity(0.6),
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              '+91 ${shopkeeper.phone}',
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .bodyMedium,
+                                            ),
+                                          ],
                                         ),
-                                        if (s.city.isNotEmpty)
-                                          Text(
-                                            '${s.city}, ${s.state} (${s.pincode})',
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .bodySmall,
-                                          ),
                                       ],
                                     ),
                                   ),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: ElevatedButton.icon(
-                                      onPressed: () =>
-                                          _approve(context, s.id, s.name),
-                                      icon: const Icon(Icons.check_rounded,
-                                          size: 18),
-                                      label: const Text('Approve'),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: AppColors.success,
-                                      ),
+                                  // Status Badge
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 6,
                                     ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: OutlinedButton.icon(
-                                      onPressed: () =>
-                                          _reject(context, s.id, s.name),
-                                      icon: const Icon(Icons.close_rounded,
-                                          size: 18),
-                                      label: const Text('Reject'),
-                                      style: OutlinedButton.styleFrom(
-                                        foregroundColor: AppColors.error,
-                                        side: const BorderSide(
-                                            color: AppColors.error),
+                                    decoration: BoxDecoration(
+                                      color: _getStatusColor(
+                                              shopkeeper.approvalStatus)
+                                          .withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: Text(
+                                      shopkeeper.approvalStatus.toUpperCase(),
+                                      style: TextStyle(
+                                        color: _getStatusColor(
+                                            shopkeeper.approvalStatus),
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
                                       ),
                                     ),
                                   ),
                                 ],
                               ),
+                              // Location Info
+                              if (shopkeeper.city.isNotEmpty ||
+                                  shopkeeper.pincode.isNotEmpty) ...[
+                                const SizedBox(height: 16),
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: ThemeHelper.getSurfaceColor(context),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.location_on_rounded,
+                                        size: 20,
+                                        color: AppColors.accent,
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            if (shopkeeper.city.isNotEmpty)
+                                              Text(
+                                                '${shopkeeper.city}, ${shopkeeper.state}',
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .bodyMedium
+                                                    ?.copyWith(
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                    ),
+                                              ),
+                                            if (shopkeeper.pincode.isNotEmpty)
+                                              Text(
+                                                'PIN: ${shopkeeper.pincode}',
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .bodySmall,
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                              // Action Buttons (only for pending)
+                              if (tabIndex == 0) ...[
+                                const SizedBox(height: 16),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: ElevatedButton.icon(
+                                        onPressed: () => _approve(
+                                            context,
+                                            shopkeeper.id,
+                                            shopkeeper.name.isEmpty
+                                                ? 'Shopkeeper'
+                                                : shopkeeper.name),
+                                        icon: const Icon(
+                                          Icons.check_rounded,
+                                          size: 20,
+                                        ),
+                                        label: const Text(
+                                          'Approve',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: AppColors.success,
+                                          foregroundColor: Colors.white,
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 14,
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: OutlinedButton.icon(
+                                        onPressed: () => _reject(
+                                            context,
+                                            shopkeeper.id,
+                                            shopkeeper.name.isEmpty
+                                                ? 'Shopkeeper'
+                                                : shopkeeper.name),
+                                        icon: const Icon(
+                                          Icons.close_rounded,
+                                          size: 20,
+                                        ),
+                                        label: const Text(
+                                          'Reject',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        style: OutlinedButton.styleFrom(
+                                          foregroundColor: AppColors.error,
+                                          side: const BorderSide(
+                                            color: AppColors.error,
+                                            width: 2,
+                                          ),
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 14,
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ],
                           ),
                         ),
@@ -609,10 +1331,20 @@ class _ShopkeepersApprovalBodyState extends State<_ShopkeepersApprovalBody> {
                 ),
               );
             },
-          ),
-        ),
-      ],
-    );
+          );
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'approved':
+        return AppColors.success;
+      case 'pending':
+        return AppColors.warning;
+      case 'rejected':
+        return AppColors.error;
+      default:
+        return AppColors.textSecondary;
+    }
   }
 
   Future<void> _approve(

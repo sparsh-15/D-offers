@@ -205,12 +205,23 @@ class _LoginScreenState extends State<LoginScreen> {
           builder: (_) => OtpScreen(
             phoneNumber: _phoneController.text,
             role: widget.role,
+            isRegistration: false,
           ),
         ),
       );
     } catch (e) {
       if (!mounted) return;
-      DialogHelper.showErrorSnackBar(context, e.toString());
+      final errorMessage = e.toString().toLowerCase();
+      if (errorMessage.contains('not found') || 
+          errorMessage.contains('account not found') ||
+          errorMessage.contains('please signup')) {
+        DialogHelper.showErrorSnackBar(
+          context, 
+          'User not found, please register',
+        );
+      } else {
+        DialogHelper.showErrorSnackBar(context, e.toString());
+      }
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
