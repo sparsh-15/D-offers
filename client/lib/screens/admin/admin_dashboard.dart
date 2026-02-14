@@ -6,11 +6,17 @@ import '../../core/utils/theme_helper.dart';
 import '../../core/utils/dialog_helper.dart';
 import '../../widgets/gradient_card.dart';
 import '../../widgets/theme_toggle.dart';
+import '../../widgets/profile_option_tile.dart';
 import '../../services/auth_service.dart';
 import '../../services/auth_store.dart';
 import '../../models/user_model.dart';
 import '../../models/role_enum.dart';
 import '../role_selection/role_selection_screen.dart';
+import '../common/edit_profile_page.dart';
+import '../common/security_page.dart';
+import '../common/settings_page.dart';
+import '../common/help_support_page.dart';
+import '../common/about_page.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -1459,17 +1465,90 @@ class _AdminProfileTabState extends State<AdminProfileTab> {
                   child: ListView(
                     children: [
                       const ThemeToggle(),
-                      _buildProfileOption(
-                          context, Icons.edit_rounded, 'Edit Profile'),
-                      _buildProfileOption(
-                          context, Icons.security_rounded, 'Security'),
-                      _buildProfileOption(
-                          context, Icons.settings_rounded, 'Settings'),
-                      _buildProfileOption(
-                          context, Icons.help_rounded, 'Help & Support'),
-                      _buildProfileOption(
-                          context, Icons.logout_rounded, 'Logout',
-                          isDestructive: true),
+                      ProfileOptionTile(
+                        icon: Icons.edit_rounded,
+                        title: 'Edit Profile',
+                        onTap: () async {
+                          await Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => EditProfilePage(
+                                user: user,
+                                onSaved: () {
+                                  setState(() {
+                                    _userFuture = AuthService.instance.fetchCurrentUser();
+                                  });
+                                },
+                              ),
+                            ),
+                          );
+                          if (mounted) {
+                            setState(() {
+                              _userFuture = AuthService.instance.fetchCurrentUser();
+                            });
+                          }
+                        },
+                      ),
+                      ProfileOptionTile(
+                        icon: Icons.security_rounded,
+                        title: 'Security',
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const SecurityPage(),
+                            ),
+                          );
+                        },
+                      ),
+                      ProfileOptionTile(
+                        icon: Icons.settings_rounded,
+                        title: 'Settings',
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const SettingsPage(),
+                            ),
+                          );
+                        },
+                      ),
+                      ProfileOptionTile(
+                        icon: Icons.help_rounded,
+                        title: 'Help & Support',
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const HelpSupportPage(),
+                            ),
+                          );
+                        },
+                      ),
+                      ProfileOptionTile(
+                        icon: Icons.info_rounded,
+                        title: 'About',
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const AboutPage(),
+                            ),
+                          );
+                        },
+                      ),
+                      ProfileOptionTile(
+                        icon: Icons.logout_rounded,
+                        title: 'Logout',
+                        isDestructive: true,
+                        onTap: () async {
+                          final shouldLogout = await DialogHelper.showLogoutDialog(context);
+                          if (shouldLogout && context.mounted) {
+                            AuthStore.clear();
+                            Navigator.of(context).pushAndRemoveUntil(
+                              MaterialPageRoute(builder: (_) => const RoleSelectionScreen()),
+                              (route) => false,
+                            );
+                            DialogHelper.showSuccessSnackBar(
+                                context, 'Logged out successfully');
+                          }
+                        },
+                      ),
                     ],
                   ),
                 ),
@@ -1477,36 +1556,6 @@ class _AdminProfileTabState extends State<AdminProfileTab> {
             );
           },
         ),
-      ),
-    );
-  }
-
-  Widget _buildProfileOption(BuildContext context, IconData icon, String title,
-      {bool isDestructive = false}) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: ListTile(
-        leading: Icon(icon,
-            color: isDestructive ? AppColors.error : AppColors.primary),
-        title: Text(
-          title,
-          style: TextStyle(color: isDestructive ? AppColors.error : null),
-        ),
-        trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16),
-        onTap: () async {
-          if (title == 'Logout') {
-            final shouldLogout = await DialogHelper.showLogoutDialog(context);
-            if (shouldLogout && context.mounted) {
-              AuthStore.clear();
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (_) => const RoleSelectionScreen()),
-                (route) => false,
-              );
-              DialogHelper.showSuccessSnackBar(
-                  context, 'Logged out successfully');
-            }
-          }
-        },
       ),
     );
   }
