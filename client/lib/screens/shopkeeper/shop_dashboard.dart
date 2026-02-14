@@ -1,9 +1,13 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:animate_do/animate_do.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/theme_helper.dart';
 import '../../core/utils/dialog_helper.dart';
 import '../../widgets/gradient_card.dart';
+import '../../widgets/offer_banner_preview.dart';
 import '../../services/auth_service.dart';
 import '../../models/offer_model.dart';
 import 'shop_profile_body.dart';
@@ -394,6 +398,60 @@ class _OffersManagementBodyState extends State<_OffersManagementBody> {
     );
   }
 
+  Future<void> _showGeneratedImage(
+    BuildContext context,
+    GlobalKey previewKey,
+    String title,
+    String discountType,
+    String discountValueStr,
+  ) async {
+    final boundary = previewKey.currentContext?.findRenderObject()
+        as RenderRepaintBoundary?;
+    if (boundary == null) {
+      if (context.mounted) {
+        DialogHelper.showErrorSnackBar(context, 'Preview not ready');
+      }
+      return;
+    }
+    try {
+      final image = await boundary.toImage(pixelRatio: 3.0);
+      final byteData =
+          await image.toByteData(format: ui.ImageByteFormat.png);
+      if (byteData == null || !context.mounted) return;
+      final bytes = byteData.buffer.asUint8List();
+      if (!context.mounted) return;
+      showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Generated offer image'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Image.memory(bytes, fit: BoxFit.contain),
+                const SizedBox(height: 8),
+                Text(
+                  'Use this image for your offer. You can take a screenshot to save it.',
+                  style: Theme.of(ctx).textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Close'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (context.mounted) {
+        DialogHelper.showErrorSnackBar(context, 'Could not generate image');
+      }
+    }
+  }
+
   Future<void> _openEditDialog(BuildContext context,
       {OfferModel? offer}) async {
     final titleController = TextEditingController(text: offer?.title ?? '');
@@ -405,63 +463,100 @@ class _OffersManagementBodyState extends State<_OffersManagementBody> {
     final discountController = TextEditingController(
       text: offer?.discountValue?.toString() ?? '',
     );
+    final previewKey = GlobalKey();
 
     final result = await showDialog<bool>(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text(offer == null ? 'Add Offer' : 'Edit Offer'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: titleController,
-                  decoration: const InputDecoration(labelText: 'Title'),
-                ),
-                TextField(
-                  controller: descController,
-                  decoration: const InputDecoration(labelText: 'Description'),
-                ),
-                const SizedBox(height: 8),
-                DropdownButtonFormField<String>(
-                  value: discountType,
-                  decoration: const InputDecoration(labelText: 'Discount Type'),
-                  items: const [
-                    DropdownMenuItem(
-                      value: 'percentage',
-                      child: Text('Percentage'),
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text(offer == null ? 'Add Offer' : 'Edit Offer'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: titleController,
+                      decoration: const InputDecoration(labelText: 'Title'),
+                      onChanged: (_) => setDialogState(() {}),
                     ),
-                    DropdownMenuItem(
-                      value: 'fixed',
-                      child: Text('Fixed Amount'),
+                    TextField(
+                      controller: descController,
+                      decoration: const InputDecoration(labelText: 'Description'),
+                      onChanged: (_) => setDialogState(() {}),
+                    ),
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<String>(
+                      value: discountType,
+                      decoration: const InputDecoration(labelText: 'Discount Type'),
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'percentage',
+                          child: Text('Percentage'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'fixed',
+                          child: Text('Fixed Amount'),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        if (value != null) {
+                          setDialogState(() => discountType = value);
+                        }
+                      },
+                    ),
+                    TextField(
+                      controller: discountController,
+                      keyboardType: TextInputType.number,
+                      decoration:
+                          const InputDecoration(labelText: 'Discount Value'),
+                      onChanged: (_) => setDialogState(() {}),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Offer preview',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    RepaintBoundary(
+                      key: previewKey,
+                      child: OfferBannerPreview(
+                        title: titleController.text,
+                        discountType: discountType,
+                        discountValue: discountController.text.isEmpty
+                            ? null
+                            : double.tryParse(discountController.text),
+                      ),
                     ),
                   ],
-                  onChanged: (value) {
-                    if (value != null) {
-                      discountType = value;
-                    }
-                  },
                 ),
-                TextField(
-                  controller: discountController,
-                  keyboardType: TextInputType.number,
-                  decoration:
-                      const InputDecoration(labelText: 'Discount Value'),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => _showGeneratedImage(
+                    context,
+                    previewKey,
+                    titleController.text,
+                    discountType,
+                    discountController.text,
+                  ),
+                  child: const Text('Generate image'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text('Save'),
                 ),
               ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Save'),
-            ),
-          ],
+            );
+          },
         );
       },
     );

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import '../../core/constants/app_colors.dart';
 import '../../core/utils/dialog_helper.dart';
 import 'customer_home_tab.dart';
 import 'customer_offers_tab.dart';
 import 'customer_favorites_tab.dart';
 import 'customer_profile_tab.dart';
+import 'customer_chat_bot_screen.dart';
 
 class CustomerDashboard extends StatefulWidget {
   const CustomerDashboard({super.key});
@@ -49,6 +51,18 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
         body: IndexedStack(
           index: _selectedIndex,
           children: _screens,
+        ),
+        floatingActionButton: FloatingActionButton(
+          onPressed: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const CustomerChatBotScreen(),
+              ),
+            );
+          },
+          backgroundColor: AppColors.primary,
+          child: const Icon(Icons.chat_rounded, color: Colors.white),
+          tooltip: 'Help',
         ),
         bottomNavigationBar: Container(
           decoration: BoxDecoration(

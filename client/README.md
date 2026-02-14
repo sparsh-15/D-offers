@@ -1,6 +1,14 @@
 # client
 
-A new Flutter project.
+Flutter client for D'Offer — hyperlocal offers and deals.
+
+## Documentation
+
+Detailed documentation is in the [`docs/`](docs/) folder:
+
+- **[Current State](docs/CURRENT_STATE.md)** — Full flash docs: architecture, screens, services, models, navigation, and API usage for the client as it exists today.
+- **[System Architecture](docs/SYSTEM_ARCHITECTURE.md)** — System architecture (from Doffers System Architecture Document V1): logical architecture, backend services, deployment, use cases, data flows, AI system, security, monetization; includes current client mapping.
+- **[Feature Requirements and Roadmap](docs/FEATURE_REQUIREMENTS_AND_ROADMAP.md)** — Phases 1–3: subscription packs, persistent auth, campaign engine, WhatsApp, AI text/banner, scratch card, chatbot; user stories, requirements, and diagrams.
 
 ## Getting Started
 
