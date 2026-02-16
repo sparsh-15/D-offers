@@ -19,6 +19,18 @@ const offerSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    photos: [{
+      type: String,
+      trim: true,
+    }],
+    termsAndConditions: {
+      type: String,
+      trim: true,
+    },
+    category: {
+      type: String,
+      trim: true,
+    },
     discountType: {
       type: String,
       enum: DISCOUNT_TYPE,

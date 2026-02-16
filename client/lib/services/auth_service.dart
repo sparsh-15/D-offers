@@ -70,8 +70,9 @@ class AuthService {
     required String phone,
   }) async {
     final uri = Uri.parse('${ApiConfig.authUrl}/send-otp');
-    print('[AUTH] Sending OTP - Role: ${roleToString(role)}, Phone: ${phone.substring(0, 3)}***');
-    
+    print(
+        '[AUTH] Sending OTP - Role: ${roleToString(role)}, Phone: ${phone.substring(0, 3)}***');
+
     try {
       final resp = await _makeRequest(() => _client.post(
             uri,
@@ -81,16 +82,20 @@ class AuthService {
               'phone': phone,
             }),
           ));
-      
+
       if (resp.statusCode == 429) {
-        print('[AUTH] Rate limit exceeded (429) - Role: ${roleToString(role)}, Phone: ${phone.substring(0, 3)}***');
-        throw Exception('Too many login attempts. Please wait 15 minutes before trying again.');
+        print(
+            '[AUTH] Rate limit exceeded (429) - Role: ${roleToString(role)}, Phone: ${phone.substring(0, 3)}***');
+        throw Exception(
+            'Too many login attempts. Please wait 15 minutes before trying again.');
       }
-      
+
       _handleResponse(resp);
-      print('[AUTH] OTP sent successfully - Role: ${roleToString(role)}, Phone: ${phone.substring(0, 3)}***');
+      print(
+          '[AUTH] OTP sent successfully - Role: ${roleToString(role)}, Phone: ${phone.substring(0, 3)}***');
     } catch (e) {
-      print('[AUTH] sendOtp error - Role: ${roleToString(role)}, Phone: ${phone.substring(0, 3)}***, Error: $e');
+      print(
+          '[AUTH] sendOtp error - Role: ${roleToString(role)}, Phone: ${phone.substring(0, 3)}***, Error: $e');
       rethrow;
     }
   }
@@ -101,8 +106,9 @@ class AuthService {
     required String otp,
   }) async {
     final uri = Uri.parse('${ApiConfig.authUrl}/verify-otp');
-    print('[AUTH] Verifying OTP - Role: ${roleToString(role)}, Phone: ${phone.substring(0, 3)}***');
-    
+    print(
+        '[AUTH] Verifying OTP - Role: ${roleToString(role)}, Phone: ${phone.substring(0, 3)}***');
+
     try {
       final resp = await _makeRequest(() => _client.post(
             uri,
@@ -113,12 +119,14 @@ class AuthService {
               'otp': otp,
             }),
           ));
-      
+
       if (resp.statusCode == 429) {
-        print('[AUTH] Rate limit exceeded (429) during OTP verification - Role: ${roleToString(role)}, Phone: ${phone.substring(0, 3)}***');
-        throw Exception('Too many verification attempts. Please wait 15 minutes before trying again.');
+        print(
+            '[AUTH] Rate limit exceeded (429) during OTP verification - Role: ${roleToString(role)}, Phone: ${phone.substring(0, 3)}***');
+        throw Exception(
+            'Too many verification attempts. Please wait 15 minutes before trying again.');
       }
-      
+
       final data = _handleResponse(resp) as Map<String, dynamic>;
       final token = data['token']?.toString();
       if (token == null) {
@@ -126,12 +134,15 @@ class AuthService {
         throw Exception('Token not returned from server');
       }
       AuthStore.token = token;
-      print('[AUTH] OTP verified successfully - Role: ${roleToString(role)}, Phone: ${phone.substring(0, 3)}***');
+      print(
+          '[AUTH] OTP verified successfully - Role: ${roleToString(role)}, Phone: ${phone.substring(0, 3)}***');
       // Fetch full user profile via /me so we get approvalStatus etc.
       AuthStore.currentUser = await fetchCurrentUser();
-      print('[AUTH] User profile fetched successfully - Role: ${roleToString(role)}');
+      print(
+          '[AUTH] User profile fetched successfully - Role: ${roleToString(role)}');
     } catch (e) {
-      print('[AUTH] verifyOtp error - Role: ${roleToString(role)}, Phone: ${phone.substring(0, 3)}***, Error: $e');
+      print(
+          '[AUTH] verifyOtp error - Role: ${roleToString(role)}, Phone: ${phone.substring(0, 3)}***, Error: $e');
       rethrow;
     }
   }
@@ -171,8 +182,7 @@ class AuthService {
       body: jsonEncode(body),
     );
     final data = _handleResponse(resp) as Map<String, dynamic>;
-    final user =
-        UserModel.fromJson(data['user'] as Map<String, dynamic>);
+    final user = UserModel.fromJson(data['user'] as Map<String, dynamic>);
     AuthStore.currentUser = user;
     return user;
   }
@@ -264,9 +274,10 @@ class AuthService {
     }
     final uri = Uri.parse('${ApiConfig.baseUrl}/customer/offers')
         .replace(queryParameters: params.isEmpty ? null : params);
-    
-    print('[CUSTOMER_OFFERS] Fetching offers - URL: $uri, Filters: ${params.isEmpty ? 'none' : params}');
-    
+
+    print(
+        '[CUSTOMER_OFFERS] Fetching offers - URL: $uri, Filters: ${params.isEmpty ? 'none' : params}');
+
     try {
       final resp = await _makeRequest(() => _client.get(
             uri,
@@ -274,38 +285,37 @@ class AuthService {
               'Authorization': 'Bearer $token',
             },
           ));
-      
+
       if (resp.statusCode == 429) {
         print('[CUSTOMER_OFFERS] Rate limit exceeded (429)');
-        throw Exception('Too many requests. Please wait a moment and try again.');
+        throw Exception(
+            'Too many requests. Please wait a moment and try again.');
       }
-      
+
       print('[CUSTOMER_OFFERS] Response status: ${resp.statusCode}');
       print('[CUSTOMER_OFFERS] Response body: ${resp.body}');
-      
+
       final data = _handleResponse(resp) as Map<String, dynamic>;
       print('[CUSTOMER_OFFERS] Parsed data keys: ${data.keys.toList()}');
       print('[CUSTOMER_OFFERS] Data content: $data');
-      
+
       final list = (data['offers'] as List<dynamic>? ?? []);
       print('[CUSTOMER_OFFERS] Received ${list.length} offers');
-      
+
       if (list.isNotEmpty) {
         print('[CUSTOMER_OFFERS] First offer sample: ${list[0]}');
       }
-      
-      final offers = list
-          .map((e) {
-            try {
-              print('[CUSTOMER_OFFERS] Parsing offer: $e');
-              return OfferModel.fromJson(e as Map<String, dynamic>);
-            } catch (parseError) {
-              print('[CUSTOMER_OFFERS] Error parsing offer: $parseError, Data: $e');
-              rethrow;
-            }
-          })
-          .toList();
-      
+
+      final offers = list.map((e) {
+        try {
+          print('[CUSTOMER_OFFERS] Parsing offer: $e');
+          return OfferModel.fromJson(e as Map<String, dynamic>);
+        } catch (parseError) {
+          print('[CUSTOMER_OFFERS] Error parsing offer: $parseError, Data: $e');
+          rethrow;
+        }
+      }).toList();
+
       print('[CUSTOMER_OFFERS] Successfully parsed ${offers.length} offers');
       return offers;
     } catch (e) {
@@ -357,6 +367,9 @@ class AuthService {
     dynamic discountValue,
     DateTime? validFrom,
     DateTime? validTo,
+    List<String>? photos,
+    String? termsAndConditions,
+    String? category,
   }) async {
     final token = AuthStore.token;
     if (token == null) throw Exception('Not authenticated');
@@ -374,6 +387,10 @@ class AuthService {
         if (discountValue != null) 'discountValue': discountValue,
         if (validFrom != null) 'validFrom': validFrom.toIso8601String(),
         if (validTo != null) 'validTo': validTo.toIso8601String(),
+        if (photos != null) 'photos': photos,
+        if (termsAndConditions != null)
+          'termsAndConditions': termsAndConditions,
+        if (category != null) 'category': category,
       }),
     );
     final data = _handleResponse(resp) as Map<String, dynamic>;
@@ -381,7 +398,7 @@ class AuthService {
   }
 
   Future<OfferModel> updateOffer({
-    required String id,
+    required String offerId,
     String? title,
     String? description,
     String? discountType,
@@ -389,10 +406,13 @@ class AuthService {
     DateTime? validFrom,
     DateTime? validTo,
     String? status,
+    List<String>? photos,
+    String? termsAndConditions,
+    String? category,
   }) async {
     final token = AuthStore.token;
     if (token == null) throw Exception('Not authenticated');
-    final uri = Uri.parse('${ApiConfig.shopkeeperUrl}/offers/$id');
+    final uri = Uri.parse('${ApiConfig.shopkeeperUrl}/offers/$offerId');
     final resp = await _client.put(
       uri,
       headers: {
@@ -407,16 +427,20 @@ class AuthService {
         if (validFrom != null) 'validFrom': validFrom.toIso8601String(),
         if (validTo != null) 'validTo': validTo.toIso8601String(),
         if (status != null) 'status': status,
+        if (photos != null) 'photos': photos,
+        if (termsAndConditions != null)
+          'termsAndConditions': termsAndConditions,
+        if (category != null) 'category': category,
       }),
     );
     final data = _handleResponse(resp) as Map<String, dynamic>;
     return OfferModel.fromJson(data['offer'] as Map<String, dynamic>);
   }
 
-  Future<void> deleteOffer(String id) async {
+  Future<void> deleteOffer(String offerId) async {
     final token = AuthStore.token;
     if (token == null) throw Exception('Not authenticated');
-    final uri = Uri.parse('${ApiConfig.shopkeeperUrl}/offers/$id');
+    final uri = Uri.parse('${ApiConfig.shopkeeperUrl}/offers/$offerId');
     final resp = await _client.delete(
       uri,
       headers: {
@@ -531,16 +555,18 @@ class AuthService {
 
   Object _handleResponse(http.Response resp) {
     if (resp.statusCode < 200 || resp.statusCode >= 300) {
-      print('[AUTH] HTTP Error - Status: ${resp.statusCode}, Body: ${resp.body}');
+      print(
+          '[AUTH] HTTP Error - Status: ${resp.statusCode}, Body: ${resp.body}');
       try {
         final data = jsonDecode(resp.body);
         final message = data['message']?.toString() ?? 'Request failed';
-        
+
         // Handle 429 specifically
         if (resp.statusCode == 429) {
-          throw Exception('Too many attempts. Please wait 15 minutes before trying again.');
+          throw Exception(
+              'Too many attempts. Please wait 15 minutes before trying again.');
         }
-        
+
         throw Exception(message);
       } catch (e) {
         if (e is Exception) rethrow;

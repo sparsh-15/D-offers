@@ -9,7 +9,7 @@ function canAccessOffer(offer, req) {
 
 async function create(req, res, next) {
   try {
-    const { title, description, discountType, discountValue, validFrom, validTo } = req.body;
+    const { title, description, discountType, discountValue, validFrom, validTo, photos, termsAndConditions, category } = req.body;
     if (!title || typeof title !== 'string' || !title.trim()) {
       const err = new Error('title is required');
       err.statusCode = 400;
@@ -19,6 +19,9 @@ async function create(req, res, next) {
       shopkeeperId: req.user.userId,
       title: title.trim(),
       description: description != null ? String(description).trim() : '',
+      photos: Array.isArray(photos) ? photos.filter(p => p && typeof p === 'string') : [],
+      termsAndConditions: termsAndConditions != null ? String(termsAndConditions).trim() : '',
+      category: category != null ? String(category).trim() : '',
       discountType: discountType || 'percentage',
       discountValue: discountValue != null ? discountValue : null,
       validFrom: validFrom ? new Date(validFrom) : null,
@@ -32,6 +35,9 @@ async function create(req, res, next) {
         shopkeeperId: offer.shopkeeperId,
         title: offer.title,
         description: offer.description,
+        photos: offer.photos || [],
+        termsAndConditions: offer.termsAndConditions || '',
+        category: offer.category || '',
         discountType: offer.discountType,
         discountValue: offer.discountValue,
         validFrom: offer.validFrom,
@@ -84,6 +90,9 @@ async function list(req, res, next) {
           shopName: shopNameMap[skId] || null,
           title: o.title,
           description: o.description,
+          photos: o.photos || [],
+          termsAndConditions: o.termsAndConditions || '',
+          category: o.category || '',
           discountType: o.discountType,
           discountValue: o.discountValue,
           validFrom: o.validFrom,
@@ -126,6 +135,9 @@ async function getOne(req, res, next) {
         shopkeeperId: offer.shopkeeperId,
         title: offer.title,
         description: offer.description,
+        photos: offer.photos || [],
+        termsAndConditions: offer.termsAndConditions || '',
+        category: offer.category || '',
         discountType: offer.discountType,
         discountValue: offer.discountValue,
         validFrom: offer.validFrom,
@@ -144,7 +156,7 @@ async function getOne(req, res, next) {
 async function update(req, res, next) {
   try {
     const { id } = req.params;
-    const { title, description, discountType, discountValue, validFrom, validTo, status } = req.body;
+    const { title, description, discountType, discountValue, validFrom, validTo, status, photos, termsAndConditions, category } = req.body;
     if (!mongoose.Types.ObjectId.isValid(id)) {
       const err = new Error('Invalid offer id');
       err.statusCode = 400;
@@ -163,6 +175,9 @@ async function update(req, res, next) {
     }
     if (title !== undefined) offer.title = String(title).trim();
     if (description !== undefined) offer.description = String(description).trim();
+    if (photos !== undefined) offer.photos = Array.isArray(photos) ? photos.filter(p => p && typeof p === 'string') : [];
+    if (termsAndConditions !== undefined) offer.termsAndConditions = String(termsAndConditions).trim();
+    if (category !== undefined) offer.category = String(category).trim();
     if (discountType !== undefined) offer.discountType = discountType;
     if (discountValue !== undefined) offer.discountValue = discountValue;
     if (validFrom !== undefined) offer.validFrom = validFrom ? new Date(validFrom) : null;
@@ -176,6 +191,9 @@ async function update(req, res, next) {
         shopkeeperId: offer.shopkeeperId,
         title: offer.title,
         description: offer.description,
+        photos: offer.photos || [],
+        termsAndConditions: offer.termsAndConditions || '',
+        category: offer.category || '',
         discountType: offer.discountType,
         discountValue: offer.discountValue,
         validFrom: offer.validFrom,

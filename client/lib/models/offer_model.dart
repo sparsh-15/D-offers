@@ -4,6 +4,9 @@ class OfferModel {
   final String? shopName;
   final String title;
   final String description;
+  final List<String> photos;
+  final String termsAndConditions;
+  final String category;
   final String discountType;
   final dynamic discountValue;
   final DateTime? validFrom;
@@ -20,6 +23,9 @@ class OfferModel {
     this.shopName,
     required this.title,
     required this.description,
+    this.photos = const [],
+    this.termsAndConditions = '',
+    this.category = '',
     required this.discountType,
     required this.discountValue,
     required this.validFrom,
@@ -37,6 +43,9 @@ class OfferModel {
     String? shopName,
     String? title,
     String? description,
+    List<String>? photos,
+    String? termsAndConditions,
+    String? category,
     String? discountType,
     dynamic discountValue,
     DateTime? validFrom,
@@ -53,6 +62,9 @@ class OfferModel {
       shopName: shopName ?? this.shopName,
       title: title ?? this.title,
       description: description ?? this.description,
+      photos: photos ?? this.photos,
+      termsAndConditions: termsAndConditions ?? this.termsAndConditions,
+      category: category ?? this.category,
       discountType: discountType ?? this.discountType,
       discountValue: discountValue ?? this.discountValue,
       validFrom: validFrom ?? this.validFrom,
@@ -72,16 +84,28 @@ class OfferModel {
       shopName: json['shopName']?.toString(),
       title: json['title']?.toString() ?? '',
       description: json['description']?.toString() ?? '',
+      photos: json['photos'] != null
+          ? (json['photos'] as List).map((e) => e.toString()).toList()
+          : [],
+      termsAndConditions: json['termsAndConditions']?.toString() ?? '',
+      category: json['category']?.toString() ?? '',
       discountType: json['discountType']?.toString() ?? '',
       discountValue: json['discountValue'],
-      validFrom: json['validFrom'] != null ? DateTime.tryParse(json['validFrom'].toString()) : null,
-      validTo: json['validTo'] != null ? DateTime.tryParse(json['validTo'].toString()) : null,
+      validFrom: json['validFrom'] != null
+          ? DateTime.tryParse(json['validFrom'].toString())
+          : null,
+      validTo: json['validTo'] != null
+          ? DateTime.tryParse(json['validTo'].toString())
+          : null,
       status: json['status']?.toString() ?? '',
       likesCount: int.tryParse(json['likesCount']?.toString() ?? '0') ?? 0,
       isLiked: json['isLiked'] as bool? ?? false,
-      createdAt: json['createdAt'] != null ? DateTime.tryParse(json['createdAt'].toString()) : null,
-      updatedAt: json['updatedAt'] != null ? DateTime.tryParse(json['updatedAt'].toString()) : null,
+      createdAt: json['createdAt'] != null
+          ? DateTime.tryParse(json['createdAt'].toString())
+          : null,
+      updatedAt: json['updatedAt'] != null
+          ? DateTime.tryParse(json['updatedAt'].toString())
+          : null,
     );
   }
 }
-

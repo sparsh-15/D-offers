@@ -1,5 +1,3 @@
-import 'dart:ui' as ui;
-
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:animate_do/animate_do.dart';
@@ -7,12 +5,12 @@ import '../../core/constants/app_colors.dart';
 import '../../core/utils/theme_helper.dart';
 import '../../core/utils/dialog_helper.dart';
 import '../../widgets/gradient_card.dart';
-import '../../widgets/offer_banner_preview.dart';
 import '../../services/auth_service.dart';
 import '../../models/offer_model.dart';
 import 'shop_profile_body.dart';
 import '../../widgets/offer_card.dart';
 import '../common/offer_detail_screen.dart';
+import 'offer_details_screen.dart';
 
 class ShopDashboard extends StatefulWidget {
   const ShopDashboard({super.key});
@@ -23,19 +21,23 @@ class ShopDashboard extends StatefulWidget {
 
 class _ShopDashboardState extends State<ShopDashboard> {
   int _selectedIndex = 0;
-  final GlobalKey<_OffersManagementBodyState> _offersKey = GlobalKey();
+  VoidCallback? _refreshOffers;
 
-  final List<Widget> _screens = [];
+  late final List<Widget> _screens;
 
   @override
   void initState() {
     super.initState();
-    _screens.addAll([
+    _screens = [
       const ShopHomeTab(),
-      OffersManagementTab(key: _offersKey),
+      OffersManagementTab(
+        onRefreshCallbackSet: (callback) {
+          _refreshOffers = callback;
+        },
+      ),
       const LeadsTab(),
       const ShopProfileTab(),
-    ]);
+    ];
   }
 
   @override
@@ -72,7 +74,15 @@ class _ShopDashboardState extends State<ShopDashboard> {
         floatingActionButton: _selectedIndex == 1
             ? FloatingActionButton.extended(
                 onPressed: () {
-                  _offersKey.currentState?._openEditDialog(context);
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => OfferDetailsScreen(
+                        onSaved: () {
+                          _refreshOffers?.call();
+                        },
+                      ),
+                    ),
+                  );
                 },
                 icon: const Icon(Icons.add_rounded),
                 label: const Text('Add Offer'),
@@ -156,6 +166,8 @@ class _ShopHomeTabState extends State<ShopHomeTab> {
                       .where((o) => o.status == 'active')
                       .length
                       .toString();
+                  final totalLikes =
+                      offers.fold<int>(0, (sum, o) => sum + o.likesCount);
 
                   return Padding(
                     padding: const EdgeInsets.all(16.0),
@@ -182,6 +194,44 @@ class _ShopHomeTabState extends State<ShopHomeTab> {
                                   offers.length.toString(),
                                   Icons.list_alt_rounded,
                                   AppColors.accentGradient,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        FadeInDown(
+                          delay: const Duration(milliseconds: 100),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: _buildStatCard(
+                                  context,
+                                  'Total Likes',
+                                  totalLikes.toString(),
+                                  Icons.favorite_rounded,
+                                  const LinearGradient(
+                                    colors: [Colors.pink, Colors.red],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _buildStatCard(
+                                  context,
+                                  'Avg. Likes',
+                                  offers.isEmpty
+                                      ? '0'
+                                      : (totalLikes / offers.length)
+                                          .toStringAsFixed(1),
+                                  Icons.trending_up_rounded,
+                                  const LinearGradient(
+                                    colors: [Colors.orange, Colors.deepOrange],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
                                 ),
                               ),
                             ],
@@ -281,14 +331,38 @@ class _ShopHomeTabState extends State<ShopHomeTab> {
         title: Text(title),
         subtitle: Text(subtitle),
         trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16),
-        onTap: () {},
+        onTap: () {
+          if (title == 'Add New Offer') {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => OfferDetailsScreen(
+                  onSaved: () {
+                    setState(() {
+                      _offersFuture =
+                          AuthService.instance.getShopkeeperOffers();
+                    });
+                  },
+                ),
+              ),
+            );
+          } else if (title == 'View My Offers') {
+            // Switch to offers tab
+            final dashboardState =
+                context.findAncestorStateOfType<_ShopDashboardState>();
+            dashboardState?.setState(() {
+              dashboardState._selectedIndex = 1;
+            });
+          }
+        },
       ),
     );
   }
 }
 
 class OffersManagementTab extends StatelessWidget {
-  const OffersManagementTab({super.key});
+  final Function(VoidCallback)? onRefreshCallbackSet;
+
+  const OffersManagementTab({super.key, this.onRefreshCallbackSet});
 
   @override
   Widget build(BuildContext context) {
@@ -296,14 +370,18 @@ class OffersManagementTab extends StatelessWidget {
       decoration:
           BoxDecoration(gradient: ThemeHelper.getBackgroundGradient(context)),
       child: SafeArea(
-        child: _OffersManagementBody(key: key),
+        child: _OffersManagementBody(
+          onRefreshCallbackSet: onRefreshCallbackSet,
+        ),
       ),
     );
   }
 }
 
 class _OffersManagementBody extends StatefulWidget {
-  const _OffersManagementBody({super.key});
+  final Function(VoidCallback)? onRefreshCallbackSet;
+
+  const _OffersManagementBody({this.onRefreshCallbackSet});
 
   @override
   State<_OffersManagementBody> createState() => _OffersManagementBodyState();
@@ -316,6 +394,8 @@ class _OffersManagementBodyState extends State<_OffersManagementBody> {
   void initState() {
     super.initState();
     _future = AuthService.instance.getShopkeeperOffers();
+    // Register the refresh callback
+    widget.onRefreshCallbackSet?.call(_refresh);
   }
 
   Future<void> _refresh() async {
@@ -382,7 +462,14 @@ class _OffersManagementBodyState extends State<_OffersManagementBody> {
                                 ),
                               );
                             } else if (value == 'edit') {
-                              _openEditDialog(context, offer: o);
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => OfferDetailsScreen(
+                                    offer: o,
+                                    onSaved: _refresh,
+                                  ),
+                                ),
+                              );
                             } else if (value == 'delete') {
                               _deleteOffer(context, o);
                             }
@@ -412,9 +499,11 @@ class _OffersManagementBodyState extends State<_OffersManagementBody> {
                               value: 'delete',
                               child: Row(
                                 children: [
-                                  Icon(Icons.delete_rounded, size: 20, color: AppColors.error),
+                                  Icon(Icons.delete_rounded,
+                                      size: 20, color: AppColors.error),
                                   SizedBox(width: 12),
-                                  Text('Delete', style: TextStyle(color: AppColors.error)),
+                                  Text('Delete',
+                                      style: TextStyle(color: AppColors.error)),
                                 ],
                               ),
                             ),
@@ -430,213 +519,6 @@ class _OffersManagementBodyState extends State<_OffersManagementBody> {
         ),
       ],
     );
-  }
-
-  Future<void> _showGeneratedImage(
-    BuildContext context,
-    GlobalKey previewKey,
-    String title,
-    String discountType,
-    String discountValueStr,
-  ) async {
-    final boundary = previewKey.currentContext?.findRenderObject()
-        as RenderRepaintBoundary?;
-    if (boundary == null) {
-      if (context.mounted) {
-        DialogHelper.showErrorSnackBar(context, 'Preview not ready');
-      }
-      return;
-    }
-    try {
-      final image = await boundary.toImage(pixelRatio: 3.0);
-      final byteData =
-          await image.toByteData(format: ui.ImageByteFormat.png);
-      if (byteData == null || !context.mounted) return;
-      final bytes = byteData.buffer.asUint8List();
-      if (!context.mounted) return;
-      showDialog<void>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Generated offer image'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Image.memory(bytes, fit: BoxFit.contain),
-                const SizedBox(height: 8),
-                Text(
-                  'Use this image for your offer. You can take a screenshot to save it.',
-                  style: Theme.of(ctx).textTheme.bodySmall,
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Close'),
-            ),
-          ],
-        ),
-      );
-    } catch (e) {
-      if (context.mounted) {
-        DialogHelper.showErrorSnackBar(context, 'Could not generate image');
-      }
-    }
-  }
-
-  Future<void> _openEditDialog(BuildContext context,
-      {OfferModel? offer}) async {
-    final titleController = TextEditingController(text: offer?.title ?? '');
-    final descController =
-        TextEditingController(text: offer?.description ?? '');
-    String discountType = offer?.discountType.isNotEmpty == true
-        ? offer!.discountType
-        : 'percentage';
-    final discountController = TextEditingController(
-      text: offer?.discountValue?.toString() ?? '',
-    );
-    final previewKey = GlobalKey();
-
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: Text(offer == null ? 'Add Offer' : 'Edit Offer'),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextField(
-                      controller: titleController,
-                      decoration: const InputDecoration(labelText: 'Title'),
-                      onChanged: (_) => setDialogState(() {}),
-                    ),
-                    TextField(
-                      controller: descController,
-                      decoration: const InputDecoration(labelText: 'Description'),
-                      onChanged: (_) => setDialogState(() {}),
-                    ),
-                    const SizedBox(height: 8),
-                    DropdownButtonFormField<String>(
-                      value: discountType,
-                      decoration: const InputDecoration(labelText: 'Discount Type'),
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'percentage',
-                          child: Text('Percentage'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'fixed',
-                          child: Text('Fixed Amount'),
-                        ),
-                      ],
-                      onChanged: (value) {
-                        if (value != null) {
-                          setDialogState(() => discountType = value);
-                        }
-                      },
-                    ),
-                    TextField(
-                      controller: discountController,
-                      keyboardType: TextInputType.number,
-                      decoration:
-                          const InputDecoration(labelText: 'Discount Value'),
-                      onChanged: (_) => setDialogState(() {}),
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Offer preview',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    RepaintBoundary(
-                      key: previewKey,
-                      child: OfferBannerPreview(
-                        title: titleController.text,
-                        discountType: discountType,
-                        discountValue: discountController.text.isEmpty
-                            ? null
-                            : double.tryParse(discountController.text),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => _showGeneratedImage(
-                    context,
-                    previewKey,
-                    titleController.text,
-                    discountType,
-                    discountController.text,
-                  ),
-                  child: const Text('Generate image'),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  child: const Text('Cancel'),
-                ),
-                ElevatedButton(
-                  onPressed: () => Navigator.pop(context, true),
-                  child: const Text('Save'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-
-    if (result != true) return;
-    if (titleController.text.trim().isEmpty) {
-      DialogHelper.showErrorSnackBar(context, 'Title is required');
-      return;
-    }
-
-    try {
-      if (offer == null) {
-        await AuthService.instance.createOffer(
-          title: titleController.text.trim(),
-          description: descController.text.trim().isEmpty
-              ? null
-              : descController.text.trim(),
-          discountType: discountType,
-          discountValue: discountController.text.isEmpty
-              ? null
-              : double.tryParse(discountController.text) ??
-                  discountController.text,
-        );
-        if (!mounted) return;
-        DialogHelper.showSuccessSnackBar(context, 'Offer created');
-      } else {
-        await AuthService.instance.updateOffer(
-          id: offer.id,
-          title: titleController.text.trim(),
-          description: descController.text.trim().isEmpty
-              ? null
-              : descController.text.trim(),
-          discountType: discountType,
-          discountValue: discountController.text.isEmpty
-              ? null
-              : double.tryParse(discountController.text) ??
-                  discountController.text,
-        );
-        if (!mounted) return;
-        DialogHelper.showSuccessSnackBar(context, 'Offer updated');
-      }
-      await _refresh();
-    } catch (e) {
-      if (!mounted) return;
-      DialogHelper.showErrorSnackBar(context, e.toString());
-    }
   }
 
   Future<void> _deleteOffer(BuildContext context, OfferModel offer) async {
