@@ -1,6 +1,7 @@
 class OfferModel {
   final String id;
   final String shopkeeperId;
+  final String? shopName;
   final String title;
   final String description;
   final String discountType;
@@ -16,6 +17,7 @@ class OfferModel {
   OfferModel({
     required this.id,
     required this.shopkeeperId,
+    this.shopName,
     required this.title,
     required this.description,
     required this.discountType,
@@ -32,6 +34,7 @@ class OfferModel {
   OfferModel copyWith({
     String? id,
     String? shopkeeperId,
+    String? shopName,
     String? title,
     String? description,
     String? discountType,
@@ -47,6 +50,7 @@ class OfferModel {
     return OfferModel(
       id: id ?? this.id,
       shopkeeperId: shopkeeperId ?? this.shopkeeperId,
+      shopName: shopName ?? this.shopName,
       title: title ?? this.title,
       description: description ?? this.description,
       discountType: discountType ?? this.discountType,
@@ -65,6 +69,7 @@ class OfferModel {
     return OfferModel(
       id: json['id']?.toString() ?? '',
       shopkeeperId: json['shopkeeperId']?.toString() ?? '',
+      shopName: json['shopName']?.toString(),
       title: json['title']?.toString() ?? '',
       description: json['description']?.toString() ?? '',
       discountType: json['discountType']?.toString() ?? '',

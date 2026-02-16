@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../core/constants/app_colors.dart';
 import '../models/offer_model.dart';
+import '../screens/common/offer_detail_screen.dart';
+import '../screens/customer/customer_chat_bot_screen.dart';
 import '../services/auth_service.dart';
 import '../core/utils/dialog_helper.dart';
+import 'offer_banner_preview.dart';
 
 class OfferCard extends StatefulWidget {
   final OfferModel offer;
@@ -11,6 +14,8 @@ class OfferCard extends StatefulWidget {
   final Widget? trailing;
   final bool showLikes;
   final VoidCallback? onLikeChanged;
+  /// When true, tapping the card opens the offer detail screen (customer flow).
+  final bool openDetailOnTap;
 
   const OfferCard({
     super.key,
@@ -19,6 +24,7 @@ class OfferCard extends StatefulWidget {
     this.trailing,
     this.showLikes = true,
     this.onLikeChanged,
+    this.openDetailOnTap = true,
   });
 
   @override
@@ -37,7 +43,7 @@ class _OfferCardState extends State<OfferCard> with SingleTickerProviderStateMix
     super.initState();
     _isLiked = widget.offer.isLiked;
     _likesCount = widget.offer.likesCount;
-    
+
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 200),
       vsync: this,
@@ -84,11 +90,8 @@ class _OfferCardState extends State<OfferCard> with SingleTickerProviderStateMix
         _likesCount = result['likesCount'] as int;
         _isToggling = false;
       });
-      if (widget.onLikeChanged != null) {
-        widget.onLikeChanged!();
-      }
+      widget.onLikeChanged?.call();
     } catch (e) {
-      // Revert on error
       setState(() {
         _isLiked = !_isLiked;
         _likesCount += _isLiked ? -1 : 1;
@@ -97,6 +100,30 @@ class _OfferCardState extends State<OfferCard> with SingleTickerProviderStateMix
       if (mounted) {
         DialogHelper.showErrorSnackBar(context, 'Failed to update like: $e');
       }
+    }
+  }
+
+  void _handleTap() {
+    if (widget.onTap != null) {
+      widget.onTap!();
+      return;
+    }
+    if (widget.openDetailOnTap) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => OfferDetailScreen(
+            offer: widget.offer,
+            onLikeChanged: widget.onLikeChanged,
+            onChatPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const CustomerChatBotScreen(),
+                ),
+              );
+            },
+          ),
+        ),
+      );
     }
   }
 
@@ -126,125 +153,119 @@ class _OfferCardState extends State<OfferCard> with SingleTickerProviderStateMix
         statusColor = AppColors.success;
     }
 
+    final shopDisplayName = widget.offer.shopName?.trim().isNotEmpty == true
+        ? widget.offer.shopName!
+        : 'Shop';
+
     return Card(
       elevation: 2,
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
       ),
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: widget.onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+        onTap: _handleTap,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            OfferBannerPreview(
+              title: widget.offer.title,
+              discountType: widget.offer.discountType,
+              discountValue: widget.offer.discountValue,
+              width: double.infinity,
+              height: 140,
+            ),
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: 50,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      gradient: AppColors.primaryGradient,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(
-                      Icons.local_offer_rounded,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.offer.title,
-                          maxLines: 2,
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.store_rounded,
+                        size: 18,
+                        color: AppColors.primary,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          shopDisplayName,
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: theme.textTheme.bodyMedium?.color,
+                          ),
+                          maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.titleMedium
-                              ?.copyWith(fontWeight: FontWeight.bold),
                         ),
-                        if (widget.offer.description.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 4.0),
-                            child: Text(
-                              widget.offer.description,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
+                      ),
+                      if (widget.trailing != null)
+                        widget.trailing!
+                      else if (widget.showLikes)
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            ScaleTransition(
+                              scale: _scaleAnimation,
+                              child: IconButton(
+                                icon: Icon(
+                                  _isLiked ? Icons.favorite : Icons.favorite_border,
+                                  color: _isLiked ? Colors.red : (isDark ? Colors.grey : Colors.grey[600]),
+                                  size: 22,
+                                ),
+                                onPressed: _toggleLike,
+                                tooltip: _isLiked ? 'Unlike' : 'Like',
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(
+                                  minWidth: 36,
+                                  minHeight: 36,
+                                ),
+                              ),
+                            ),
+                            Text(
+                              '$_likesCount',
                               style: theme.textTheme.bodySmall,
                             ),
-                          ),
-                      ],
-                    ),
-                  ),
-                  if (widget.trailing != null) 
-                    widget.trailing!
-                  else
-                    ScaleTransition(
-                      scale: _scaleAnimation,
-                      child: IconButton(
-                        icon: Icon(
-                          _isLiked ? Icons.favorite : Icons.favorite_border,
-                          color: _isLiked ? Colors.red : (isDark ? Colors.grey : Colors.grey[600]),
+                          ],
                         ),
-                        onPressed: _toggleLike,
-                        tooltip: _isLiked ? 'Unlike' : 'Like',
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 4,
-                children: [
-                  Chip(
-                    label: Text(
-                      discountLabel,
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                    ),
-                    backgroundColor: AppColors.primary,
-                    visualDensity: VisualDensity.compact,
+                    ],
                   ),
-                  Chip(
-                    label: Text(
-                      widget.offer.status.toUpperCase(),
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                    backgroundColor: statusColor,
-                    visualDensity: VisualDensity.compact,
-                  ),
-                  if (widget.showLikes)
-                    Chip(
-                      label: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.favorite,
-                            size: 14,
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: [
+                      Chip(
+                        label: Text(
+                          discountLabel,
+                          style: const TextStyle(
                             color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
                           ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '$_likesCount',
-                            style: const TextStyle(color: Colors.white),
-                          ),
-                        ],
+                        ),
+                        backgroundColor: AppColors.primary,
+                        visualDensity: VisualDensity.compact,
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
                       ),
-                      backgroundColor:
-                          isDark ? AppColors.surface : AppColors.accent,
-                      visualDensity: VisualDensity.compact,
-                    ),
+                      Chip(
+                        label: Text(
+                          widget.offer.status.toUpperCase(),
+                          style: const TextStyle(color: Colors.white, fontSize: 10),
+                        ),
+                        backgroundColor: statusColor,
+                        visualDensity: VisualDensity.compact,
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 0),
+                      ),
+                    ],
+                  ),
                 ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
-

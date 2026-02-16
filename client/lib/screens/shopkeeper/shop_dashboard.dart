@@ -12,6 +12,7 @@ import '../../services/auth_service.dart';
 import '../../models/offer_model.dart';
 import 'shop_profile_body.dart';
 import '../../widgets/offer_card.dart';
+import '../common/offer_detail_screen.dart';
 
 class ShopDashboard extends StatefulWidget {
   const ShopDashboard({super.key});
@@ -367,22 +368,55 @@ class _OffersManagementBodyState extends State<_OffersManagementBody> {
                       delay: Duration(milliseconds: 100 * index),
                       child: OfferCard(
                         offer: o,
-                        trailing: PopupMenuButton(
+                        showLikes: false,
+                        openDetailOnTap: false,
+                        trailing: PopupMenuButton<String>(
                           onSelected: (value) {
-                            if (value == 'edit') {
+                            if (value == 'view') {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => OfferDetailScreen(
+                                    offer: o,
+                                    onChatPressed: null,
+                                  ),
+                                ),
+                              );
+                            } else if (value == 'edit') {
                               _openEditDialog(context, offer: o);
                             } else if (value == 'delete') {
                               _deleteOffer(context, o);
                             }
                           },
-                          itemBuilder: (context) => const [
-                            PopupMenuItem(
-                              value: 'edit',
-                              child: Text('Edit'),
+                          itemBuilder: (context) => [
+                            const PopupMenuItem(
+                              value: 'view',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.visibility_rounded, size: 20),
+                                  SizedBox(width: 12),
+                                  Text('View'),
+                                ],
+                              ),
                             ),
-                            PopupMenuItem(
+                            const PopupMenuItem(
+                              value: 'edit',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.edit_rounded, size: 20),
+                                  SizedBox(width: 12),
+                                  Text('Edit'),
+                                ],
+                              ),
+                            ),
+                            const PopupMenuItem(
                               value: 'delete',
-                              child: Text('Delete'),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.delete_rounded, size: 20, color: AppColors.error),
+                                  SizedBox(width: 12),
+                                  Text('Delete', style: TextStyle(color: AppColors.error)),
+                                ],
+                              ),
                             ),
                           ],
                         ),

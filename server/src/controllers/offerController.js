@@ -1,4 +1,5 @@
 const Offer = require('../models/Offer');
+const ShopkeeperProfile = require('../models/ShopkeeperProfile');
 const mongoose = require('mongoose');
 
 function canAccessOffer(offer, req) {
@@ -61,22 +62,38 @@ async function list(req, res, next) {
       .skip(skipNum)
       .limit(limitNum)
       .lean();
+
+    let shopNameMap = {};
+    const skIds = [...new Set(offers.map((o) => o.shopkeeperId).filter(Boolean))];
+    if (skIds.length > 0) {
+      const profiles = await ShopkeeperProfile.find({ userId: { $in: skIds } })
+        .select('userId shopName')
+        .lean();
+      profiles.forEach((p) => {
+        shopNameMap[String(p.userId)] = p.shopName || 'Shop';
+      });
+    }
+
     res.status(200).json({
       success: true,
-      offers: offers.map((o) => ({
-        id: o._id,
-        shopkeeperId: o.shopkeeperId,
-        title: o.title,
-        description: o.description,
-        discountType: o.discountType,
-        discountValue: o.discountValue,
-        validFrom: o.validFrom,
-        validTo: o.validTo,
-        status: o.status,
-        likesCount: o.likesCount,
-        createdAt: o.createdAt,
-        updatedAt: o.updatedAt,
-      })),
+      offers: offers.map((o) => {
+        const skId = o.shopkeeperId?.toString() || o.shopkeeperId;
+        return {
+          id: o._id,
+          shopkeeperId: skId,
+          shopName: shopNameMap[skId] || null,
+          title: o.title,
+          description: o.description,
+          discountType: o.discountType,
+          discountValue: o.discountValue,
+          validFrom: o.validFrom,
+          validTo: o.validTo,
+          status: o.status,
+          likesCount: o.likesCount,
+          createdAt: o.createdAt,
+          updatedAt: o.updatedAt,
+        };
+      }),
     });
   } catch (err) {
     next(err);

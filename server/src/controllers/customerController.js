@@ -120,14 +120,25 @@ async function listOffers(req, res, next) {
     const userId = req.user.userId;
     const userIdStr = String(userId);
 
+    const shopkeeperIds = [...new Set(offers.map((o) => o.shopkeeperId).filter(Boolean))];
+    const profiles = await ShopkeeperProfile.find({ userId: { $in: shopkeeperIds } })
+      .select('userId shopName')
+      .lean();
+    const shopNameByUserId = {};
+    profiles.forEach((p) => {
+      shopNameByUserId[String(p.userId)] = p.shopName || 'Shop';
+    });
+
     res.status(200).json({
       success: true,
       offers: offers.map((o) => {
         const likedByArray = o.likedBy || [];
         const isLiked = likedByArray.some(id => String(id) === userIdStr);
+        const skId = o.shopkeeperId?.toString() || o.shopkeeperId;
         return {
           id: o._id?.toString() || o._id,
-          shopkeeperId: o.shopkeeperId?.toString() || o.shopkeeperId,
+          shopkeeperId: skId,
+          shopName: shopNameByUserId[skId] || null,
           title: o.title || '',
           description: o.description || '',
           discountType: o.discountType || '',
@@ -206,13 +217,24 @@ async function getLikedOffers(req, res, next) {
       .sort({ createdAt: -1 })
       .lean();
 
+    const shopkeeperIds = [...new Set(offers.map((o) => o.shopkeeperId).filter(Boolean))];
+    const profiles = await ShopkeeperProfile.find({ userId: { $in: shopkeeperIds } })
+      .select('userId shopName')
+      .lean();
+    const shopNameByUserId = {};
+    profiles.forEach((p) => {
+      shopNameByUserId[String(p.userId)] = p.shopName || 'Shop';
+    });
+
     res.status(200).json({
       success: true,
       offers: offers.map((o) => {
         const likedByArray = o.likedBy || [];
+        const skId = o.shopkeeperId?.toString() || o.shopkeeperId;
         return {
           id: o._id?.toString() || o._id,
-          shopkeeperId: o.shopkeeperId?.toString() || o.shopkeeperId,
+          shopkeeperId: skId,
+          shopName: shopNameByUserId[skId] || null,
           title: o.title || '',
           description: o.description || '',
           discountType: o.discountType || '',
