@@ -1,24 +1,41 @@
 const express = require('express');
 const authMiddleware = require('../middleware/auth');
-const { requireRole } = require('../middleware/roleCheck');
-const { requireActiveSubscription, requireOnboardingComplete } = require('../middleware/subscriptionCheck');
+const { requireRole } = require('../middleware/roleAuth');
+const {
+  requireActiveSubscription,
+  checkSubscriptionStatus,
+  checkOfferLimit,
+} = require('../middleware/subscriptionCheck');
 const shopkeeperProfileController = require('../controllers/shopkeeperProfileController');
 const offerController = require('../controllers/offerController');
+const subscriptionPlanController = require('../controllers/subscriptionPlanController');
 
 const router = express.Router();
 
 router.use(authMiddleware);
-router.use(requireRole(['shopkeeper', 'super_admin', 'subadmin']));
+router.use(requireRole('shopkeeper', 'super_admin', 'subadmin'));
 
 // Profile routes - accessible without subscription (needed for onboarding)
 router.get('/profile', shopkeeperProfileController.getProfile);
 router.put('/profile', shopkeeperProfileController.upsertProfile);
 
-// Offer routes - require onboarding complete and active subscription
-router.post('/offers', requireOnboardingComplete, requireActiveSubscription, offerController.create);
-router.get('/offers', requireOnboardingComplete, requireActiveSubscription, offerController.list);
-router.get('/offers/:id', requireOnboardingComplete, requireActiveSubscription, offerController.getOne);
-router.put('/offers/:id', requireOnboardingComplete, requireActiveSubscription, offerController.update);
-router.delete('/offers/:id', requireOnboardingComplete, requireActiveSubscription, offerController.remove);
+// Subscription plan viewing (for shopkeepers to see available plans)
+router.get('/plans', subscriptionPlanController.getAllPlans);
+router.get('/plans/recommend', subscriptionPlanController.getRecommendedPlans);
+
+// Dashboard - check subscription status but don't block
+router.get('/dashboard', checkSubscriptionStatus, shopkeeperProfileController.getDashboard);
+
+// Offer routes - require active subscription
+router.post(
+  '/offers',
+  requireActiveSubscription,
+  checkOfferLimit,
+  offerController.create
+);
+router.get('/offers', requireActiveSubscription, offerController.list);
+router.get('/offers/:id', requireActiveSubscription, offerController.getOne);
+router.put('/offers/:id', requireActiveSubscription, offerController.update);
+router.delete('/offers/:id', requireActiveSubscription, offerController.remove);
 
 module.exports = router;
