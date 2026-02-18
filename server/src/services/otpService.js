@@ -55,7 +55,7 @@ async function sendOtp(phone, role, signupData = {}) {
     err.statusCode = 400;
     throw err;
   }
-  if (!['customer', 'shopkeeper', 'admin'].includes(role)) {
+  if (!config.ROLES.includes(role)) {
     const err = new Error('Invalid role');
     err.statusCode = 400;
     throw err;
@@ -92,8 +92,10 @@ async function sendOtp(phone, role, signupData = {}) {
   }
 
   // This is a SIGNUP attempt
-  if (role === 'admin') {
-    const err = new Error('Cannot signup as admin');
+  // Prevent signup for admin roles
+  const adminRoles = ['super_admin', 'subadmin', 'company_sales_agent', 'ssa'];
+  if (adminRoles.includes(role)) {
+    const err = new Error('Cannot signup with this role. Contact administrator.');
     err.statusCode = 403;
     throw err;
   }
@@ -162,7 +164,7 @@ async function verifyOtp(phone, otp, role) {
     err.statusCode = 400;
     throw err;
   }
-  if (!['customer', 'shopkeeper', 'admin'].includes(role)) {
+  if (!config.ROLES.includes(role)) {
     const err = new Error('Invalid role');
     err.statusCode = 400;
     throw err;

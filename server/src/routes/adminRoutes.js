@@ -1,12 +1,12 @@
 const express = require('express');
 const authMiddleware = require('../middleware/auth');
-const { requireRole } = require('../middleware/roleCheck');
+const { requireAdmin } = require('../middleware/roleCheck');
 const adminController = require('../controllers/adminController');
 
 const router = express.Router();
 
 router.use(authMiddleware);
-router.use(requireRole(['admin']));
+router.use(requireAdmin); // Allows super_admin and subadmin
 
 router.get('/stats', adminController.getStats);
 router.get('/users', adminController.listUsers);

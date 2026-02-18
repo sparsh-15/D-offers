@@ -1,6 +1,13 @@
 require('dotenv').config();
 
-const ROLES = ['shopkeeper', 'customer', 'admin'];
+const ROLES = [
+  'super_admin',
+  'subadmin',
+  'company_sales_agent',
+  'ssa', // Sales Service Agent
+  'shopkeeper',
+  'customer'
+];
 
 module.exports = {
   port: process.env.PORT || 3000,

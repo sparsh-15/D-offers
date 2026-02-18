@@ -7,6 +7,9 @@
     "start": "node index.js",
     "dev": "nodemon index.js",
     "seed:admin": "node scripts/seedAdmin.js",
+    "migrate:admin": "node scripts/migrate-phase1.js",
+    "create:superadmin": "node scripts/create-super-admin.js",
+    "test:superadmin": "node scripts/test-super-admin.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

@@ -3,7 +3,8 @@ const ShopkeeperProfile = require('../models/ShopkeeperProfile');
 const mongoose = require('mongoose');
 
 function canAccessOffer(offer, req) {
-  if (req.user.role === 'admin') return true;
+  const adminRoles = ['super_admin', 'subadmin'];
+  if (adminRoles.includes(req.user.role)) return true;
   return offer.shopkeeperId && String(offer.shopkeeperId) === String(req.user.userId);
 }
 
@@ -57,7 +58,8 @@ async function list(req, res, next) {
   try {
     const { status, limit, skip } = req.query;
     const filter = {};
-    if (req.user.role !== 'admin') {
+    const adminRoles = ['super_admin', 'subadmin'];
+    if (!adminRoles.includes(req.user.role)) {
       filter.shopkeeperId = req.user.userId;
     }
     if (status) filter.status = status;

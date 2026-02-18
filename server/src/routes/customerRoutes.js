@@ -6,7 +6,7 @@ const customerController = require('../controllers/customerController');
 const router = express.Router();
 
 router.use(authMiddleware);
-router.use(requireRole(['customer', 'admin']));
+router.use(requireRole(['customer', 'super_admin', 'subadmin']));
 
 router.get('/offers', customerController.listOffers);
 router.post('/offers/:id/like', customerController.toggleLike);

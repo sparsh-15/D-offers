@@ -8,7 +8,7 @@ const router = express.Router();
 
 // Protect all upload routes - only authenticated shopkeepers and admins
 router.use(authMiddleware);
-router.use(requireRole(['shopkeeper', 'admin']));
+router.use(requireRole(['shopkeeper', 'super_admin', 'subadmin']));
 
 // Upload single image
 router.post('/image', upload.single('image'), uploadController.uploadImage);

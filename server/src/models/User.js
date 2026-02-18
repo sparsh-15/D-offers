@@ -45,10 +45,20 @@ const userSchema = new mongoose.Schema(
       type: String,
       enum: APPROVAL_STATUS,
       default: function () {
-        // customers and admin are effectively always approved
+        // Shopkeepers require approval
         if (this.role === 'shopkeeper') return 'pending';
+        // All other roles are auto-approved
         return 'approved';
       },
+    },
+    // Additional fields for admin roles
+    permissions: {
+      type: [String],
+      default: [],
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
     },
   },
   {

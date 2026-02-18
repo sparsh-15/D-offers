@@ -41,7 +41,8 @@ const adminAuthLimiter = rateLimit({
 // Middleware to select rate limiter based on role
 const selectRateLimiter = (req, res, next) => {
   const role = req.body?.role;
-  if (role === 'admin') {
+  const adminRoles = ['super_admin', 'subadmin', 'company_sales_agent', 'ssa'];
+  if (adminRoles.includes(role)) {
     return adminAuthLimiter(req, res, next);
   }
   return authLimiter(req, res, next);

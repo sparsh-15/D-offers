@@ -4,7 +4,8 @@ const mongoose = require('mongoose');
 async function getProfile(req, res, next) {
   try {
     let userId = req.user.userId;
-    if (req.user.role === 'admin' && req.query.userId) {
+    const adminRoles = ['super_admin', 'subadmin'];
+    if (adminRoles.includes(req.user.role) && req.query.userId) {
       userId = req.query.userId;
     }
     if (!mongoose.Types.ObjectId.isValid(userId)) {
