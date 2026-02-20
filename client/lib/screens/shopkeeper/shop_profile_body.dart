@@ -4,6 +4,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/utils/dialog_helper.dart';
 import '../../services/auth_service.dart';
 import '../../services/auth_store.dart';
+import '../../services/subscription_service.dart';
 import '../../models/shopkeeper_profile_model.dart';
 import '../../widgets/theme_toggle.dart';
 import '../../widgets/profile_option_tile.dart';
@@ -132,11 +133,13 @@ class _ShopProfileBodyState extends State<ShopProfileBody> {
                       title: 'Logout',
                       isDestructive: true,
                       onTap: () async {
-                        final shouldLogout = await DialogHelper.showLogoutDialog(context);
+                        final shouldLogout =
+                            await DialogHelper.showLogoutDialog(context);
                         if (shouldLogout && context.mounted) {
                           AuthStore.clear();
                           Navigator.of(context).pushAndRemoveUntil(
-                            MaterialPageRoute(builder: (_) => const RoleSelectionScreen()),
+                            MaterialPageRoute(
+                                builder: (_) => const RoleSelectionScreen()),
                             (route) => false,
                           );
                           DialogHelper.showSuccessSnackBar(
@@ -208,12 +211,14 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
   late final TextEditingController pincodeController;
   late final TextEditingController cityController;
   late final TextEditingController stateController;
-  late final TextEditingController categoryController;
   late final TextEditingController descriptionController;
 
   bool _isLoadingPincode = false;
+  bool _isLoadingCategories = false;
   List<Map<String, dynamic>> _availableAreas = [];
+  List<Map<String, dynamic>> _categories = [];
   String? _selectedArea;
+  String? _selectedCategory;
 
   @override
   void initState() {
@@ -226,12 +231,13 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
         TextEditingController(text: widget.profile?.pincode ?? '');
     cityController = TextEditingController(text: widget.profile?.city ?? '');
     stateController = TextEditingController();
-    categoryController =
-        TextEditingController(text: widget.profile?.category ?? '');
     descriptionController =
         TextEditingController(text: widget.profile?.description ?? '');
 
+    // Category will be set after loading categories in _loadCategories()
+
     pincodeController.addListener(_onPincodeChanged);
+    _loadCategories();
   }
 
   @override
@@ -242,9 +248,40 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
     pincodeController.dispose();
     cityController.dispose();
     stateController.dispose();
-    categoryController.dispose();
     descriptionController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadCategories() async {
+    setState(() => _isLoadingCategories = true);
+    try {
+      final response = await SubscriptionService.instance.getCategories();
+      if (!mounted) return;
+      setState(() {
+        _categories = response;
+        _isLoadingCategories = false;
+
+        // Validate and set initial category
+        final profileCategory = widget.profile?.category;
+        if (profileCategory != null && profileCategory.isNotEmpty) {
+          // Check if the profile category exists in the loaded categories
+          final categoryExists = _categories.any(
+            (cat) => cat['value'] == profileCategory,
+          );
+
+          if (categoryExists) {
+            _selectedCategory = profileCategory;
+          } else {
+            // Profile has an old/invalid category value - reset to null
+            _selectedCategory = null;
+          }
+        }
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoadingCategories = false);
+      // Silently fail - user can still save without changing category
+    }
   }
 
   void _onPincodeChanged() {
@@ -364,10 +401,50 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
                 ),
               ),
             const SizedBox(height: 8),
-            TextField(
-              controller: categoryController,
-              decoration: const InputDecoration(labelText: 'Category'),
-            ),
+            _isLoadingCategories
+                ? const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    child: Center(
+                      child: CircularProgressIndicator(),
+                    ),
+                  )
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      DropdownButtonFormField<String>(
+                        value: _selectedCategory,
+                        decoration: const InputDecoration(
+                          labelText: 'Business Category',
+                          hintText: 'Select your business type',
+                        ),
+                        isExpanded: true,
+                        items: _categories.map((category) {
+                          return DropdownMenuItem<String>(
+                            value: category['value'],
+                            child: Text(category['label'] ?? category['value']),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedCategory = value;
+                          });
+                        },
+                      ),
+                      if (widget.profile?.category != null &&
+                          widget.profile!.category.isNotEmpty &&
+                          _selectedCategory == null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8, left: 12),
+                          child: Text(
+                            'Previous category "${widget.profile!.category}" is no longer valid. Please select a new category.',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.orange[700],
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
             const SizedBox(height: 8),
             TextField(
               controller: descriptionController,
@@ -388,7 +465,7 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
               'address': addressController.text,
               'pincode': pincodeController.text,
               'city': cityController.text,
-              'category': categoryController.text,
+              'category': _selectedCategory ?? '',
               'description': descriptionController.text,
             });
           },

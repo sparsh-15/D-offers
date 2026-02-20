@@ -9,6 +9,11 @@ const subscriptionGovernanceController = require('../controllers/subscriptionGov
 router.use(authMiddleware);
 router.use(requireSuperAdmin);
 
+// ============ Business Categories ============
+
+// Get all business categories
+router.get('/categories', subscriptionPlanController.getCategories);
+
 // ============ Subscription Plan Management ============
 
 // Create new plan

@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { BUSINESS_CATEGORY_LIST } = require('../config/businessCategories');
 
 const shopkeeperProfileSchema = new mongoose.Schema(
   {
@@ -27,6 +28,7 @@ const shopkeeperProfileSchema = new mongoose.Schema(
     },
     category: {
       type: String,
+      enum: BUSINESS_CATEGORY_LIST,
       trim: true,
     },
     description: {
@@ -40,5 +42,6 @@ const shopkeeperProfileSchema = new mongoose.Schema(
 );
 
 shopkeeperProfileSchema.index({ userId: 1 }, { unique: true });
+shopkeeperProfileSchema.index({ category: 1 });
 
 module.exports = mongoose.model('ShopkeeperProfile', shopkeeperProfileSchema);

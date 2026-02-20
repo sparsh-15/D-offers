@@ -73,7 +73,16 @@ async function sendOtp(phone, role, signupData = {}) {
       err.statusCode = 404;
       throw err;
     }
-    if (existingUser.role !== role) {
+    
+    // Allow any admin role to login with any admin role request
+    const adminRoles = ['super_admin', 'subadmin', 'company_sales_agent', 'ssa'];
+    const isAdminRequest = adminRoles.includes(role);
+    const isAdminUser = adminRoles.includes(existingUser.role);
+    
+    if (isAdminRequest && isAdminUser) {
+      // Both are admin roles - allow login
+    } else if (existingUser.role !== role) {
+      // Non-admin roles must match exactly
       const err = new Error(`This phone is registered as ${existingUser.role}`);
       err.statusCode = 400;
       throw err;
@@ -176,7 +185,16 @@ async function verifyOtp(phone, otp, role) {
     err.statusCode = 404;
     throw err;
   }
-  if (user.role !== role) {
+  
+  // Allow any admin role to login with any admin role request
+  const adminRoles = ['super_admin', 'subadmin', 'company_sales_agent', 'ssa'];
+  const isAdminRequest = adminRoles.includes(role);
+  const isAdminUser = adminRoles.includes(user.role);
+  
+  if (isAdminRequest && isAdminUser) {
+    // Both are admin roles - allow login
+  } else if (user.role !== role) {
+    // Non-admin roles must match exactly
     const err = new Error(`This phone is registered as ${user.role}`);
     err.statusCode = 400;
     throw err;

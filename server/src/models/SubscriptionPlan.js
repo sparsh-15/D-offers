@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { BUSINESS_CATEGORY_LIST, ALL_CATEGORIES } = require('../config/businessCategories');
 
 const subscriptionPlanSchema = new mongoose.Schema(
   {
@@ -23,10 +24,17 @@ const subscriptionPlanSchema = new mongoose.Schema(
       required: true,
       min: 0,
     },
-    categories: {
-      type: [String],
-      default: [],
-      // Categories this plan applies to (e.g., ['restaurant', 'retail', 'services'])
+    durationDays: {
+      type: Number,
+      required: true,
+      default: 30,
+      min: 1,
+    },
+    category: {
+      type: String,
+      required: true,
+      enum: [...BUSINESS_CATEGORY_LIST, ALL_CATEGORIES],
+      // Single category this plan applies to, or 'all' for all categories
     },
     features: {
       type: [String],
@@ -81,7 +89,7 @@ const subscriptionPlanSchema = new mongoose.Schema(
 
 subscriptionPlanSchema.index({ name: 1 });
 subscriptionPlanSchema.index({ isActive: 1 });
-subscriptionPlanSchema.index({ categories: 1 });
+subscriptionPlanSchema.index({ category: 1 });
 
 // Method to update price with history tracking
 subscriptionPlanSchema.methods.updatePrice = function (newPrice, adminId, reason) {

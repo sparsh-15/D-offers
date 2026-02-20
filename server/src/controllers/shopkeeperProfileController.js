@@ -80,8 +80,64 @@ async function upsertProfile(req, res, next) {
     next(err);
   }
 }
+async function getDashboard(req, res, next) {
+  try {
+    const userId = req.user.userId;
+
+    // Get profile
+    const profile = await ShopkeeperProfile.findOne({ userId }).lean();
+
+    // Get subscription status from middleware (if available)
+    const subscriptionStatus = req.subscriptionStatus || null;
+
+    res.status(200).json({
+      success: true,
+      dashboard: {
+        profile: profile ? {
+          id: profile._id,
+          shopName: profile.shopName,
+          address: profile.address,
+          city: profile.city,
+          category: profile.category,
+        } : null,
+        subscription: subscriptionStatus,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function getDashboard(req, res, next) {
+  try {
+    const userId = req.user.userId;
+    
+    // Get profile
+    const profile = await ShopkeeperProfile.findOne({ userId }).lean();
+    
+    // Get subscription status from middleware (if available)
+    const subscriptionStatus = req.subscriptionStatus || null;
+    
+    res.status(200).json({
+      success: true,
+      dashboard: {
+        profile: profile ? {
+          id: profile._id,
+          shopName: profile.shopName,
+          address: profile.address,
+          city: profile.city,
+          category: profile.category,
+        } : null,
+        subscription: subscriptionStatus,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+}
 
 module.exports = {
   getProfile,
   upsertProfile,
+  getDashboard,
 };

@@ -1,6 +1,24 @@
 const SubscriptionPlan = require('../models/SubscriptionPlan');
 const Subscription = require('../models/Subscription');
 const { logAdminAction } = require('../middleware/roleAuth');
+const { isValidCategory, ALL_CATEGORIES, getAllCategories } = require('../config/businessCategories');
+
+/**
+ * Get all business categories
+ */
+async function getCategories(req, res, next) {
+  try {
+    const categories = getAllCategories();
+    
+    res.json({
+      success: true,
+      data: categories,
+    });
+  } catch (err) {
+    console.error('[SUBSCRIPTION_PLAN] getCategories error:', err);
+    next(err);
+  }
+}
 
 /**
  * Create a new subscription plan
@@ -12,7 +30,8 @@ async function createPlan(req, res, next) {
       displayName,
       description,
       monthlyPrice,
-      categories,
+      durationDays,
+      category,
       features,
       maxOffers,
       maxPhotosPerOffer,
@@ -22,10 +41,18 @@ async function createPlan(req, res, next) {
     } = req.body;
 
     // Validate required fields
-    if (!name || !displayName || monthlyPrice === undefined) {
+    if (!name || !displayName || monthlyPrice === undefined || !category) {
       return res.status(400).json({
         success: false,
-        message: 'Name, display name, and monthly price are required',
+        message: 'Name, display name, monthly price, and category are required',
+      });
+    }
+
+    // Validate category
+    if (!isValidCategory(category)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid category',
       });
     }
 
@@ -44,7 +71,8 @@ async function createPlan(req, res, next) {
       displayName,
       description,
       monthlyPrice,
-      categories: categories || [],
+      durationDays: durationDays || 30,
+      category,
       features: features || [],
       maxOffers: maxOffers !== undefined ? maxOffers : -1,
       maxPhotosPerOffer: maxPhotosPerOffer || 5,
@@ -68,7 +96,7 @@ async function createPlan(req, res, next) {
       'subscription_plan_created',
       null,
       null,
-      { planId: plan._id, planName: plan.name },
+      { planId: plan._id, planName: plan.name, category: plan.category },
       req.ip
     );
 
@@ -95,7 +123,7 @@ async function getAllPlans(req, res, next) {
       filter.isActive = isActive === 'true';
     }
     if (category) {
-      filter.categories = category;
+      filter.category = category;
     }
 
     const plans = await SubscriptionPlan.find(filter)
@@ -156,7 +184,8 @@ async function updatePlan(req, res, next) {
       displayName,
       description,
       monthlyPrice,
-      categories,
+      durationDays,
+      category,
       features,
       maxOffers,
       maxPhotosPerOffer,
@@ -175,13 +204,22 @@ async function updatePlan(req, res, next) {
       });
     }
 
+    // Validate category if provided
+    if (category !== undefined && !isValidCategory(category)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid category',
+      });
+    }
+
     // Track if price is changing
     const priceChanged = monthlyPrice !== undefined && monthlyPrice !== plan.monthlyPrice;
 
     // Update fields
     if (displayName !== undefined) plan.displayName = displayName;
     if (description !== undefined) plan.description = description;
-    if (categories !== undefined) plan.categories = categories;
+    if (durationDays !== undefined) plan.durationDays = durationDays;
+    if (category !== undefined) plan.category = category;
     if (features !== undefined) plan.features = features;
     if (maxOffers !== undefined) plan.maxOffers = maxOffers;
     if (maxPhotosPerOffer !== undefined) plan.maxPhotosPerOffer = maxPhotosPerOffer;
@@ -299,10 +337,18 @@ async function getRecommendedPlans(req, res, next) {
       });
     }
 
-    // Find plans that include this category or have no category restrictions
+    // Validate category
+    if (!isValidCategory(category)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid category',
+      });
+    }
+
+    // Find plans for this category or 'all' categories
     const plans = await SubscriptionPlan.find({
       isActive: true,
-      $or: [{ categories: category }, { categories: { $size: 0 } }],
+      $or: [{ category: category }, { category: ALL_CATEGORIES }],
     })
       .sort({ sortOrder: 1, monthlyPrice: 1 })
       .lean();
@@ -318,6 +364,7 @@ async function getRecommendedPlans(req, res, next) {
 }
 
 module.exports = {
+  getCategories,
   createPlan,
   getAllPlans,
   getPlanById,

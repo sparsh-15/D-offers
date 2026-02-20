@@ -116,6 +116,49 @@ class _LoginScreenState extends State<LoginScreen> {
                       textAlign: TextAlign.center,
                     ),
                   ),
+                  if (widget.role == UserRole.admin)
+                    FadeInDown(
+                      delay: const Duration(milliseconds: 350),
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 16),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: AppColors.primary.withOpacity(0.3),
+                              width: 1,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.info_outline_rounded,
+                                size: 20,
+                                color: AppColors.primary,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  'For Super Admin, Sub Admin, Sales Agent, and SSA roles',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodySmall
+                                      ?.copyWith(
+                                        color: AppColors.primary,
+                                        fontSize: 12,
+                                      ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
                   const SizedBox(height: 60),
                   FadeInUp(
                     delay: const Duration(milliseconds: 400),
@@ -212,20 +255,20 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (e) {
       if (!mounted) return;
       final errorMessage = e.toString().toLowerCase();
-      
+
       // Handle rate limit errors specifically
-      if (errorMessage.contains('too many') || 
+      if (errorMessage.contains('too many') ||
           errorMessage.contains('429') ||
           errorMessage.contains('rate limit')) {
         DialogHelper.showErrorSnackBar(
-          context, 
+          context,
           'Too many login attempts. Please wait 15 minutes before trying again.',
         );
-      } else if (errorMessage.contains('not found') || 
+      } else if (errorMessage.contains('not found') ||
           errorMessage.contains('account not found') ||
           errorMessage.contains('please signup')) {
         DialogHelper.showErrorSnackBar(
-          context, 
+          context,
           'User not found, please register',
         );
       } else {

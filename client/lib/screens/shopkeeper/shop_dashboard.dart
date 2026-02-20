@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:animate_do/animate_do.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/theme_helper.dart';
@@ -11,6 +10,7 @@ import 'shop_profile_body.dart';
 import '../../widgets/offer_card.dart';
 import '../common/offer_detail_screen.dart';
 import 'offer_details_screen.dart';
+import 'onboarding_flow.dart';
 
 class ShopDashboard extends StatefulWidget {
   const ShopDashboard({super.key});
@@ -22,12 +22,15 @@ class ShopDashboard extends StatefulWidget {
 class _ShopDashboardState extends State<ShopDashboard> {
   int _selectedIndex = 0;
   VoidCallback? _refreshOffers;
+  bool _showOnboarding = true;
+  bool _hasActiveSubscription = false;
 
   late final List<Widget> _screens;
 
   @override
   void initState() {
     super.initState();
+    _checkSubscriptionStatus();
     _screens = [
       const ShopHomeTab(),
       OffersManagementTab(
@@ -40,38 +43,84 @@ class _ShopDashboardState extends State<ShopDashboard> {
     ];
   }
 
+  Future<void> _checkSubscriptionStatus() async {
+    // TODO: Check actual subscription status from API
+    // For now, assume no subscription
+    setState(() {
+      _hasActiveSubscription = false;
+      // Force user to Profile tab if no subscription
+      if (!_hasActiveSubscription) {
+        _selectedIndex = 3;
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
+    if (_showOnboarding) {
+      return OnboardingFlow(
+        onComplete: () {
+          setState(() => _showOnboarding = false);
+          _checkSubscriptionStatus();
+        },
+      );
+    }
+
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
         final shouldExit = await DialogHelper.showExitDialog(context);
-        return shouldExit;
+        if (shouldExit && context.mounted) {
+          Navigator.of(context).pop();
+        }
       },
       child: Scaffold(
         body: _screens[_selectedIndex],
         bottomNavigationBar: BottomNavigationBar(
           currentIndex: _selectedIndex,
-          onTap: (index) => setState(() => _selectedIndex = index),
-          items: const [
+          onTap: (index) {
+            // If no active subscription, only allow Profile tab (index 3)
+            if (!_hasActiveSubscription && index != 3) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Please subscribe to access this feature'),
+                  duration: Duration(seconds: 2),
+                ),
+              );
+              return;
+            }
+            setState(() => _selectedIndex = index);
+          },
+          items: [
             BottomNavigationBarItem(
-              icon: Icon(Icons.dashboard_rounded),
+              icon: Icon(
+                Icons.dashboard_rounded,
+                color: !_hasActiveSubscription ? Colors.grey : null,
+              ),
               label: 'Dashboard',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.local_offer_rounded),
+              icon: Icon(
+                Icons.local_offer_rounded,
+                color: !_hasActiveSubscription ? Colors.grey : null,
+              ),
               label: 'Offers',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.people_rounded),
+              icon: Icon(
+                Icons.people_rounded,
+                color: !_hasActiveSubscription ? Colors.grey : null,
+              ),
               label: 'Leads',
             ),
-            BottomNavigationBarItem(
+            const BottomNavigationBarItem(
               icon: Icon(Icons.store_rounded),
               label: 'Shop',
             ),
           ],
         ),
-        floatingActionButton: _selectedIndex == 1
+        floatingActionButton: _selectedIndex == 1 && _hasActiveSubscription
             ? FloatingActionButton.extended(
                 onPressed: () {
                   Navigator.of(context).push(
@@ -578,11 +627,74 @@ class ShopProfileTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Check if user has active subscription
+    final dashboardState =
+        context.findAncestorStateOfType<_ShopDashboardState>();
+    final hasSubscription = dashboardState?._hasActiveSubscription ?? false;
+
     return Container(
       decoration:
           BoxDecoration(gradient: ThemeHelper.getBackgroundGradient(context)),
-      child: const SafeArea(
-        child: ShopProfileBody(),
+      child: SafeArea(
+        child: Column(
+          children: [
+            if (!hasSubscription)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                margin: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: AppColors.accentGradient,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  children: [
+                    const Icon(
+                      Icons.workspace_premium_rounded,
+                      color: Colors.white,
+                      size: 40,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Subscribe to Unlock All Features',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Create offers, reach customers, and grow your business',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Colors.white.withValues(alpha: 0.9),
+                          ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () {
+                        // TODO: Navigate to subscription plans
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Subscription plans coming soon'),
+                          ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: AppColors.accent,
+                      ),
+                      child: const Text('View Plans'),
+                    ),
+                  ],
+                ),
+              ),
+            const Expanded(
+              child: ShopProfileBody(),
+            ),
+          ],
+        ),
       ),
     );
   }

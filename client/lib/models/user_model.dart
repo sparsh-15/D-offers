@@ -2,7 +2,11 @@ import 'role_enum.dart';
 
 UserRole roleFromString(String value) {
   switch (value) {
-    case 'admin':
+    case 'super_admin':
+    case 'subadmin':
+    case 'company_sales_agent':
+    case 'ssa':
+    case 'admin': // backward compatibility
       return UserRole.admin;
     case 'customer':
       return UserRole.customer;
@@ -16,7 +20,7 @@ UserRole roleFromString(String value) {
 String roleToString(UserRole role) {
   switch (role) {
     case UserRole.admin:
-      return 'admin';
+      return 'super_admin'; // Default admin role for login
     case UserRole.customer:
       return 'customer';
     case UserRole.shopkeeper:

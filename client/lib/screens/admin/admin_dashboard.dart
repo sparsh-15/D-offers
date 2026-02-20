@@ -17,6 +17,8 @@ import '../common/security_page.dart';
 import '../common/settings_page.dart';
 import '../common/help_support_page.dart';
 import '../common/about_page.dart';
+import 'subscription_governance_screen.dart';
+import 'agent_coupon_governance_screen.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -264,6 +266,42 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
                             AppColors.info,
                           ),
                         ),
+                        FadeInUp(
+                          delay: const Duration(milliseconds: 400),
+                          child: _buildQuickAction(
+                            context,
+                            'Subscription Governance',
+                            'Manage plans, subscriptions & analytics',
+                            Icons.subscriptions_rounded,
+                            const Color(0xFF667EEA),
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      const SubscriptionGovernanceScreen(),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        FadeInUp(
+                          delay: const Duration(milliseconds: 500),
+                          child: _buildQuickAction(
+                            context,
+                            'Agent & Coupon Governance',
+                            'Manage SSA, sales agents & coupons',
+                            Icons.support_agent_rounded,
+                            const Color(0xFF764BA2),
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      const AgentCouponGovernanceScreen(),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
                       ],
                     ),
                   );
@@ -315,15 +353,16 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
     String title,
     String subtitle,
     IconData icon,
-    Color color,
-  ) {
+    Color color, {
+    VoidCallback? onTap,
+  }) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
         leading: Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: color.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(icon, color: color),
@@ -331,7 +370,7 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
         title: Text(title),
         subtitle: Text(subtitle),
         trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16),
-        onTap: () {},
+        onTap: onTap ?? () {},
       ),
     );
   }
@@ -501,13 +540,17 @@ class _UsersManagementTabState extends State<UsersManagementTab> {
                     scrollDirection: Axis.horizontal,
                     child: Row(
                       children: [
-                        _buildFilterChip('all', 'All Users', Icons.people_rounded),
+                        _buildFilterChip(
+                            'all', 'All Users', Icons.people_rounded),
                         const SizedBox(width: 8),
-                        _buildFilterChip('customer', 'Customers', Icons.person_rounded),
+                        _buildFilterChip(
+                            'customer', 'Customers', Icons.person_rounded),
                         const SizedBox(width: 8),
-                        _buildFilterChip('shopkeeper', 'Shopkeepers', Icons.store_rounded),
+                        _buildFilterChip(
+                            'shopkeeper', 'Shopkeepers', Icons.store_rounded),
                         const SizedBox(width: 8),
-                        _buildFilterChip('admin', 'Admins', Icons.admin_panel_settings_rounded),
+                        _buildFilterChip('admin', 'Admins',
+                            Icons.admin_panel_settings_rounded),
                       ],
                     ),
                   ),
@@ -716,9 +759,10 @@ class _UsersManagementTabState extends State<UsersManagementTab> {
                                                 Icon(
                                                   Icons.location_on_rounded,
                                                   size: 14,
-                                                  color: ThemeHelper.getTextColor(
-                                                          context)
-                                                      .withOpacity(0.6),
+                                                  color:
+                                                      ThemeHelper.getTextColor(
+                                                              context)
+                                                          .withOpacity(0.6),
                                                 ),
                                                 const SizedBox(width: 4),
                                                 Expanded(
@@ -738,8 +782,7 @@ class _UsersManagementTabState extends State<UsersManagementTab> {
                                           const SizedBox(height: 8),
                                           // Role Badge
                                           Container(
-                                            padding:
-                                                const EdgeInsets.symmetric(
+                                            padding: const EdgeInsets.symmetric(
                                               horizontal: 10,
                                               vertical: 4,
                                             ),
@@ -766,8 +809,8 @@ class _UsersManagementTabState extends State<UsersManagementTab> {
                                                       .last
                                                       .toUpperCase(),
                                                   style: TextStyle(
-                                                    color:
-                                                        _getRoleColor(user.role),
+                                                    color: _getRoleColor(
+                                                        user.role),
                                                     fontSize: 11,
                                                     fontWeight: FontWeight.w600,
                                                   ),
@@ -970,62 +1013,63 @@ class _ShopkeepersApprovalBodyState extends State<_ShopkeepersApprovalBody>
           controller: _tabController,
           indicatorColor: AppColors.primary,
           labelColor: AppColors.primary,
-          unselectedLabelColor: ThemeHelper.getTextColor(context).withOpacity(0.6),
+          unselectedLabelColor:
+              ThemeHelper.getTextColor(context).withOpacity(0.6),
           tabs: [
-              Tab(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.pending_rounded, size: 18),
-                    const SizedBox(width: 6),
-                    FutureBuilder<List<UserModel>>(
-                      future: _pendingFuture,
-                      builder: (context, snapshot) {
-                        final count = snapshot.data?.length ?? 0;
-                        return Badge(
-                          label: Text('$count'),
-                          isLabelVisible: count > 0,
-                          child: const Text('Pending'),
-                        );
-                      },
-                    ),
-                  ],
-                ),
+            Tab(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.pending_rounded, size: 18),
+                  const SizedBox(width: 6),
+                  FutureBuilder<List<UserModel>>(
+                    future: _pendingFuture,
+                    builder: (context, snapshot) {
+                      final count = snapshot.data?.length ?? 0;
+                      return Badge(
+                        label: Text('$count'),
+                        isLabelVisible: count > 0,
+                        child: const Text('Pending'),
+                      );
+                    },
+                  ),
+                ],
               ),
-              Tab(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.check_circle_rounded, size: 18),
-                    const SizedBox(width: 6),
-                    const Text('Approved'),
-                  ],
-                ),
+            ),
+            Tab(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.check_circle_rounded, size: 18),
+                  const SizedBox(width: 6),
+                  const Text('Approved'),
+                ],
               ),
-              Tab(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.cancel_rounded, size: 18),
-                    const SizedBox(width: 6),
-                    const Text('Rejected'),
-                  ],
-                ),
+            ),
+            Tab(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.cancel_rounded, size: 18),
+                  const SizedBox(width: 6),
+                  const Text('Rejected'),
+                ],
               ),
-            ],
+            ),
+          ],
         ),
         Expanded(
           child: TabBarView(
             controller: _tabController,
             physics: const AlwaysScrollableScrollPhysics(),
             children: [
-                _buildShopkeeperList(_pendingFuture, 0),
-                _buildShopkeeperList(_approvedFuture, 1),
-                _buildShopkeeperList(_rejectedFuture, 2),
-              ],
+              _buildShopkeeperList(_pendingFuture, 0),
+              _buildShopkeeperList(_approvedFuture, 1),
+              _buildShopkeeperList(_rejectedFuture, 2),
+            ],
           ),
         ),
-        ],
+      ],
     );
   }
 
@@ -1040,7 +1084,7 @@ class _ShopkeepersApprovalBodyState extends State<_ShopkeepersApprovalBody>
             child: CircularProgressIndicator(),
           );
         }
-        
+
         // Show error state if there's an error
         if (snapshot.hasError) {
           return Center(
@@ -1077,14 +1121,26 @@ class _ShopkeepersApprovalBodyState extends State<_ShopkeepersApprovalBody>
             ),
           );
         }
-        
+
         // Get items, default to empty list if null
         final items = snapshot.data ?? [];
         if (items.isEmpty) {
           final emptyMessages = {
-            0: ('No Pending Requests', 'All shopkeeper requests have been reviewed', Icons.check_circle_outline_rounded),
-            1: ('No Approved Shopkeepers', 'Approved shopkeepers will appear here', Icons.store_outlined),
-            2: ('No Rejected Requests', 'Rejected requests will appear here', Icons.cancel_outlined),
+            0: (
+              'No Pending Requests',
+              'All shopkeeper requests have been reviewed',
+              Icons.check_circle_outline_rounded
+            ),
+            1: (
+              'No Approved Shopkeepers',
+              'Approved shopkeepers will appear here',
+              Icons.store_outlined
+            ),
+            2: (
+              'No Rejected Requests',
+              'Rejected requests will appear here',
+              Icons.cancel_outlined
+            ),
           };
           final (title, message, icon) = emptyMessages[tabIndex]!;
           return Center(
@@ -1116,236 +1172,231 @@ class _ShopkeepersApprovalBodyState extends State<_ShopkeepersApprovalBody>
           );
         }
         return RefreshIndicator(
-                onRefresh: _refresh,
-                child: ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: items.length,
-                  itemBuilder: (context, index) {
-                    final shopkeeper = items[index];
-                    return FadeInUp(
-                      delay: Duration(milliseconds: 100 * index),
-                      child: Card(
-                        margin: const EdgeInsets.only(bottom: 16),
-                        elevation: 2,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(20),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Header Row
-                              Row(
+          onRefresh: _refresh,
+          child: ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: items.length,
+            itemBuilder: (context, index) {
+              final shopkeeper = items[index];
+              return FadeInUp(
+                delay: Duration(milliseconds: 100 * index),
+                child: Card(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Header Row
+                        Row(
+                          children: [
+                            Container(
+                              width: 56,
+                              height: 56,
+                              decoration: BoxDecoration(
+                                gradient: AppColors.accentGradient,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.store_rounded,
+                                color: Colors.white,
+                                size: 28,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Container(
-                                    width: 56,
-                                    height: 56,
-                                    decoration: BoxDecoration(
-                                      gradient: AppColors.accentGradient,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(
-                                      Icons.store_rounded,
-                                      color: Colors.white,
-                                      size: 28,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          shopkeeper.name.isEmpty
-                                              ? 'Shopkeeper'
-                                              : shopkeeper.name,
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .titleLarge
-                                              ?.copyWith(
-                                                fontWeight: FontWeight.bold,
-                                              ),
+                                  Text(
+                                    shopkeeper.name.isEmpty
+                                        ? 'Shopkeeper'
+                                        : shopkeeper.name,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleLarge
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.bold,
                                         ),
-                                        const SizedBox(height: 4),
-                                        Row(
-                                          children: [
-                                            Icon(
-                                              Icons.phone_rounded,
-                                              size: 16,
-                                              color: ThemeHelper.getTextColor(
-                                                      context)
-                                                  .withOpacity(0.6),
-                                            ),
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              '+91 ${shopkeeper.phone}',
-                                              style: Theme.of(context)
-                                                  .textTheme
-                                                  .bodyMedium,
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
                                   ),
-                                  // Status Badge
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 6,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: _getStatusColor(
-                                              shopkeeper.approvalStatus)
-                                          .withOpacity(0.2),
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                    child: Text(
-                                      shopkeeper.approvalStatus.toUpperCase(),
-                                      style: TextStyle(
-                                        color: _getStatusColor(
-                                            shopkeeper.approvalStatus),
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.bold,
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.phone_rounded,
+                                        size: 16,
+                                        color: ThemeHelper.getTextColor(context)
+                                            .withOpacity(0.6),
                                       ),
-                                    ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        '+91 ${shopkeeper.phone}',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodyMedium,
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),
-                              // Location Info
-                              if (shopkeeper.city.isNotEmpty ||
-                                  shopkeeper.pincode.isNotEmpty) ...[
-                                const SizedBox(height: 16),
-                                Container(
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: ThemeHelper.getSurfaceColor(context),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Row(
+                            ),
+                            // Status Badge
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color:
+                                    _getStatusColor(shopkeeper.approvalStatus)
+                                        .withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                shopkeeper.approvalStatus.toUpperCase(),
+                                style: TextStyle(
+                                  color: _getStatusColor(
+                                      shopkeeper.approvalStatus),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        // Location Info
+                        if (shopkeeper.city.isNotEmpty ||
+                            shopkeeper.pincode.isNotEmpty) ...[
+                          const SizedBox(height: 16),
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: ThemeHelper.getSurfaceColor(context),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.location_on_rounded,
+                                  size: 20,
+                                  color: AppColors.accent,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      Icon(
-                                        Icons.location_on_rounded,
-                                        size: 20,
-                                        color: AppColors.accent,
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            if (shopkeeper.city.isNotEmpty)
-                                              Text(
-                                                '${shopkeeper.city}, ${shopkeeper.state}',
-                                                style: Theme.of(context)
-                                                    .textTheme
-                                                    .bodyMedium
-                                                    ?.copyWith(
-                                                      fontWeight:
-                                                          FontWeight.w600,
-                                                    ),
+                                      if (shopkeeper.city.isNotEmpty)
+                                        Text(
+                                          '${shopkeeper.city}, ${shopkeeper.state}',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodyMedium
+                                              ?.copyWith(
+                                                fontWeight: FontWeight.w600,
                                               ),
-                                            if (shopkeeper.pincode.isNotEmpty)
-                                              Text(
-                                                'PIN: ${shopkeeper.pincode}',
-                                                style: Theme.of(context)
-                                                    .textTheme
-                                                    .bodySmall,
-                                              ),
-                                          ],
                                         ),
-                                      ),
+                                      if (shopkeeper.pincode.isNotEmpty)
+                                        Text(
+                                          'PIN: ${shopkeeper.pincode}',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodySmall,
+                                        ),
                                     ],
                                   ),
                                 ),
                               ],
-                              // Action Buttons (only for pending)
-                              if (tabIndex == 0) ...[
-                                const SizedBox(height: 16),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: ElevatedButton.icon(
-                                        onPressed: () => _approve(
-                                            context,
-                                            shopkeeper.id,
-                                            shopkeeper.name.isEmpty
-                                                ? 'Shopkeeper'
-                                                : shopkeeper.name),
-                                        icon: const Icon(
-                                          Icons.check_rounded,
-                                          size: 20,
-                                        ),
-                                        label: const Text(
-                                          'Approve',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: AppColors.success,
-                                          foregroundColor: Colors.white,
-                                          padding: const EdgeInsets.symmetric(
-                                            vertical: 14,
-                                          ),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(12),
-                                          ),
-                                        ),
-                                      ),
+                            ),
+                          ),
+                        ],
+                        // Action Buttons (only for pending)
+                        if (tabIndex == 0) ...[
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: () => _approve(
+                                      context,
+                                      shopkeeper.id,
+                                      shopkeeper.name.isEmpty
+                                          ? 'Shopkeeper'
+                                          : shopkeeper.name),
+                                  icon: const Icon(
+                                    Icons.check_rounded,
+                                    size: 20,
+                                  ),
+                                  label: const Text(
+                                    'Approve',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
                                     ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: OutlinedButton.icon(
-                                        onPressed: () => _reject(
-                                            context,
-                                            shopkeeper.id,
-                                            shopkeeper.name.isEmpty
-                                                ? 'Shopkeeper'
-                                                : shopkeeper.name),
-                                        icon: const Icon(
-                                          Icons.close_rounded,
-                                          size: 20,
-                                        ),
-                                        label: const Text(
-                                          'Reject',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                        style: OutlinedButton.styleFrom(
-                                          foregroundColor: AppColors.error,
-                                          side: const BorderSide(
-                                            color: AppColors.error,
-                                            width: 2,
-                                          ),
-                                          padding: const EdgeInsets.symmetric(
-                                            vertical: 14,
-                                          ),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(12),
-                                          ),
-                                        ),
-                                      ),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.success,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 14,
                                     ),
-                                  ],
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
                                 ),
-                              ],
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  onPressed: () => _reject(
+                                      context,
+                                      shopkeeper.id,
+                                      shopkeeper.name.isEmpty
+                                          ? 'Shopkeeper'
+                                          : shopkeeper.name),
+                                  icon: const Icon(
+                                    Icons.close_rounded,
+                                    size: 20,
+                                  ),
+                                  label: const Text(
+                                    'Reject',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: AppColors.error,
+                                    side: const BorderSide(
+                                      color: AppColors.error,
+                                      width: 2,
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 14,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                ),
+                              ),
                             ],
                           ),
-                        ),
-                      ),
-                    );
-                  },
+                        ],
+                      ],
+                    ),
+                  ),
                 ),
               );
             },
-          );
+          ),
+        );
+      },
+    );
   }
 
   Color _getStatusColor(String status) {
@@ -1475,7 +1526,8 @@ class _AdminProfileTabState extends State<AdminProfileTab> {
                                 user: user,
                                 onSaved: () {
                                   setState(() {
-                                    _userFuture = AuthService.instance.fetchCurrentUser();
+                                    _userFuture =
+                                        AuthService.instance.fetchCurrentUser();
                                   });
                                 },
                               ),
@@ -1483,7 +1535,8 @@ class _AdminProfileTabState extends State<AdminProfileTab> {
                           );
                           if (mounted) {
                             setState(() {
-                              _userFuture = AuthService.instance.fetchCurrentUser();
+                              _userFuture =
+                                  AuthService.instance.fetchCurrentUser();
                             });
                           }
                         },
@@ -1537,11 +1590,13 @@ class _AdminProfileTabState extends State<AdminProfileTab> {
                         title: 'Logout',
                         isDestructive: true,
                         onTap: () async {
-                          final shouldLogout = await DialogHelper.showLogoutDialog(context);
+                          final shouldLogout =
+                              await DialogHelper.showLogoutDialog(context);
                           if (shouldLogout && context.mounted) {
                             AuthStore.clear();
                             Navigator.of(context).pushAndRemoveUntil(
-                              MaterialPageRoute(builder: (_) => const RoleSelectionScreen()),
+                              MaterialPageRoute(
+                                  builder: (_) => const RoleSelectionScreen()),
                               (route) => false,
                             );
                             DialogHelper.showSuccessSnackBar(
