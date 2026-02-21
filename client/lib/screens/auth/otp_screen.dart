@@ -246,7 +246,8 @@ class _OtpScreenState extends State<OtpScreen> {
       if (!mounted) return;
       final user = AuthStore.currentUser;
       if (user == null) {
-        DialogHelper.showErrorSnackBar(context, 'Login failed. Please try again.');
+        DialogHelper.showErrorSnackBar(
+            context, 'Login failed. Please try again.');
         return;
       }
       // If this is a registration flow, show success and redirect to login
@@ -282,13 +283,13 @@ class _OtpScreenState extends State<OtpScreen> {
     } catch (e) {
       if (!mounted) return;
       final errorMessage = e.toString().toLowerCase();
-      
+
       // Handle rate limit errors specifically
-      if (errorMessage.contains('too many') || 
+      if (errorMessage.contains('too many') ||
           errorMessage.contains('429') ||
           errorMessage.contains('rate limit')) {
         DialogHelper.showErrorSnackBar(
-          context, 
+          context,
           'Too many verification attempts. Please wait 15 minutes before trying again.',
         );
       } else {
@@ -306,7 +307,9 @@ class _OtpScreenState extends State<OtpScreen> {
   Future<void> _handleResendOtp() async {
     if (_resendTimer > 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please wait ${_resendTimer} seconds before resending')),
+        SnackBar(
+            content:
+                Text('Please wait ${_resendTimer} seconds before resending')),
       );
       return;
     }
@@ -329,19 +332,19 @@ class _OtpScreenState extends State<OtpScreen> {
     } catch (e) {
       if (!mounted) return;
       final errorMessage = e.toString().toLowerCase();
-      
+
       // Handle rate limit errors specifically
-      if (errorMessage.contains('too many') || 
+      if (errorMessage.contains('too many') ||
           errorMessage.contains('429') ||
           errorMessage.contains('rate limit')) {
         DialogHelper.showErrorSnackBar(
-          context, 
+          context,
           'Too many OTP requests. Please wait 15 minutes before trying again.',
         );
         setState(() => _resendTimer = 900); // Set to 15 minutes
       } else {
         DialogHelper.showErrorSnackBar(
-          context, 
+          context,
           'Failed to resend OTP. Please try again.',
         );
       }
@@ -362,6 +365,8 @@ class _OtpScreenState extends State<OtpScreen> {
         destination = const ShopDashboard();
         break;
       case UserRole.admin:
+      case UserRole.companySalesAgent:
+      case UserRole.ssa:
         destination = const AdminDashboard();
         break;
     }
