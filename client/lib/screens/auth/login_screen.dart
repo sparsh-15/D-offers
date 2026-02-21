@@ -38,6 +38,8 @@ class _LoginScreenState extends State<LoginScreen> {
       case UserRole.shopkeeper:
         return 'Shopkeeper Login';
       case UserRole.admin:
+      case UserRole.companySalesAgent:
+      case UserRole.ssa:
         return 'Admin Login';
     }
   }
@@ -49,6 +51,8 @@ class _LoginScreenState extends State<LoginScreen> {
       case UserRole.shopkeeper:
         return Icons.store_rounded;
       case UserRole.admin:
+      case UserRole.companySalesAgent:
+      case UserRole.ssa:
         return Icons.admin_panel_settings_rounded;
     }
   }
