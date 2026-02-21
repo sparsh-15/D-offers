@@ -7,7 +7,7 @@ class ApiConfig {
   /// Set to false for local development
   /// Set to true for production/deployed backend
   ///
-  static const bool useProduction = false;
+  static const bool useProduction = true;
 
   static String get baseUrl {
     if (useProduction) {
