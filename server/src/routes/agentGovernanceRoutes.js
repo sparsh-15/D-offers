@@ -13,11 +13,15 @@ router.get('/dashboard', agentGovernanceController.getAgentGovernanceDashboard);
 
 // SSA management
 router.get('/ssa', agentGovernanceController.getSSAList);
+router.post('/ssa', agentGovernanceController.createSSA);
 
 // Company Sales Agent management
 router.get('/company-sales-agents', agentGovernanceController.getCompanySalesAgentList);
+router.post('/company-sales-agents', agentGovernanceController.createCompanySalesAgent);
 
-// Coupon tracking
+// Coupon management
+router.get('/coupons', agentGovernanceController.getCouponList);
 router.get('/coupons/activations', agentGovernanceController.getCouponActivations);
+router.post('/coupons', agentGovernanceController.createCoupon);
 
 module.exports = router;

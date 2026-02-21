@@ -10,11 +10,21 @@ const userSchema = new mongoose.Schema(
       trim: true,
       default: '',
     },
+    email: {
+      type: String,
+      trim: true,
+      sparse: true, // Allows null/undefined but enforces uniqueness when present
+      lowercase: true,
+    },
     phone: {
       type: String,
       required: true,
       unique: true,
       trim: true,
+    },
+    password: {
+      type: String,
+      select: false, // Don't include password in queries by default
     },
     role: {
       type: String,
@@ -32,6 +42,16 @@ const userSchema = new mongoose.Schema(
       default: '',
     },
     state: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    region: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    territory: {
       type: String,
       trim: true,
       default: '',
@@ -67,6 +87,7 @@ const userSchema = new mongoose.Schema(
 );
 
 userSchema.index({ phone: 1 });
+userSchema.index({ email: 1 });
 userSchema.index({ role: 1, approvalStatus: 1 });
 
 module.exports = mongoose.model('User', userSchema);
