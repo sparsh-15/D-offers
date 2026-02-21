@@ -797,7 +797,11 @@ class _SalesAgentsTabState extends State<SalesAgentsTab> {
   }
 
   Widget _buildAgentCard(Map<String, dynamic> agent) {
-    final isActive = agent['status'] == 'active';
+    final isActive = agent['isActive'] == true;
+    final name = agent['name'] ?? 'Unknown';
+    final phone = agent['phone'] ?? 'N/A';
+    final region = agent['region'] ?? 'N/A';
+    final onboardingCount = agent['onboardingCount'] ?? 0;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -805,13 +809,13 @@ class _SalesAgentsTabState extends State<SalesAgentsTab> {
         leading: CircleAvatar(
           backgroundColor: isActive ? Colors.blue : Colors.grey,
           child: Text(
-            agent['name'].toString().substring(0, 1).toUpperCase(),
+            name.substring(0, 1).toUpperCase(),
             style: const TextStyle(color: Colors.white),
           ),
         ),
         title: Row(
           children: [
-            Expanded(child: Text(agent['name'])),
+            Expanded(child: Text(name)),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
@@ -819,7 +823,7 @@ class _SalesAgentsTabState extends State<SalesAgentsTab> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
-                agent['region'],
+                region,
                 style: const TextStyle(color: Colors.blue, fontSize: 12),
               ),
             ),
@@ -828,8 +832,8 @@ class _SalesAgentsTabState extends State<SalesAgentsTab> {
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(agent['phone']),
-            Text('Onboarded: ${agent['onboardingCount']} shopkeepers'),
+            Text(phone),
+            Text('Onboarded: $onboardingCount shopkeepers'),
           ],
         ),
         trailing: IconButton(
@@ -874,16 +878,20 @@ class _SalesAgentsTabState extends State<SalesAgentsTab> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(agent['name']),
+        title: Text(agent['name'] ?? 'Unknown'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildDetailRow('Phone', agent['phone']),
-            _buildDetailRow('Email', agent['email']),
-            _buildDetailRow('Region', agent['region']),
-            _buildDetailRow('Status', agent['status']),
-            _buildDetailRow('Onboarding Count', '${agent['onboardingCount']}'),
+            _buildDetailRow('Phone', agent['phone'] ?? 'N/A'),
+            _buildDetailRow('Email', agent['email'] ?? 'N/A'),
+            _buildDetailRow('Region', agent['region'] ?? 'N/A'),
+            _buildDetailRow('Territory', agent['territory'] ?? 'N/A'),
+            _buildDetailRow('Pincode', agent['pincode'] ?? 'N/A'),
+            _buildDetailRow(
+                'Status', agent['isActive'] == true ? 'Active' : 'Inactive'),
+            _buildDetailRow(
+                'Onboarding Count', '${agent['onboardingCount'] ?? 0}'),
           ],
         ),
         actions: [
