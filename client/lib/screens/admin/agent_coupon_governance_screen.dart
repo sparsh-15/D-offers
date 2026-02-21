@@ -1194,21 +1194,35 @@ class _CouponsTabState extends State<CouponsTab> {
   }
 
   Widget _buildCouponCard(Map<String, dynamic> coupon) {
-    final couponCode = coupon['couponCode'] as String? ?? 'N/A';
-    final shopName = coupon['shopName'] as String? ?? 'N/A';
-    final agentName = coupon['agentName'] as String? ?? 'N/A';
-    final discountAmount = coupon['discountAmount'] as num? ?? 0;
-    final activatedAt = coupon['activatedAt'] as String?;
-    final subscriptionPlan = coupon['subscriptionPlan'] as String? ?? 'N/A';
+    final code = coupon['code'] as String? ?? 'N/A';
+    final discountType = coupon['discountType'] as String? ?? 'percentage';
+    final discountValue = coupon['discountValue'] as num? ?? 0;
+    final isActive = coupon['isActive'] == true;
+    final currentUses = coupon['currentUses'] as int? ?? 0;
+    final maxUses = coupon['maxUses'] as int?;
+    final expiryDate = coupon['expiryDate'] as String?;
 
-    DateTime? activationDate;
-    if (activatedAt != null) {
+    // Get agent info
+    final agentId = coupon['agentId'];
+    String agentName = 'N/A';
+    String agentRole = 'N/A';
+    if (agentId is Map) {
+      agentName = agentId['name'] ?? 'N/A';
+      agentRole = agentId['role'] ?? 'N/A';
+    }
+
+    DateTime? expiry;
+    if (expiryDate != null) {
       try {
-        activationDate = DateTime.parse(activatedAt);
+        expiry = DateTime.parse(expiryDate);
       } catch (e) {
         // Handle parse error
       }
     }
+
+    final isExpired = expiry != null && expiry.isBefore(DateTime.now());
+    final discountText =
+        discountType == 'percentage' ? '$discountValue%' : '₹$discountValue';
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -1229,11 +1243,34 @@ class _CouponsTabState extends State<CouponsTab> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    couponCode,
+                    code,
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isActive && !isExpired
+                        ? AppColors.success.withValues(alpha: 0.2)
+                        : Colors.grey.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    isExpired ? 'Expired' : (isActive ? 'Active' : 'Inactive'),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                      color: isExpired
+                          ? Colors.red
+                          : (isActive ? AppColors.success : Colors.grey),
                     ),
                   ),
                 ),
@@ -1248,7 +1285,7 @@ class _CouponsTabState extends State<CouponsTab> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    '₹${discountAmount.toStringAsFixed(0)}',
+                    discountText,
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 18,
@@ -1259,18 +1296,22 @@ class _CouponsTabState extends State<CouponsTab> {
               ],
             ),
             const SizedBox(height: 12),
-            _buildInfoRow(Icons.store_rounded, 'Shop', shopName),
-            const SizedBox(height: 8),
-            _buildInfoRow(Icons.person_rounded, 'Agent', agentName),
+            _buildInfoRow(
+                Icons.person_rounded, 'Agent', '$agentName ($agentRole)'),
             const SizedBox(height: 8),
             _buildInfoRow(
-                Icons.subscriptions_rounded, 'Plan', subscriptionPlan),
-            if (activationDate != null) ...[
+              Icons.confirmation_number_rounded,
+              'Uses',
+              maxUses != null
+                  ? '$currentUses / $maxUses'
+                  : '$currentUses (Unlimited)',
+            ),
+            if (expiry != null) ...[
               const SizedBox(height: 8),
               _buildInfoRow(
                 Icons.calendar_today_rounded,
-                'Activated',
-                DateFormat('MMM d, y - h:mm a').format(activationDate),
+                'Expires',
+                DateFormat('MMM d, y').format(expiry),
               ),
             ],
           ],

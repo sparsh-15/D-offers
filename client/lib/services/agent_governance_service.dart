@@ -149,4 +149,164 @@ class AgentGovernanceService {
       throw Exception(error['message'] ?? 'Failed to fetch coupon activations');
     }
   }
+
+  Future<Map<String, dynamic>> createCoupon({
+    required String code,
+    required String discountType,
+    required num discountValue,
+    required String agentId,
+    String? description,
+    DateTime? expiryDate,
+    int? maxUses,
+  }) async {
+    final token = AuthStore.token;
+    if (token == null) throw Exception('Not authenticated');
+
+    final body = {
+      'code': code,
+      'discountType': discountType,
+      'discountValue': discountValue,
+      'agentId': agentId,
+      if (description != null) 'description': description,
+      if (expiryDate != null) 'expiryDate': expiryDate.toIso8601String(),
+      if (maxUses != null) 'maxUses': maxUses,
+    };
+
+    final response = await http.post(
+      Uri.parse('${ApiConfig.baseUrl}/agent-governance/coupons'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode(body),
+    );
+
+    if (response.statusCode == 201 || response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['data'] as Map<String, dynamic>;
+    } else {
+      final error = jsonDecode(response.body);
+      throw Exception(error['message'] ?? 'Failed to create coupon');
+    }
+  }
+
+  Future<Map<String, dynamic>> createSSA({
+    required String name,
+    required String email,
+    required String phone,
+    required String password,
+    String? state,
+    String? region,
+    String? pincode,
+  }) async {
+    final token = AuthStore.token;
+    if (token == null) throw Exception('Not authenticated');
+
+    final body = {
+      'name': name,
+      'email': email,
+      'phone': phone,
+      'password': password,
+      'role': 'ssa',
+      if (state != null) 'state': state,
+      if (region != null) 'region': region,
+      if (pincode != null) 'pincode': pincode,
+    };
+
+    final response = await http.post(
+      Uri.parse('${ApiConfig.baseUrl}/agent-governance/ssa'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode(body),
+    );
+
+    if (response.statusCode == 201 || response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['data'] as Map<String, dynamic>;
+    } else {
+      final error = jsonDecode(response.body);
+      throw Exception(error['message'] ?? 'Failed to create SSA');
+    }
+  }
+
+  Future<Map<String, dynamic>> createCompanySalesAgent({
+    required String name,
+    required String email,
+    required String phone,
+    required String password,
+    String? region,
+    String? territory,
+    String? pincode,
+  }) async {
+    final token = AuthStore.token;
+    if (token == null) throw Exception('Not authenticated');
+
+    final body = {
+      'name': name,
+      'email': email,
+      'phone': phone,
+      'password': password,
+      'role': 'company_sales_agent',
+      if (region != null) 'region': region,
+      if (territory != null) 'territory': territory,
+      if (pincode != null) 'pincode': pincode,
+    };
+
+    final response = await http.post(
+      Uri.parse('${ApiConfig.baseUrl}/agent-governance/company-sales-agents'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode(body),
+    );
+
+    if (response.statusCode == 201 || response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['data'] as Map<String, dynamic>;
+    } else {
+      final error = jsonDecode(response.body);
+      throw Exception(
+          error['message'] ?? 'Failed to create company sales agent');
+    }
+  }
+
+  Future<Map<String, dynamic>> getCouponList({
+    String? search,
+    bool? isActive,
+    int page = 1,
+    int limit = 20,
+  }) async {
+    final token = AuthStore.token;
+    if (token == null) throw Exception('Not authenticated');
+
+    final queryParams = <String, String>{
+      'page': page.toString(),
+      'limit': limit.toString(),
+    };
+
+    if (search != null && search.isNotEmpty) queryParams['search'] = search;
+    if (isActive != null) queryParams['isActive'] = isActive.toString();
+
+    final uri = Uri.parse('${ApiConfig.baseUrl}/agent-governance/coupons')
+        .replace(queryParameters: queryParams);
+
+    final response = await http.get(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['data'] as Map<String, dynamic>;
+    } else {
+      final error = jsonDecode(response.body);
+      throw Exception(error['message'] ?? 'Failed to fetch coupon list');
+    }
+  }
 }
