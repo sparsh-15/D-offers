@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
+import 'package:intl/intl.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/theme_helper.dart';
 import '../../core/utils/dialog_helper.dart';
 import '../../widgets/gradient_card.dart';
+import '../../services/agent_governance_service.dart';
+import 'create_coupon_screen.dart';
+import 'create_ssa_screen.dart';
+import 'create_sales_agent_screen.dart';
 
 class AgentCouponGovernanceScreen extends StatefulWidget {
   const AgentCouponGovernanceScreen({super.key});
@@ -22,6 +27,9 @@ class _AgentCouponGovernanceScreenState
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _tabController.addListener(() {
+      setState(() {}); // Rebuild to show/hide FAB
+    });
   }
 
   @override
@@ -63,7 +71,66 @@ class _AgentCouponGovernanceScreenState
           ],
         ),
       ),
+      floatingActionButton: _buildFloatingActionButton(),
     );
+  }
+
+  Widget? _buildFloatingActionButton() {
+    switch (_tabController.index) {
+      case 0: // SSA Tab
+        return FloatingActionButton.extended(
+          onPressed: () async {
+            final result = await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const CreateSSAScreen(),
+              ),
+            );
+            if (result == true) {
+              // Refresh will be handled by the tab
+            }
+          },
+          icon: const Icon(Icons.person_add_rounded),
+          label: const Text('Add SSA'),
+          backgroundColor: AppColors.primary,
+        );
+      case 1: // Sales Agents Tab
+        return FloatingActionButton.extended(
+          onPressed: () async {
+            final result = await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const CreateSalesAgentScreen(),
+              ),
+            );
+            if (result == true) {
+              // Refresh will be handled by the tab
+            }
+          },
+          icon: const Icon(Icons.person_add_rounded),
+          label: const Text('Add Agent'),
+          backgroundColor: AppColors.accent,
+        );
+      case 2: // Coupons Tab
+        return FloatingActionButton.extended(
+          onPressed: () async {
+            final result = await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const CreateCouponScreen(),
+              ),
+            );
+            if (result == true) {
+              // Refresh will be handled by the tab
+            }
+          },
+          icon: const Icon(Icons.add_rounded),
+          label: const Text('Create Coupon'),
+          backgroundColor: AppColors.primary,
+        );
+      default:
+        return null;
+    }
   }
 }
 
@@ -76,8 +143,11 @@ class SSAListTab extends StatefulWidget {
 }
 
 class _SSAListTabState extends State<SSAListTab> {
-  List<Map<String, dynamic>> _ssaList = [];
+  List<dynamic> _ssaList = [];
   bool _loading = true;
+  int _currentPage = 1;
+  int _totalPages = 1;
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
@@ -85,49 +155,34 @@ class _SSAListTabState extends State<SSAListTab> {
     _loadSSAList();
   }
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadSSAList() async {
     setState(() => _loading = true);
     try {
-      // TODO: Call API to get SSA list
-      await Future.delayed(const Duration(seconds: 1));
+      final result = await AgentGovernanceService.instance.getSSAList(
+        search: _searchController.text.isEmpty ? null : _searchController.text,
+        page: _currentPage,
+        limit: 20,
+      );
+
+      if (!mounted) return;
       setState(() {
-        _ssaList = [
-          {
-            'id': '1',
-            'name': 'Rajesh Kumar',
-            'phone': '9876543210',
-            'email': 'rajesh@example.com',
-            'onboardingCount': 25,
-            'totalCoupons': 50,
-            'activeCoupons': 30,
-            'status': 'active',
-          },
-          {
-            'id': '2',
-            'name': 'Priya Sharma',
-            'phone': '9876543211',
-            'email': 'priya@example.com',
-            'onboardingCount': 18,
-            'totalCoupons': 40,
-            'activeCoupons': 25,
-            'status': 'active',
-          },
-          {
-            'id': '3',
-            'name': 'Amit Patel',
-            'phone': '9876543212',
-            'email': 'amit@example.com',
-            'onboardingCount': 12,
-            'totalCoupons': 30,
-            'activeCoupons': 15,
-            'status': 'inactive',
-          },
-        ];
+        _ssaList = (result['ssaList'] as List<dynamic>?) ?? [];
+        final pagination = result['pagination'] as Map<String, dynamic>?;
+        _totalPages = pagination?['pages'] as int? ?? 1;
         _loading = false;
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() => _loading = false);
+      setState(() {
+        _ssaList = [];
+        _loading = false;
+      });
       DialogHelper.showErrorSnackBar(context, e.toString());
     }
   }
@@ -139,9 +194,9 @@ class _SSAListTabState extends State<SSAListTab> {
     }
 
     final totalOnboarding = _ssaList.fold<int>(
-        0, (sum, ssa) => sum + (ssa['onboardingCount'] as int));
-    final totalCoupons =
-        _ssaList.fold<int>(0, (sum, ssa) => sum + (ssa['totalCoupons'] as int));
+        0, (sum, ssa) => sum + ((ssa['onboardingCount'] as int?) ?? 0));
+    final totalDiscounts = _ssaList.fold<num>(
+        0, (sum, ssa) => sum + ((ssa['totalDiscounts'] as num?) ?? 0));
 
     return Column(
       children: [
@@ -149,6 +204,27 @@ class _SSAListTabState extends State<SSAListTab> {
           padding: const EdgeInsets.all(16.0),
           child: Column(
             children: [
+              TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: 'Search SSA by name, email, or phone',
+                  prefixIcon: const Icon(Icons.search_rounded),
+                  suffixIcon: _searchController.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear_rounded),
+                          onPressed: () {
+                            _searchController.clear();
+                            _loadSSAList();
+                          },
+                        )
+                      : null,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onSubmitted: (_) => _loadSSAList(),
+              ),
+              const SizedBox(height: 16),
               Row(
                 children: [
                   Expanded(
@@ -218,13 +294,13 @@ class _SSAListTabState extends State<SSAListTab> {
                       child: Column(
                         children: [
                           const Icon(
-                            Icons.local_offer_rounded,
+                            Icons.discount_rounded,
                             color: Colors.white,
                             size: 32,
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            '$totalCoupons',
+                            '₹${totalDiscounts.toStringAsFixed(0)}',
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 24,
@@ -232,7 +308,7 @@ class _SSAListTabState extends State<SSAListTab> {
                             ),
                           ),
                           const Text(
-                            'Coupons',
+                            'Discounts',
                             style: TextStyle(color: Colors.white),
                           ),
                         ],
@@ -245,24 +321,63 @@ class _SSAListTabState extends State<SSAListTab> {
           ),
         ),
         Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: _ssaList.length,
-            itemBuilder: (context, index) {
-              final ssa = _ssaList[index];
-              return FadeInUp(
-                delay: Duration(milliseconds: 100 * index),
-                child: _buildSSACard(ssa),
-              );
-            },
+          child: RefreshIndicator(
+            onRefresh: _loadSSAList,
+            child: ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: _ssaList.length + (_totalPages > 1 ? 1 : 0),
+              itemBuilder: (context, index) {
+                if (index == _ssaList.length) {
+                  return _buildPagination();
+                }
+                final ssa = _ssaList[index];
+                return FadeInUp(
+                  delay: Duration(milliseconds: 100 * index),
+                  child: _buildSSACard(ssa),
+                );
+              },
+            ),
           ),
         ),
       ],
     );
   }
 
+  Widget _buildPagination() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 20),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          IconButton(
+            icon: const Icon(Icons.chevron_left_rounded),
+            onPressed: _currentPage > 1
+                ? () {
+                    setState(() => _currentPage--);
+                    _loadSSAList();
+                  }
+                : null,
+          ),
+          Text('Page $_currentPage of $_totalPages'),
+          IconButton(
+            icon: const Icon(Icons.chevron_right_rounded),
+            onPressed: _currentPage < _totalPages
+                ? () {
+                    setState(() => _currentPage++);
+                    _loadSSAList();
+                  }
+                : null,
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSSACard(Map<String, dynamic> ssa) {
-    final isActive = ssa['status'] == 'active';
+    final isActive = ssa['isActive'] == true;
+    final name = ssa['name'] ?? 'Unknown';
+    final phone = ssa['phone'] ?? 'N/A';
+    final onboardingCount = ssa['onboardingCount'] ?? 0;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -270,13 +385,13 @@ class _SSAListTabState extends State<SSAListTab> {
         leading: CircleAvatar(
           backgroundColor: isActive ? Colors.green : Colors.grey,
           child: Text(
-            ssa['name'].toString().substring(0, 1).toUpperCase(),
+            name.substring(0, 1).toUpperCase(),
             style: const TextStyle(color: Colors.white),
           ),
         ),
         title: Row(
           children: [
-            Expanded(child: Text(ssa['name'])),
+            Expanded(child: Text(name)),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
@@ -290,7 +405,7 @@ class _SSAListTabState extends State<SSAListTab> {
             ),
           ],
         ),
-        subtitle: Text(ssa['phone']),
+        subtitle: Text(phone),
         children: [
           Padding(
             padding: const EdgeInsets.all(16.0),
@@ -301,24 +416,24 @@ class _SSAListTabState extends State<SSAListTab> {
                     Expanded(
                       child: _buildSSAMetric(
                         'Onboarded',
-                        '${ssa['onboardingCount']}',
+                        '$onboardingCount',
                         Icons.person_add_rounded,
                         Colors.blue,
                       ),
                     ),
                     Expanded(
                       child: _buildSSAMetric(
-                        'Total Coupons',
-                        '${ssa['totalCoupons']}',
-                        Icons.local_offer_rounded,
+                        'Pincode',
+                        ssa['pincode'] ?? 'N/A',
+                        Icons.location_on_rounded,
                         Colors.orange,
                       ),
                     ),
                     Expanded(
                       child: _buildSSAMetric(
-                        'Active',
-                        '${ssa['activeCoupons']}',
-                        Icons.check_circle_rounded,
+                        'City',
+                        ssa['city'] ?? 'N/A',
+                        Icons.location_city_rounded,
                         Colors.green,
                       ),
                     ),
@@ -385,17 +500,20 @@ class _SSAListTabState extends State<SSAListTab> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(ssa['name']),
+        title: Text(ssa['name'] ?? 'Unknown'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildDetailRow('Phone', ssa['phone']),
-            _buildDetailRow('Email', ssa['email']),
-            _buildDetailRow('Status', ssa['status']),
-            _buildDetailRow('Onboarding Count', '${ssa['onboardingCount']}'),
-            _buildDetailRow('Total Coupons', '${ssa['totalCoupons']}'),
-            _buildDetailRow('Active Coupons', '${ssa['activeCoupons']}'),
+            _buildDetailRow('Phone', ssa['phone'] ?? 'N/A'),
+            _buildDetailRow('Email', ssa['email'] ?? 'N/A'),
+            _buildDetailRow('Pincode', ssa['pincode'] ?? 'N/A'),
+            _buildDetailRow('City', ssa['city'] ?? 'N/A'),
+            _buildDetailRow('State', ssa['state'] ?? 'N/A'),
+            _buildDetailRow(
+                'Status', ssa['isActive'] == true ? 'Active' : 'Inactive'),
+            _buildDetailRow(
+                'Onboarding Count', '${ssa['onboardingCount'] ?? 0}'),
           ],
         ),
         actions: [
@@ -447,8 +565,11 @@ class SalesAgentsTab extends StatefulWidget {
 }
 
 class _SalesAgentsTabState extends State<SalesAgentsTab> {
-  List<Map<String, dynamic>> _agents = [];
+  List<dynamic> _agents = [];
   bool _loading = true;
+  int _currentPage = 1;
+  int _totalPages = 1;
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
@@ -456,37 +577,35 @@ class _SalesAgentsTabState extends State<SalesAgentsTab> {
     _loadAgents();
   }
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadAgents() async {
     setState(() => _loading = true);
     try {
-      // TODO: Call API to get company sales agents
-      await Future.delayed(const Duration(seconds: 1));
+      final result =
+          await AgentGovernanceService.instance.getCompanySalesAgentList(
+        search: _searchController.text.isEmpty ? null : _searchController.text,
+        page: _currentPage,
+        limit: 20,
+      );
+
+      if (!mounted) return;
       setState(() {
-        _agents = [
-          {
-            'id': '1',
-            'name': 'Vikram Singh',
-            'phone': '9876543220',
-            'email': 'vikram@company.com',
-            'onboardingCount': 35,
-            'region': 'North',
-            'status': 'active',
-          },
-          {
-            'id': '2',
-            'name': 'Sneha Reddy',
-            'phone': '9876543221',
-            'email': 'sneha@company.com',
-            'onboardingCount': 28,
-            'region': 'South',
-            'status': 'active',
-          },
-        ];
+        _agents = (result['csaList'] as List<dynamic>?) ?? [];
+        final pagination = result['pagination'] as Map<String, dynamic>?;
+        _totalPages = pagination?['pages'] as int? ?? 1;
         _loading = false;
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() => _loading = false);
+      setState(() {
+        _agents = [];
+        _loading = false;
+      });
       DialogHelper.showErrorSnackBar(context, e.toString());
     }
   }
@@ -498,88 +617,182 @@ class _SalesAgentsTabState extends State<SalesAgentsTab> {
     }
 
     final totalOnboarding = _agents.fold<int>(
-        0, (sum, agent) => sum + (agent['onboardingCount'] as int));
+        0, (sum, agent) => sum + ((agent['onboardingCount'] as int?) ?? 0));
+    final totalDiscounts = _agents.fold<num>(
+        0, (sum, agent) => sum + ((agent['totalDiscounts'] as num?) ?? 0));
 
     return Column(
       children: [
         Padding(
           padding: const EdgeInsets.all(16.0),
-          child: Row(
+          child: Column(
             children: [
-              Expanded(
-                child: GradientCard(
-                  gradient: AppColors.primaryGradient,
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      const Icon(
-                        Icons.business_center_rounded,
-                        color: Colors.white,
-                        size: 32,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        '${_agents.length}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const Text(
-                        'Sales Agents',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                    ],
+              TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: 'Search agents by name, email, or phone',
+                  prefixIcon: const Icon(Icons.search_rounded),
+                  suffixIcon: _searchController.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear_rounded),
+                          onPressed: () {
+                            _searchController.clear();
+                            _loadAgents();
+                          },
+                        )
+                      : null,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
+                onSubmitted: (_) => _loadAgents(),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: GradientCard(
-                  gradient: AppColors.accentGradient,
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      const Icon(
-                        Icons.person_add_rounded,
-                        color: Colors.white,
-                        size: 32,
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: GradientCard(
+                      gradient: AppColors.primaryGradient,
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        children: [
+                          const Icon(
+                            Icons.business_center_rounded,
+                            color: Colors.white,
+                            size: 32,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '${_agents.length}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const Text(
+                            'Sales Agents',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        '$totalOnboarding',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const Text(
-                        'Total Onboardings',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                    ],
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: GradientCard(
+                      gradient: AppColors.accentGradient,
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        children: [
+                          const Icon(
+                            Icons.person_add_rounded,
+                            color: Colors.white,
+                            size: 32,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '$totalOnboarding',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const Text(
+                            'Onboardings',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: GradientCard(
+                      gradient: const LinearGradient(
+                        colors: [Colors.orange, Colors.deepOrange],
+                      ),
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        children: [
+                          const Icon(
+                            Icons.discount_rounded,
+                            color: Colors.white,
+                            size: 32,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '₹${totalDiscounts.toStringAsFixed(0)}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const Text(
+                            'Discounts',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
         ),
         Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: _agents.length,
-            itemBuilder: (context, index) {
-              final agent = _agents[index];
-              return FadeInUp(
-                delay: Duration(milliseconds: 100 * index),
-                child: _buildAgentCard(agent),
-              );
-            },
+          child: RefreshIndicator(
+            onRefresh: _loadAgents,
+            child: ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: _agents.length + (_totalPages > 1 ? 1 : 0),
+              itemBuilder: (context, index) {
+                if (index == _agents.length) {
+                  return _buildPagination();
+                }
+                final agent = _agents[index];
+                return FadeInUp(
+                  delay: Duration(milliseconds: 100 * index),
+                  child: _buildAgentCard(agent),
+                );
+              },
+            ),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildPagination() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 20),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          IconButton(
+            icon: const Icon(Icons.chevron_left_rounded),
+            onPressed: _currentPage > 1
+                ? () {
+                    setState(() => _currentPage--);
+                    _loadAgents();
+                  }
+                : null,
+          ),
+          Text('Page $_currentPage of $_totalPages'),
+          IconButton(
+            icon: const Icon(Icons.chevron_right_rounded),
+            onPressed: _currentPage < _totalPages
+                ? () {
+                    setState(() => _currentPage++);
+                    _loadAgents();
+                  }
+                : null,
+          ),
+        ],
+      ),
     );
   }
 
@@ -714,8 +927,14 @@ class CouponsTab extends StatefulWidget {
 }
 
 class _CouponsTabState extends State<CouponsTab> {
-  List<Map<String, dynamic>> _coupons = [];
+  List<dynamic> _coupons = [];
   bool _loading = true;
+  int _currentPage = 1;
+  int _totalPages = 1;
+  num _totalDiscounts = 0;
+  final TextEditingController _couponCodeController = TextEditingController();
+  DateTime? _startDate;
+  DateTime? _endDate;
 
   @override
   void initState() {
@@ -723,51 +942,70 @@ class _CouponsTabState extends State<CouponsTab> {
     _loadCoupons();
   }
 
+  @override
+  void dispose() {
+    _couponCodeController.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadCoupons() async {
     setState(() => _loading = true);
     try {
-      // TODO: Call API to get all coupons
-      await Future.delayed(const Duration(seconds: 1));
+      final result = await AgentGovernanceService.instance.getCouponList(
+        search: _couponCodeController.text.isEmpty
+            ? null
+            : _couponCodeController.text,
+        page: _currentPage,
+        limit: 20,
+      );
+
+      if (!mounted) return;
       setState(() {
-        _coupons = [
-          {
-            'id': '1',
-            'code': 'WELCOME50',
-            'discount': 50,
-            'type': 'percentage',
-            'ssaName': 'Rajesh Kumar',
-            'activations': 15,
-            'totalDiscount': 7500,
-            'status': 'active',
-          },
-          {
-            'id': '2',
-            'code': 'FLAT200',
-            'discount': 200,
-            'type': 'fixed',
-            'ssaName': 'Priya Sharma',
-            'activations': 10,
-            'totalDiscount': 2000,
-            'status': 'active',
-          },
-          {
-            'id': '3',
-            'code': 'EXPIRED10',
-            'discount': 10,
-            'type': 'percentage',
-            'ssaName': 'Amit Patel',
-            'activations': 5,
-            'totalDiscount': 500,
-            'status': 'expired',
-          },
-        ];
+        _coupons = (result['coupons'] as List<dynamic>?) ?? [];
+        final pagination = result['pagination'] as Map<String, dynamic>?;
+        _totalPages = pagination?['pages'] as int? ?? 1;
+        // Calculate total discount from coupons
+        _totalDiscounts = _coupons.fold<num>(
+          0,
+          (sum, coupon) => sum + ((coupon['discountValue'] as num?) ?? 0),
+        );
         _loading = false;
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() => _loading = false);
+      setState(() {
+        _coupons = [];
+        _loading = false;
+      });
       DialogHelper.showErrorSnackBar(context, e.toString());
     }
+  }
+
+  Future<void> _selectDateRange() async {
+    final DateTimeRange? picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
+      initialDateRange: _startDate != null && _endDate != null
+          ? DateTimeRange(start: _startDate!, end: _endDate!)
+          : null,
+    );
+
+    if (picked != null) {
+      setState(() {
+        _startDate = picked.start;
+        _endDate = picked.end;
+      });
+      _loadCoupons();
+    }
+  }
+
+  void _clearDateRange() {
+    setState(() {
+      _startDate = null;
+      _endDate = null;
+    });
+    _loadCoupons();
   }
 
   @override
@@ -776,10 +1014,7 @@ class _CouponsTabState extends State<CouponsTab> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    final totalActivations = _coupons.fold<int>(
-        0, (sum, coupon) => sum + (coupon['activations'] as int));
-    final totalDiscount = _coupons.fold<int>(
-        0, (sum, coupon) => sum + (coupon['totalDiscount'] as int));
+    final totalActivations = _coupons.length;
 
     return Column(
       children: [
@@ -787,6 +1022,50 @@ class _CouponsTabState extends State<CouponsTab> {
           padding: const EdgeInsets.all(16.0),
           child: Column(
             children: [
+              TextField(
+                controller: _couponCodeController,
+                decoration: InputDecoration(
+                  hintText: 'Search by coupon code',
+                  prefixIcon: const Icon(Icons.confirmation_number_rounded),
+                  suffixIcon: _couponCodeController.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear_rounded),
+                          onPressed: () {
+                            _couponCodeController.clear();
+                            _loadCoupons();
+                          },
+                        )
+                      : null,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onSubmitted: (_) => _loadCoupons(),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _selectDateRange,
+                      icon: const Icon(Icons.date_range_rounded),
+                      label: Text(
+                        _startDate != null && _endDate != null
+                            ? '${DateFormat('MMM d').format(_startDate!)} - ${DateFormat('MMM d, y').format(_endDate!)}'
+                            : 'Select Date Range',
+                      ),
+                    ),
+                  ),
+                  if (_startDate != null && _endDate != null) ...[
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: const Icon(Icons.clear_rounded),
+                      onPressed: _clearDateRange,
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 16),
               Row(
                 children: [
                   Expanded(
@@ -797,35 +1076,6 @@ class _CouponsTabState extends State<CouponsTab> {
                         children: [
                           const Icon(
                             Icons.local_offer_rounded,
-                            color: Colors.white,
-                            size: 32,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            '${_coupons.length}',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const Text(
-                            'Total Coupons',
-                            style: TextStyle(color: Colors.white),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: GradientCard(
-                      gradient: AppColors.accentGradient,
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        children: [
-                          const Icon(
-                            Icons.check_circle_rounded,
                             color: Colors.white,
                             size: 32,
                           ),
@@ -862,7 +1112,7 @@ class _CouponsTabState extends State<CouponsTab> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            '₹$totalDiscount',
+                            '₹${_totalDiscounts.toStringAsFixed(0)}',
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 24,
@@ -883,25 +1133,74 @@ class _CouponsTabState extends State<CouponsTab> {
           ),
         ),
         Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: _coupons.length,
-            itemBuilder: (context, index) {
-              final coupon = _coupons[index];
-              return FadeInUp(
-                delay: Duration(milliseconds: 100 * index),
-                child: _buildCouponCard(coupon),
-              );
-            },
+          child: RefreshIndicator(
+            onRefresh: _loadCoupons,
+            child: ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: _coupons.length + (_totalPages > 1 ? 1 : 0),
+              itemBuilder: (context, index) {
+                if (index == _coupons.length) {
+                  return _buildPagination();
+                }
+                final coupon = _coupons[index];
+                return FadeInUp(
+                  delay: Duration(milliseconds: 100 * index),
+                  child: _buildCouponCard(coupon),
+                );
+              },
+            ),
           ),
         ),
       ],
     );
   }
 
+  Widget _buildPagination() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 20),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          IconButton(
+            icon: const Icon(Icons.chevron_left_rounded),
+            onPressed: _currentPage > 1
+                ? () {
+                    setState(() => _currentPage--);
+                    _loadCoupons();
+                  }
+                : null,
+          ),
+          Text('Page $_currentPage of $_totalPages'),
+          IconButton(
+            icon: const Icon(Icons.chevron_right_rounded),
+            onPressed: _currentPage < _totalPages
+                ? () {
+                    setState(() => _currentPage++);
+                    _loadCoupons();
+                  }
+                : null,
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildCouponCard(Map<String, dynamic> coupon) {
-    final isActive = coupon['status'] == 'active';
-    final isPercentage = coupon['type'] == 'percentage';
+    final couponCode = coupon['couponCode'] as String? ?? 'N/A';
+    final shopName = coupon['shopName'] as String? ?? 'N/A';
+    final agentName = coupon['agentName'] as String? ?? 'N/A';
+    final discountAmount = coupon['discountAmount'] as num? ?? 0;
+    final activatedAt = coupon['activatedAt'] as String?;
+    final subscriptionPlan = coupon['subscriptionPlan'] as String? ?? 'N/A';
+
+    DateTime? activationDate;
+    if (activatedAt != null) {
+      try {
+        activationDate = DateTime.parse(activatedAt);
+      } catch (e) {
+        // Handle parse error
+      }
+    }
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -922,7 +1221,7 @@ class _CouponsTabState extends State<CouponsTab> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    coupon['code'],
+                    couponCode,
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
@@ -930,87 +1229,68 @@ class _CouponsTabState extends State<CouponsTab> {
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const Spacer(),
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
+                    horizontal: 12,
+                    vertical: 8,
                   ),
                   decoration: BoxDecoration(
-                    color: isActive ? Colors.green : Colors.grey,
-                    borderRadius: BorderRadius.circular(12),
+                    color: AppColors.success.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    isActive ? 'Active' : 'Expired',
-                    style: const TextStyle(color: Colors.white, fontSize: 12),
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  isPercentage
-                      ? '${coupon['discount']}% OFF'
-                      : '₹${coupon['discount']} OFF',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                    color: AppColors.primary,
+                    '₹${discountAmount.toStringAsFixed(0)}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                      color: AppColors.success,
+                    ),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 12),
-            Text(
-              'SSA: ${coupon['ssaName']}',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildCouponMetric(
-                    'Activations',
-                    '${coupon['activations']}',
-                    Icons.check_circle_rounded,
-                  ),
-                ),
-                Expanded(
-                  child: _buildCouponMetric(
-                    'Total Discount',
-                    '₹${coupon['totalDiscount']}',
-                    Icons.currency_rupee_rounded,
-                  ),
-                ),
-              ],
-            ),
+            _buildInfoRow(Icons.store_rounded, 'Shop', shopName),
+            const SizedBox(height: 8),
+            _buildInfoRow(Icons.person_rounded, 'Agent', agentName),
+            const SizedBox(height: 8),
+            _buildInfoRow(
+                Icons.subscriptions_rounded, 'Plan', subscriptionPlan),
+            if (activationDate != null) ...[
+              const SizedBox(height: 8),
+              _buildInfoRow(
+                Icons.calendar_today_rounded,
+                'Activated',
+                DateFormat('MMM d, y - h:mm a').format(activationDate),
+              ),
+            ],
           ],
         ),
       ),
     );
   }
 
-  Widget _buildCouponMetric(String label, String value, IconData icon) {
+  Widget _buildInfoRow(IconData icon, String label, String value) {
     return Row(
       children: [
         Icon(icon, size: 16, color: Colors.grey[600]),
-        const SizedBox(width: 4),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              value,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-              ),
+        const SizedBox(width: 8),
+        Text(
+          '$label: ',
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey[600],
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
             ),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[600],
-              ),
-            ),
-          ],
+          ),
         ),
       ],
     );
