@@ -19,6 +19,8 @@ import '../common/help_support_page.dart';
 import '../common/about_page.dart';
 import 'subscription_governance_screen.dart';
 import 'agent_coupon_governance_screen.dart';
+import 'platform_analytics_screen.dart';
+import 'reports_screen.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -234,6 +236,15 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
                             'View and manage all users',
                             Icons.people_rounded,
                             AppColors.primary,
+                            onTap: () {
+                              // Navigate to Users tab (index 1)
+                              final adminDashboardState =
+                                  context.findAncestorStateOfType<
+                                      _AdminDashboardState>();
+                              adminDashboardState?.setState(() {
+                                adminDashboardState._selectedIndex = 1;
+                              });
+                            },
                           ),
                         ),
                         FadeInUp(
@@ -244,6 +255,15 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
                             'Review pending shopkeeper requests',
                             Icons.approval_rounded,
                             AppColors.accent,
+                            onTap: () {
+                              // Navigate to Approvals tab (index 2)
+                              final adminDashboardState =
+                                  context.findAncestorStateOfType<
+                                      _AdminDashboardState>();
+                              adminDashboardState?.setState(() {
+                                adminDashboardState._selectedIndex = 2;
+                              });
+                            },
                           ),
                         ),
                         FadeInUp(
@@ -254,6 +274,14 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
                             'View detailed platform statistics',
                             Icons.analytics_rounded,
                             AppColors.success,
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      const PlatformAnalyticsScreen(),
+                                ),
+                              );
+                            },
                           ),
                         ),
                         FadeInUp(
@@ -264,6 +292,13 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
                             'Generate and view reports',
                             Icons.assessment_rounded,
                             AppColors.info,
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const ReportsScreen(),
+                                ),
+                              );
+                            },
                           ),
                         ),
                         FadeInUp(
@@ -431,6 +466,10 @@ class _UsersManagementTabState extends State<UsersManagementTab> {
     switch (role) {
       case UserRole.admin:
         return AppColors.error;
+      case UserRole.companySalesAgent:
+        return Colors.purple;
+      case UserRole.ssa:
+        return Colors.orange;
       case UserRole.shopkeeper:
         return AppColors.accent;
       case UserRole.customer:
@@ -442,6 +481,10 @@ class _UsersManagementTabState extends State<UsersManagementTab> {
     switch (role) {
       case UserRole.admin:
         return Icons.admin_panel_settings_rounded;
+      case UserRole.companySalesAgent:
+        return Icons.business_center_rounded;
+      case UserRole.ssa:
+        return Icons.support_agent_rounded;
       case UserRole.shopkeeper:
         return Icons.store_rounded;
       case UserRole.customer:
@@ -803,11 +846,7 @@ class _UsersManagementTabState extends State<UsersManagementTab> {
                                                 ),
                                                 const SizedBox(width: 4),
                                                 Text(
-                                                  user.role
-                                                      .toString()
-                                                      .split('.')
-                                                      .last
-                                                      .toUpperCase(),
+                                                  user.roleDisplayName,
                                                   style: TextStyle(
                                                     color: _getRoleColor(
                                                         user.role),
