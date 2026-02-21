@@ -13,6 +13,7 @@ const companySalesRoutes = require('./companySalesRoutes');
 const subadminRoutes = require('./subadminRoutes');
 const superAdminRoutes = require('./superAdminRoutes');
 const subscriptionGovernanceRoutes = require('./subscriptionGovernanceRoutes');
+const agentGovernanceRoutes = require('./agentGovernanceRoutes');
 
 const router = express.Router();
 
@@ -30,5 +31,6 @@ router.use('/company-sales', companySalesRoutes);
 router.use('/subadmin', subadminRoutes);
 router.use('/super-admin', superAdminRoutes);
 router.use('/subscription-governance', subscriptionGovernanceRoutes);
+router.use('/agent-governance', agentGovernanceRoutes);
 
 module.exports = router;

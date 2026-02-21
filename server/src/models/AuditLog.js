@@ -22,8 +22,11 @@ const auditLogSchema = new mongoose.Schema(
         'subscription_created',
         'subscription_updated',
         'subscription_cancelled',
+        'subscription_renewed',
         'shop_approved',
         'shop_rejected',
+        'coupon_activated',
+        'agent_assigned',
       ],
     },
     targetUserId: {

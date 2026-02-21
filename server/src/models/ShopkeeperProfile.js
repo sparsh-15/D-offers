@@ -35,6 +35,11 @@ const shopkeeperProfileSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    // Agent tracking
+    onboardedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
   },
   {
     timestamps: true,

@@ -52,6 +52,17 @@ const subscriptionSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    // Coupon tracking
+    couponCode: {
+      type: String,
+      trim: true,
+      uppercase: true,
+    },
+    discountAmount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     // Renewal tracking
     renewalCount: {
       type: Number,

@@ -5,6 +5,7 @@ import '../../services/super_admin_service.dart';
 import 'users_management_screen.dart';
 import 'shops_management_screen.dart';
 import 'audit_logs_screen.dart';
+import 'agent_coupon_governance_screen.dart';
 
 class SuperAdminDashboard extends StatefulWidget {
   const SuperAdminDashboard({super.key});
@@ -492,6 +493,21 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
             context,
             MaterialPageRoute(
               builder: (context) => const ShopsManagementScreen(),
+            ),
+          ),
+          isDark,
+          theme,
+        ),
+        const SizedBox(height: 12),
+        _buildActionButton(
+          'Agent & Coupon Governance',
+          'Manage agents and track coupons',
+          Icons.support_agent_rounded,
+          AppColors.warning,
+          () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const AgentCouponGovernanceScreen(),
             ),
           ),
           isDark,
