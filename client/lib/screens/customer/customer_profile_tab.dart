@@ -3,7 +3,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/utils/dialog_helper.dart';
 import '../../widgets/theme_toggle.dart';
 import '../../widgets/profile_option_tile.dart';
-import '../role_selection/role_selection_screen.dart';
+import '../auth/login_screen.dart';
 import '../common/edit_profile_page.dart';
 import '../common/addresses_page.dart';
 import '../common/settings_page.dart';
@@ -158,7 +158,7 @@ class _CustomerProfileTabState extends State<CustomerProfileTab> {
                             AuthStore.clear();
                             Navigator.of(context).pushAndRemoveUntil(
                               MaterialPageRoute(
-                                  builder: (_) => const RoleSelectionScreen()),
+                                  builder: (_) => const LoginScreen()),
                               (route) => false,
                             );
                             DialogHelper.showSuccessSnackBar(

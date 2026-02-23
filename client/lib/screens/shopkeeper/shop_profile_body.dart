@@ -8,7 +8,7 @@ import '../../services/subscription_service.dart';
 import '../../models/shopkeeper_profile_model.dart';
 import '../../widgets/theme_toggle.dart';
 import '../../widgets/profile_option_tile.dart';
-import '../role_selection/role_selection_screen.dart';
+import '../auth/login_screen.dart';
 import '../common/settings_page.dart';
 import '../common/help_support_page.dart';
 import '../common/about_page.dart';
@@ -139,7 +139,7 @@ class _ShopProfileBodyState extends State<ShopProfileBody> {
                           AuthStore.clear();
                           Navigator.of(context).pushAndRemoveUntil(
                             MaterialPageRoute(
-                                builder: (_) => const RoleSelectionScreen()),
+                                builder: (_) => const LoginScreen()),
                             (route) => false,
                           );
                           DialogHelper.showSuccessSnackBar(

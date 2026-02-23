@@ -121,10 +121,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
         return 'Customer Signup';
       case UserRole.shopkeeper:
         return 'Shopkeeper Signup';
-      case UserRole.admin:
       case UserRole.companySalesAgent:
+        return 'Sales Agent Signup';
       case UserRole.ssa:
-        return 'Admin Signup';
+        return 'Service Sales Agent Signup';
+      case UserRole.admin:
+        return 'Restricted Signup';
     }
   }
 
@@ -338,6 +340,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Future<void> _handleSignup() async {
     if (!_formKey.currentState!.validate()) return;
+    if (widget.role == UserRole.admin) {
+      DialogHelper.showErrorSnackBar(
+        context,
+        'Admin signup is restricted. Contact system administrator.',
+      );
+      return;
+    }
 
     setState(() => _isLoading = true);
     try {

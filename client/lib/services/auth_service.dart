@@ -66,55 +66,55 @@ class AuthService {
   }
 
   Future<void> sendOtp({
-    required UserRole role,
+    UserRole? role,
     required String phone,
   }) async {
     final uri = Uri.parse('${ApiConfig.authUrl}/send-otp');
     print(
-        '[AUTH] Sending OTP - Role: ${roleToString(role)}, Phone: ${phone.substring(0, 3)}***');
+        '[AUTH] Sending OTP - Role: ${role != null ? roleToString(role) : 'auto'}, Phone: ${phone.substring(0, 3)}***');
 
     try {
       final resp = await _makeRequest(() => _client.post(
             uri,
             headers: {'Content-Type': 'application/json'},
             body: jsonEncode({
-              'role': roleToString(role),
+              if (role != null) 'role': roleToString(role),
               'phone': phone,
             }),
           ));
 
       if (resp.statusCode == 429) {
         print(
-            '[AUTH] Rate limit exceeded (429) - Role: ${roleToString(role)}, Phone: ${phone.substring(0, 3)}***');
+            '[AUTH] Rate limit exceeded (429) - Role: ${role != null ? roleToString(role) : 'auto'}, Phone: ${phone.substring(0, 3)}***');
         throw Exception(
             'Too many login attempts. Please wait 15 minutes before trying again.');
       }
 
       _handleResponse(resp);
       print(
-          '[AUTH] OTP sent successfully - Role: ${roleToString(role)}, Phone: ${phone.substring(0, 3)}***');
+          '[AUTH] OTP sent successfully - Role: ${role != null ? roleToString(role) : 'auto'}, Phone: ${phone.substring(0, 3)}***');
     } catch (e) {
       print(
-          '[AUTH] sendOtp error - Role: ${roleToString(role)}, Phone: ${phone.substring(0, 3)}***, Error: $e');
+          '[AUTH] sendOtp error - Role: ${role != null ? roleToString(role) : 'auto'}, Phone: ${phone.substring(0, 3)}***, Error: $e');
       rethrow;
     }
   }
 
   Future<void> verifyOtp({
-    required UserRole role,
+    UserRole? role,
     required String phone,
     required String otp,
   }) async {
     final uri = Uri.parse('${ApiConfig.authUrl}/verify-otp');
     print(
-        '[AUTH] Verifying OTP - Role: ${roleToString(role)}, Phone: ${phone.substring(0, 3)}***');
+        '[AUTH] Verifying OTP - Role: ${role != null ? roleToString(role) : 'auto'}, Phone: ${phone.substring(0, 3)}***');
 
     try {
       final resp = await _makeRequest(() => _client.post(
             uri,
             headers: {'Content-Type': 'application/json'},
             body: jsonEncode({
-              'role': roleToString(role),
+              if (role != null) 'role': roleToString(role),
               'phone': phone,
               'otp': otp,
             }),
@@ -122,7 +122,7 @@ class AuthService {
 
       if (resp.statusCode == 429) {
         print(
-            '[AUTH] Rate limit exceeded (429) during OTP verification - Role: ${roleToString(role)}, Phone: ${phone.substring(0, 3)}***');
+            '[AUTH] Rate limit exceeded (429) during OTP verification - Role: ${role != null ? roleToString(role) : 'auto'}, Phone: ${phone.substring(0, 3)}***');
         throw Exception(
             'Too many verification attempts. Please wait 15 minutes before trying again.');
       }
@@ -135,14 +135,14 @@ class AuthService {
       }
       AuthStore.token = token;
       print(
-          '[AUTH] OTP verified successfully - Role: ${roleToString(role)}, Phone: ${phone.substring(0, 3)}***');
+          '[AUTH] OTP verified successfully - Role: ${role != null ? roleToString(role) : 'auto'}, Phone: ${phone.substring(0, 3)}***');
       // Fetch full user profile via /me so we get approvalStatus etc.
       AuthStore.currentUser = await fetchCurrentUser();
       print(
-          '[AUTH] User profile fetched successfully - Role: ${roleToString(role)}');
+          '[AUTH] User profile fetched successfully - Role: ${role != null ? roleToString(role) : 'auto'}');
     } catch (e) {
       print(
-          '[AUTH] verifyOtp error - Role: ${roleToString(role)}, Phone: ${phone.substring(0, 3)}***, Error: $e');
+          '[AUTH] verifyOtp error - Role: ${role != null ? roleToString(role) : 'auto'}, Phone: ${phone.substring(0, 3)}***, Error: $e');
       rethrow;
     }
   }

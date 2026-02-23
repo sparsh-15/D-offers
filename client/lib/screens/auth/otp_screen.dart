@@ -16,15 +16,16 @@ import '../../core/utils/theme_helper.dart';
 
 class OtpScreen extends StatefulWidget {
   final String phoneNumber;
-  final UserRole role;
+  final UserRole? role;
   final bool isRegistration;
 
   const OtpScreen({
     super.key,
     required this.phoneNumber,
-    required this.role,
+    this.role,
     this.isRegistration = false,
-  });
+  }) : assert(!isRegistration || role != null,
+            'role is required for registration flow');
 
   @override
   State<OtpScreen> createState() => _OtpScreenState();
@@ -67,8 +68,6 @@ class _OtpScreenState extends State<OtpScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -261,7 +260,7 @@ class _OtpScreenState extends State<OtpScreen> {
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(
-            builder: (_) => LoginScreen(role: widget.role),
+            builder: (_) => const LoginScreen(),
           ),
           (route) => false,
         );
@@ -354,8 +353,14 @@ class _OtpScreenState extends State<OtpScreen> {
   }
 
   void _navigateByRole() {
+    final user = AuthStore.currentUser;
+    if (user == null) {
+      DialogHelper.showErrorSnackBar(context, 'Unable to resolve user role');
+      return;
+    }
+
     Widget destination;
-    switch (widget.role) {
+    switch (user.role) {
       case UserRole.customer:
         destination = const CustomerDashboard();
         break;

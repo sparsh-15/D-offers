@@ -7,9 +7,13 @@ class AppStrings {
   static const String selectRole = "Select Your Role";
   static const String customerRole = "I'm a Customer";
   static const String shopkeeperRole = "I'm a Shopkeeper";
+  static const String salesAgentRole = "I'm a Sales Agent";
+  static const String ssaRole = "I'm a Service Sales Agent";
   static const String adminRole = "Admin Login";
   static const String customerDesc = "Browse and discover exclusive offers";
   static const String shopkeeperDesc = "Manage your shop and create offers";
+  static const String salesAgentDesc = "Manage sales operations and coupons";
+  static const String ssaDesc = "Handle service support and activations";
   static const String adminDesc = "Platform administration";
 
   // Auth

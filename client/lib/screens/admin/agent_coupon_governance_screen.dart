@@ -7,8 +7,6 @@ import '../../core/utils/dialog_helper.dart';
 import '../../widgets/gradient_card.dart';
 import '../../services/agent_governance_service.dart';
 import 'create_coupon_screen.dart';
-import 'create_ssa_screen.dart';
-import 'create_sales_agent_screen.dart';
 
 class AgentCouponGovernanceScreen extends StatefulWidget {
   const AgentCouponGovernanceScreen({super.key});
@@ -78,39 +76,8 @@ class _AgentCouponGovernanceScreenState
   Widget? _buildFloatingActionButton() {
     switch (_tabController.index) {
       case 0: // SSA Tab
-        return FloatingActionButton.extended(
-          onPressed: () async {
-            final result = await Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const CreateSSAScreen(),
-              ),
-            );
-            if (result == true) {
-              // Refresh will be handled by the tab
-            }
-          },
-          icon: const Icon(Icons.person_add_rounded),
-          label: const Text('Add SSA'),
-          backgroundColor: AppColors.primary,
-        );
       case 1: // Sales Agents Tab
-        return FloatingActionButton.extended(
-          onPressed: () async {
-            final result = await Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const CreateSalesAgentScreen(),
-              ),
-            );
-            if (result == true) {
-              // Refresh will be handled by the tab
-            }
-          },
-          icon: const Icon(Icons.person_add_rounded),
-          label: const Text('Add Agent'),
-          backgroundColor: AppColors.accent,
-        );
+        return null;
       case 2: // Coupons Tab
         return FloatingActionButton.extended(
           onPressed: () async {

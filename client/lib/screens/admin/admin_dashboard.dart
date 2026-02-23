@@ -11,7 +11,7 @@ import '../../services/auth_service.dart';
 import '../../services/auth_store.dart';
 import '../../models/user_model.dart';
 import '../../models/role_enum.dart';
-import '../role_selection/role_selection_screen.dart';
+import '../auth/login_screen.dart';
 import '../common/edit_profile_page.dart';
 import '../common/security_page.dart';
 import '../common/settings_page.dart';
@@ -324,7 +324,7 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
                           child: _buildQuickAction(
                             context,
                             'Agent & Coupon Governance',
-                            'Manage SSA, sales agents & coupons',
+                            'View SSA, sales agents & manage coupons',
                             Icons.support_agent_rounded,
                             AppColors.gradientViolet,
                             onTap: () {
@@ -1635,7 +1635,7 @@ class _AdminProfileTabState extends State<AdminProfileTab> {
                             AuthStore.clear();
                             Navigator.of(context).pushAndRemoveUntil(
                               MaterialPageRoute(
-                                  builder: (_) => const RoleSelectionScreen()),
+                                  builder: (_) => const LoginScreen()),
                               (route) => false,
                             );
                             DialogHelper.showSuccessSnackBar(

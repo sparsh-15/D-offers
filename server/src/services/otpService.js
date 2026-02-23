@@ -55,16 +55,11 @@ async function sendOtp(phone, role, signupData = {}) {
     err.statusCode = 400;
     throw err;
   }
-  if (!config.ROLES.includes(role)) {
-    const err = new Error('Invalid role');
-    err.statusCode = 400;
-    throw err;
-  }
 
   const existingUser = await User.findOne({ phone });
 
   // Check if this is a signup (has name/pincode) or login (no signup data)
-  const isSignup = signupData.name || signupData.pincode;
+  const isSignup = Boolean(signupData.name || signupData.pincode);
 
   if (!isSignup) {
     // This is a LOGIN attempt - user must exist
@@ -73,19 +68,24 @@ async function sendOtp(phone, role, signupData = {}) {
       err.statusCode = 404;
       throw err;
     }
-    
-    // Allow any admin role to login with any admin role request
-    const adminRoles = ['super_admin', 'subadmin', 'company_sales_agent', 'ssa'];
-    const isAdminRequest = adminRoles.includes(role);
-    const isAdminUser = adminRoles.includes(existingUser.role);
-    
-    if (isAdminRequest && isAdminUser) {
-      // Both are admin roles - allow login
-    } else if (existingUser.role !== role) {
-      // Non-admin roles must match exactly
-      const err = new Error(`This phone is registered as ${existingUser.role}`);
-      err.statusCode = 400;
-      throw err;
+
+    // Optional role check for backward compatibility with older clients.
+    if (role) {
+      if (!config.ROLES.includes(role)) {
+        const err = new Error('Invalid role');
+        err.statusCode = 400;
+        throw err;
+      }
+
+      const adminRoles = ['super_admin', 'subadmin', 'company_sales_agent', 'ssa'];
+      const isAdminRequest = adminRoles.includes(role);
+      const isAdminUser = adminRoles.includes(existingUser.role);
+
+      if (!(isAdminRequest && isAdminUser) && existingUser.role !== role) {
+        const err = new Error(`This phone is registered as ${existingUser.role}`);
+        err.statusCode = 400;
+        throw err;
+      }
     }
 
     // Generate and send OTP for existing user
@@ -101,9 +101,14 @@ async function sendOtp(phone, role, signupData = {}) {
   }
 
   // This is a SIGNUP attempt
-  // Prevent signup for admin roles
-  const adminRoles = ['super_admin', 'subadmin', 'company_sales_agent', 'ssa'];
-  if (adminRoles.includes(role)) {
+  if (!role || !config.ROLES.includes(role)) {
+    const err = new Error('Invalid role');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const signupRoles = ['customer', 'shopkeeper', 'company_sales_agent', 'ssa'];
+  if (!signupRoles.includes(role)) {
     const err = new Error('Cannot signup with this role. Contact administrator.');
     err.statusCode = 403;
     throw err;
@@ -173,11 +178,6 @@ async function verifyOtp(phone, otp, role) {
     err.statusCode = 400;
     throw err;
   }
-  if (!config.ROLES.includes(role)) {
-    const err = new Error('Invalid role');
-    err.statusCode = 400;
-    throw err;
-  }
 
   const user = await User.findOne({ phone });
   if (!user) {
@@ -186,18 +186,23 @@ async function verifyOtp(phone, otp, role) {
     throw err;
   }
   
-  // Allow any admin role to login with any admin role request
-  const adminRoles = ['super_admin', 'subadmin', 'company_sales_agent', 'ssa'];
-  const isAdminRequest = adminRoles.includes(role);
-  const isAdminUser = adminRoles.includes(user.role);
-  
-  if (isAdminRequest && isAdminUser) {
-    // Both are admin roles - allow login
-  } else if (user.role !== role) {
-    // Non-admin roles must match exactly
-    const err = new Error(`This phone is registered as ${user.role}`);
-    err.statusCode = 400;
-    throw err;
+  // Optional role check for backward compatibility with older clients.
+  if (role) {
+    if (!config.ROLES.includes(role)) {
+      const err = new Error('Invalid role');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const adminRoles = ['super_admin', 'subadmin', 'company_sales_agent', 'ssa'];
+    const isAdminRequest = adminRoles.includes(role);
+    const isAdminUser = adminRoles.includes(user.role);
+
+    if (!(isAdminRequest && isAdminUser) && user.role !== role) {
+      const err = new Error(`This phone is registered as ${user.role}`);
+      err.statusCode = 400;
+      throw err;
+    }
   }
   // Note: We allow shopkeepers to login even if pending/rejected
   // The frontend will show appropriate message based on approvalStatus

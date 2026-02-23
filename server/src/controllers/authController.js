@@ -35,9 +35,9 @@ async function sendOtp(req, res, next) {
     
     console.log(`[AUTH] sendOtp request - Role: ${role}, Phone: ${phone?.substring(0, 3)}***, IP: ${clientIp}`);
     
-    if (!phone || !role) {
-      console.warn(`[AUTH] sendOtp validation failed - Missing phone or role`);
-      return res.status(400).json({ success: false, message: 'Phone and role are required' });
+    if (!phone) {
+      console.warn(`[AUTH] sendOtp validation failed - Missing phone`);
+      return res.status(400).json({ success: false, message: 'Phone is required' });
     }
     
     await otpService.sendOtp(phone.trim(), role, { name, pincode, address });
@@ -56,9 +56,9 @@ async function verifyOtp(req, res, next) {
     
     console.log(`[AUTH] verifyOtp request - Role: ${role}, Phone: ${phone?.substring(0, 3)}***, IP: ${clientIp}`);
     
-    if (!phone || otp === undefined || otp === null || !role) {
+    if (!phone || otp === undefined || otp === null) {
       console.warn(`[AUTH] verifyOtp validation failed - Missing required fields`);
-      return res.status(400).json({ success: false, message: 'Phone, otp and role are required' });
+      return res.status(400).json({ success: false, message: 'Phone and otp are required' });
     }
     
     const { user } = await otpService.verifyOtp(phone.trim(), String(otp), role);

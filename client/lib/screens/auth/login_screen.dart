@@ -1,21 +1,19 @@
+import 'package:animate_do/animate_do.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:animate_do/animate_do.dart';
-import '../../models/role_enum.dart';
+
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
-import '../../widgets/custom_text_field.dart';
-import '../../widgets/custom_button.dart';
-import 'otp_screen.dart';
-import 'Register_screen.dart';
-import '../../services/auth_service.dart';
 import '../../core/utils/dialog_helper.dart';
 import '../../core/utils/theme_helper.dart';
+import '../../services/auth_service.dart';
+import '../../widgets/custom_button.dart';
+import '../../widgets/custom_text_field.dart';
+import 'otp_screen.dart';
+import '../role_selection/role_selection_screen.dart';
 
 class LoginScreen extends StatefulWidget {
-  final UserRole role;
-
-  const LoginScreen({super.key, required this.role});
+  const LoginScreen({super.key});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -32,32 +30,6 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  String _getRoleTitle() {
-    switch (widget.role) {
-      case UserRole.customer:
-        return 'Customer Login';
-      case UserRole.shopkeeper:
-        return 'Shopkeeper Login';
-      case UserRole.admin:
-      case UserRole.companySalesAgent:
-      case UserRole.ssa:
-        return 'Admin Login';
-    }
-  }
-
-  IconData _getRoleIcon() {
-    switch (widget.role) {
-      case UserRole.customer:
-        return Icons.shopping_bag_rounded;
-      case UserRole.shopkeeper:
-        return Icons.store_rounded;
-      case UserRole.admin:
-      case UserRole.companySalesAgent:
-      case UserRole.ssa:
-        return Icons.admin_panel_settings_rounded;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -67,32 +39,23 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         child: SafeArea(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
+            padding: const EdgeInsets.all(24),
             child: Form(
               key: _formKey,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const SizedBox(height: 20),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: IconButton(
-                      icon: const Icon(Icons.arrow_back_ios_rounded),
-                      onPressed: () => Navigator.pop(context),
-                      color: AppColors.primary,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
                   FadeInDown(
                     child: Center(
                       child: Container(
                         padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
+                        decoration: const BoxDecoration(
                           color: AppColors.surface,
                           shape: BoxShape.circle,
                         ),
-                        child: Icon(
-                          _getRoleIcon(),
+                        child: const Icon(
+                          Icons.verified_user_rounded,
                           size: 60,
                           color: AppColors.primary,
                         ),
@@ -103,7 +66,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   FadeInDown(
                     delay: const Duration(milliseconds: 200),
                     child: Text(
-                      _getRoleTitle(),
+                      'Login',
                       style: Theme.of(context).textTheme.displaySmall,
                       textAlign: TextAlign.center,
                     ),
@@ -117,49 +80,48 @@ class _LoginScreenState extends State<LoginScreen> {
                       textAlign: TextAlign.center,
                     ),
                   ),
-                  if (widget.role == UserRole.admin)
-                    FadeInDown(
-                      delay: const Duration(milliseconds: 350),
-                      child: Padding(
-                        padding: const EdgeInsets.only(top: 16),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
+                  FadeInDown(
+                    delay: const Duration(milliseconds: 350),
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 16),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: AppColors.primary.withOpacity(0.3),
+                            width: 1,
                           ),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: AppColors.primary.withOpacity(0.3),
-                              width: 1,
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.info_outline_rounded,
+                              size: 20,
+                              color: AppColors.primary,
                             ),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.info_outline_rounded,
-                                size: 20,
-                                color: AppColors.primary,
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'Login with your mobile number and OTP.',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(
+                                      color: AppColors.primary,
+                                      fontSize: 12,
+                                    ),
                               ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  'For Super Admin, Sub Admin, Sales Agent, and SSA roles',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodySmall
-                                      ?.copyWith(
-                                        color: AppColors.primary,
-                                        fontSize: 12,
-                                      ),
-                                ),
-                              ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
+                  ),
                   const SizedBox(height: 60),
                   FadeInUp(
                     delay: const Duration(milliseconds: 400),
@@ -170,9 +132,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       prefixIcon: Icons.phone_rounded,
                       keyboardType: TextInputType.phone,
                       maxLength: 10,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly,
-                      ],
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Please enter mobile number';
@@ -194,35 +154,39 @@ class _LoginScreenState extends State<LoginScreen> {
                       icon: Icons.send_rounded,
                     ),
                   ),
-                  const SizedBox(height: 24),
-                  if (widget.role != UserRole.admin)
-                    FadeInUp(
-                      delay: const Duration(milliseconds: 600),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            AppStrings.dontHaveAccount,
-                            style: Theme.of(context).textTheme.bodyMedium,
+                  const SizedBox(height: 18),
+                  FadeInUp(
+                    delay: const Duration(milliseconds: 560),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          'New here?',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const RoleSelectionScreen(),
+                              ),
+                            );
+                          },
+                          child: Text(
+                            'Register',
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.copyWith(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.w700,
+                                ),
                           ),
-                          TextButton(
-                            onPressed: () {
-                              _navigateToRegister();
-                            },
-                            child: Text(
-                              AppStrings.register,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodyMedium
-                                  ?.copyWith(
-                                    color: AppColors.primary,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
+                  ),
                 ],
               ),
             ),
@@ -238,7 +202,6 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
     try {
       await AuthService.instance.sendOtp(
-        role: widget.role,
         phone: _phoneController.text,
       );
       if (!mounted) return;
@@ -248,7 +211,6 @@ class _LoginScreenState extends State<LoginScreen> {
         MaterialPageRoute(
           builder: (_) => OtpScreen(
             phoneNumber: _phoneController.text,
-            role: widget.role,
             isRegistration: false,
           ),
         ),
@@ -257,7 +219,6 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
       final errorMessage = e.toString().toLowerCase();
 
-      // Handle rate limit errors specifically
       if (errorMessage.contains('too many') ||
           errorMessage.contains('429') ||
           errorMessage.contains('rate limit')) {
@@ -270,10 +231,9 @@ class _LoginScreenState extends State<LoginScreen> {
           errorMessage.contains('please signup')) {
         DialogHelper.showErrorSnackBar(
           context,
-          'User not found, please register',
+          'User not found. Register as a new user.',
         );
       } else {
-        // Remove "Exception: " prefix if present
         final cleanMessage = errorMessage.replaceFirst('exception: ', '');
         DialogHelper.showErrorSnackBar(context, cleanMessage);
       }
@@ -282,14 +242,5 @@ class _LoginScreenState extends State<LoginScreen> {
         setState(() => _isLoading = false);
       }
     }
-  }
-
-  void _navigateToRegister() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => RegisterScreen(role: widget.role),
-      ),
-    );
   }
 }
