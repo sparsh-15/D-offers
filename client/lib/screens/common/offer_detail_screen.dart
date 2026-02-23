@@ -104,9 +104,9 @@ class _OfferDetailScreenState extends State<OfferDetailScreen> {
         gradient: ThemeHelper.getBackgroundGradient(context),
       ),
       child: Scaffold(
-        backgroundColor: Colors.transparent,
+        backgroundColor: AppColors.transparent,
         appBar: AppBar(
-          backgroundColor: Colors.transparent,
+          backgroundColor: AppColors.transparent,
           elevation: 0,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back_rounded),
@@ -143,9 +143,7 @@ class _OfferDetailScreenState extends State<OfferDetailScreen> {
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: (isDark
-                                ? AppColors.surface
-                                : AppColors.lightSurface)
+                        color: (ThemeHelper.getSurfaceColor(context))
                             .withValues(alpha: 0.8),
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -189,7 +187,7 @@ class _OfferDetailScreenState extends State<OfferDetailScreen> {
                       label: Text(
                         discountLabel,
                         style: const TextStyle(
-                          color: Colors.white,
+                          color: AppColors.white,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -199,8 +197,8 @@ class _OfferDetailScreenState extends State<OfferDetailScreen> {
                     Chip(
                       label: Text(
                         offer.status.toUpperCase(),
-                        style:
-                            const TextStyle(color: Colors.white, fontSize: 11),
+                        style: const TextStyle(
+                            color: AppColors.white, fontSize: 11),
                       ),
                       backgroundColor: offer.status == 'active'
                           ? AppColors.success
@@ -213,7 +211,7 @@ class _OfferDetailScreenState extends State<OfferDetailScreen> {
                       onPressed: _isToggling ? null : _toggleLike,
                       icon: Icon(
                         _isLiked ? Icons.favorite : Icons.favorite_border,
-                        color: _isLiked ? Colors.red : null,
+                        color: _isLiked ? AppColors.red : null,
                       ),
                     ),
                     Text(
@@ -251,9 +249,7 @@ class _OfferDetailScreenState extends State<OfferDetailScreen> {
                         width: double.infinity,
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: isDark
-                              ? AppColors.surface
-                              : AppColors.lightSurface,
+                          color: ThemeHelper.getSurfaceColor(context),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
@@ -339,8 +335,8 @@ class _OfferDetailScreenState extends State<OfferDetailScreen> {
                                     borderRadius: BorderRadius.circular(16),
                                     boxShadow: [
                                       BoxShadow(
-                                        color:
-                                            Colors.black.withValues(alpha: 0.1),
+                                        color: AppColors.black
+                                            .withValues(alpha: 0.1),
                                         blurRadius: 8,
                                         offset: const Offset(0, 4),
                                       ),
@@ -354,7 +350,7 @@ class _OfferDetailScreenState extends State<OfferDetailScreen> {
                                       placeholder: (context, url) => Container(
                                         color: isDark
                                             ? AppColors.surface
-                                            : Colors.grey[200],
+                                            : AppColors.grey200,
                                         child: Center(
                                           child: CircularProgressIndicator(
                                             color: AppColors.primary,
@@ -366,7 +362,7 @@ class _OfferDetailScreenState extends State<OfferDetailScreen> {
                                           Container(
                                         color: isDark
                                             ? AppColors.surface
-                                            : Colors.grey[200],
+                                            : AppColors.grey200,
                                         child: Column(
                                           mainAxisAlignment:
                                               MainAxisAlignment.center,
@@ -374,14 +370,14 @@ class _OfferDetailScreenState extends State<OfferDetailScreen> {
                                             Icon(
                                               Icons.broken_image_rounded,
                                               size: 40,
-                                              color: Colors.grey[400],
+                                              color: AppColors.grey400,
                                             ),
                                             const SizedBox(height: 8),
                                             Text(
                                               'Failed to load',
                                               style: theme.textTheme.bodySmall
                                                   ?.copyWith(
-                                                color: Colors.grey[400],
+                                                color: AppColors.grey400,
                                               ),
                                             ),
                                           ],
@@ -427,9 +423,7 @@ class _OfferDetailScreenState extends State<OfferDetailScreen> {
                         width: double.infinity,
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: isDark
-                              ? AppColors.surface
-                              : AppColors.lightSurface,
+                          color: ThemeHelper.getSurfaceColor(context),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                             color: AppColors.primary.withValues(alpha: 0.2),
@@ -587,7 +581,7 @@ class _ValidityChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.surface : AppColors.lightSurface,
+        color: ThemeHelper.getSurfaceColor(context),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: AppColors.primary.withValues(alpha: 0.2),
@@ -664,17 +658,17 @@ class _PhotoGalleryScreenState extends State<_PhotoGalleryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: AppColors.black,
       appBar: AppBar(
-        backgroundColor: Colors.black,
+        backgroundColor: AppColors.black,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.close, color: Colors.white),
+          icon: const Icon(Icons.close, color: AppColors.white),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text(
           '${_currentIndex + 1} / ${widget.photos.length}',
-          style: const TextStyle(color: Colors.white),
+          style: const TextStyle(color: AppColors.white),
         ),
         centerTitle: true,
       ),
@@ -698,7 +692,7 @@ class _PhotoGalleryScreenState extends State<_PhotoGalleryScreen> {
                   fit: BoxFit.contain,
                   placeholder: (context, url) => const Center(
                     child: CircularProgressIndicator(
-                      color: Colors.white,
+                      color: AppColors.white,
                     ),
                   ),
                   errorWidget: (context, url, error) => const Center(
@@ -708,12 +702,12 @@ class _PhotoGalleryScreenState extends State<_PhotoGalleryScreen> {
                         Icon(
                           Icons.broken_image_rounded,
                           size: 80,
-                          color: Colors.white54,
+                          color: AppColors.white54,
                         ),
                         SizedBox(height: 16),
                         Text(
                           'Failed to load image',
-                          style: TextStyle(color: Colors.white54),
+                          style: TextStyle(color: AppColors.white54),
                         ),
                       ],
                     ),

@@ -5,20 +5,17 @@ import '../../models/role_enum.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
 import '../../widgets/gradient_card.dart';
+import '../../core/utils/theme_helper.dart';
 
 class RoleSelectionScreen extends StatelessWidget {
   const RoleSelectionScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
-          gradient: isDark
-              ? AppColors.backgroundGradient
-              : AppColors.lightBackgroundGradient,
+          gradient: ThemeHelper.getBackgroundGradient(context),
         ),
         child: SafeArea(
           child: Padding(
@@ -91,7 +88,10 @@ class RoleSelectionScreen extends StatelessWidget {
                           description: AppStrings.adminDesc,
                           icon: Icons.admin_panel_settings_rounded,
                           gradient: const LinearGradient(
-                            colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
+                            colors: [
+                              AppColors.gradientIndigo,
+                              AppColors.gradientViolet
+                            ],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
@@ -127,13 +127,13 @@ class RoleSelectionScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: AppColors.white.withOpacity(0.2),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
               icon,
               size: 32,
-              color: Colors.white,
+              color: AppColors.white,
             ),
           ),
           const SizedBox(width: 20),
@@ -144,7 +144,7 @@ class RoleSelectionScreen extends StatelessWidget {
                 Text(
                   title,
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: Colors.white,
+                        color: AppColors.white,
                         fontWeight: FontWeight.bold,
                       ),
                 ),
@@ -152,7 +152,7 @@ class RoleSelectionScreen extends StatelessWidget {
                 Text(
                   description,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Colors.white.withOpacity(0.9),
+                        color: AppColors.white.withOpacity(0.9),
                       ),
                 ),
               ],
@@ -160,7 +160,7 @@ class RoleSelectionScreen extends StatelessWidget {
           ),
           const Icon(
             Icons.arrow_forward_ios_rounded,
-            color: Colors.white,
+            color: AppColors.white,
             size: 20,
           ),
         ],

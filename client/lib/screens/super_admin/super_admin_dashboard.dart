@@ -60,9 +60,9 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
         gradient: ThemeHelper.getBackgroundGradient(context),
       ),
       child: Scaffold(
-        backgroundColor: Colors.transparent,
+        backgroundColor: AppColors.transparent,
         appBar: AppBar(
-          backgroundColor: Colors.transparent,
+          backgroundColor: AppColors.transparent,
           elevation: 0,
           title: const Text('Super Admin Dashboard'),
           actions: [
@@ -191,7 +191,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.surface : AppColors.lightSurface,
+        color: ThemeHelper.getSurfaceColor(context),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: color.withValues(alpha: 0.3),
@@ -244,7 +244,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.surface : AppColors.lightSurface,
+        color: ThemeHelper.getSurfaceColor(context),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -292,7 +292,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.cardBackground : Colors.grey[100],
+        color: isDark ? AppColors.cardBackground : AppColors.grey100,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -357,7 +357,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.surface : AppColors.lightSurface,
+        color: ThemeHelper.getSurfaceColor(context),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -419,7 +419,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.cardBackground : Colors.grey[100],
+        color: isDark ? AppColors.cardBackground : AppColors.grey100,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -547,7 +547,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isDark ? AppColors.surface : AppColors.lightSurface,
+          color: ThemeHelper.getSurfaceColor(context),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: color.withValues(alpha: 0.3),

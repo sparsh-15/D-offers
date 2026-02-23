@@ -6,6 +6,7 @@ import '../../services/auth_service.dart';
 import '../../services/auth_store.dart';
 import '../../models/offer_model.dart';
 import '../../widgets/offer_card.dart';
+import '../../core/utils/theme_helper.dart';
 
 class CustomerHomeTab extends StatefulWidget {
   const CustomerHomeTab({
@@ -40,15 +41,13 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final user = AuthStore.currentUser;
-    final name = (user != null && user.name.isNotEmpty) ? user.name : 'Customer';
+    final name =
+        (user != null && user.name.isNotEmpty) ? user.name : 'Customer';
 
     return Container(
       decoration: BoxDecoration(
-        gradient: isDark
-            ? AppColors.backgroundGradient
-            : AppColors.lightBackgroundGradient,
+        gradient: ThemeHelper.getBackgroundGradient(context),
       ),
       child: SafeArea(
         child: RefreshIndicator(
@@ -57,7 +56,7 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
             slivers: [
               SliverAppBar(
                 floating: true,
-                backgroundColor: Colors.transparent,
+                backgroundColor: AppColors.transparent,
                 title: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -65,8 +64,8 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                     Text(
                       'Hello, $name!',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                            fontWeight: FontWeight.bold,
+                          ),
                     ),
                     Text(
                       AppStrings.exploreOffers,
@@ -91,11 +90,11 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           decoration: BoxDecoration(
-                            color: isDark ? AppColors.surface : AppColors.lightSurface,
+                            color: ThemeHelper.getSurfaceColor(context),
                             borderRadius: BorderRadius.circular(12),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.1),
+                                color: AppColors.black.withOpacity(0.1),
                                 blurRadius: 8,
                                 offset: const Offset(0, 2),
                               ),
@@ -121,13 +120,17 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                           children: [
                             Text(
                               'Featured Offers',
-                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleLarge
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
                             ),
                             TextButton.icon(
                               onPressed: _goToOffers,
-                              icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+                              icon: const Icon(Icons.arrow_forward_rounded,
+                                  size: 18),
                               label: const Text('View All'),
                             ),
                           ],
@@ -137,7 +140,8 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                       FutureBuilder<List<OfferModel>>(
                         future: _featuredOffersFuture,
                         builder: (context, snapshot) {
-                          if (snapshot.connectionState == ConnectionState.waiting) {
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
                             return SizedBox(
                               height: 200,
                               child: Center(
@@ -161,7 +165,8 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                                   const SizedBox(height: 16),
                                   Text(
                                     'Failed to load offers',
-                                    style: Theme.of(context).textTheme.titleMedium,
+                                    style:
+                                        Theme.of(context).textTheme.titleMedium,
                                   ),
                                   const SizedBox(height: 8),
                                   ElevatedButton.icon(
@@ -185,17 +190,22 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                                   Icon(
                                     Icons.local_offer_outlined,
                                     size: 64,
-                                    color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .primary
+                                        .withOpacity(0.5),
                                   ),
                                   const SizedBox(height: 16),
                                   Text(
                                     'No offers available',
-                                    style: Theme.of(context).textTheme.titleMedium,
+                                    style:
+                                        Theme.of(context).textTheme.titleMedium,
                                   ),
                                   const SizedBox(height: 8),
                                   Text(
                                     'Check back later for new offers',
-                                    style: Theme.of(context).textTheme.bodySmall,
+                                    style:
+                                        Theme.of(context).textTheme.bodySmall,
                                   ),
                                 ],
                               ),
@@ -212,11 +222,15 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                                   itemBuilder: (context, index) {
                                     final offer = featuredOffers[index];
                                     return FadeInRight(
-                                      delay: Duration(milliseconds: 100 * index),
+                                      delay:
+                                          Duration(milliseconds: 100 * index),
                                       child: Container(
                                         width: 280,
                                         margin: EdgeInsets.only(
-                                          right: index < featuredOffers.length - 1 ? 12 : 0,
+                                          right:
+                                              index < featuredOffers.length - 1
+                                                  ? 12
+                                                  : 0,
                                         ),
                                         child: OfferCard(
                                           offer: offer,
@@ -233,8 +247,10 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                                   child: Center(
                                     child: OutlinedButton.icon(
                                       onPressed: _goToOffers,
-                                      icon: const Icon(Icons.arrow_forward_rounded),
-                                      label: Text('View ${offers.length - 6} more offers'),
+                                      icon: const Icon(
+                                          Icons.arrow_forward_rounded),
+                                      label: Text(
+                                          'View ${offers.length - 6} more offers'),
                                     ),
                                   ),
                                 ),
@@ -247,7 +263,7 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                         child: Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: isDark ? AppColors.surface : AppColors.lightSurface,
+                            color: ThemeHelper.getSurfaceColor(context),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
                               color: AppColors.primary.withOpacity(0.3),
@@ -274,14 +290,18 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                                   children: [
                                     Text(
                                       'Discover More',
-                                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleMedium
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                          ),
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
                                       'Browse all available offers and find the best deals near you',
-                                      style: Theme.of(context).textTheme.bodySmall,
+                                      style:
+                                          Theme.of(context).textTheme.bodySmall,
                                     ),
                                   ],
                                 ),

@@ -37,12 +37,12 @@ class _SubscriptionGovernanceScreenState
       appBar: AppBar(
         title: const Text('Subscription Governance'),
         backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
+        foregroundColor: AppColors.white,
         bottom: TabBar(
           controller: _tabController,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white70,
-          indicatorColor: Colors.white,
+          labelColor: AppColors.white,
+          unselectedLabelColor: AppColors.white70,
+          indicatorColor: AppColors.white,
           tabs: const [
             Tab(text: 'Plans', icon: Icon(Icons.list_alt_rounded)),
             Tab(text: 'Subscriptions', icon: Icon(Icons.subscriptions_rounded)),
@@ -158,7 +158,7 @@ class _PlansManagementTabState extends State<PlansManagementTab> {
                 label: const Text('Add Plan'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
+                  foregroundColor: AppColors.white,
                 ),
               ),
             ],
@@ -223,13 +223,14 @@ class _PlansManagementTabState extends State<PlansManagementTab> {
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color: isActive ? Colors.green : Colors.grey,
+                              color:
+                                  isActive ? AppColors.green : AppColors.grey,
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Text(
                               isActive ? 'Active' : 'Inactive',
                               style: const TextStyle(
-                                color: Colors.white,
+                                color: AppColors.white,
                                 fontSize: 12,
                               ),
                             ),
@@ -344,7 +345,7 @@ class _PlansManagementTabState extends State<PlansManagementTab> {
           label,
           style: TextStyle(
             fontSize: 12,
-            color: Colors.grey[600],
+            color: AppColors.grey600,
           ),
         ),
       ],
@@ -466,7 +467,7 @@ class _PlansManagementTabState extends State<PlansManagementTab> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text('Please select a category'),
-                      backgroundColor: Colors.red,
+                      backgroundColor: AppColors.red,
                     ),
                   );
                   return;
@@ -678,21 +679,21 @@ class _SubscriptionsManagementTabState
                         children: [
                           const Icon(
                             Icons.check_circle_rounded,
-                            color: Colors.white,
+                            color: AppColors.white,
                             size: 32,
                           ),
                           const SizedBox(height: 8),
                           Text(
                             '$activeCount',
                             style: const TextStyle(
-                              color: Colors.white,
+                              color: AppColors.white,
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           const Text(
                             'Active',
-                            style: TextStyle(color: Colors.white),
+                            style: TextStyle(color: AppColors.white),
                           ),
                         ],
                       ),
@@ -702,28 +703,28 @@ class _SubscriptionsManagementTabState
                   Expanded(
                     child: GradientCard(
                       gradient: const LinearGradient(
-                        colors: [Colors.orange, Colors.deepOrange],
+                        colors: [AppColors.orange, AppColors.deepOrange],
                       ),
                       padding: const EdgeInsets.all(16),
                       child: Column(
                         children: [
                           const Icon(
                             Icons.cancel_rounded,
-                            color: Colors.white,
+                            color: AppColors.white,
                             size: 32,
                           ),
                           const SizedBox(height: 8),
                           Text(
                             '$expiredCount',
                             style: const TextStyle(
-                              color: Colors.white,
+                              color: AppColors.white,
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           const Text(
                             'Expired',
-                            style: TextStyle(color: Colors.white),
+                            style: TextStyle(color: AppColors.white),
                           ),
                         ],
                       ),
@@ -795,13 +796,13 @@ class _SubscriptionsManagementTabState
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: isActive
-                ? Colors.green.withValues(alpha: 0.1)
-                : Colors.red.withValues(alpha: 0.1),
+                ? AppColors.green.withValues(alpha: 0.1)
+                : AppColors.red.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(
             isActive ? Icons.check_circle_rounded : Icons.cancel_rounded,
-            color: isActive ? Colors.green : Colors.red,
+            color: isActive ? AppColors.green : AppColors.red,
           ),
         ),
         title: Text(shopName),
@@ -991,19 +992,19 @@ class _SubscriptionAnalyticsTabState extends State<SubscriptionAnalyticsTab> {
                   child: Column(
                     children: [
                       const Icon(Icons.currency_rupee_rounded,
-                          color: Colors.white, size: 32),
+                          color: AppColors.white, size: 32),
                       const SizedBox(height: 8),
                       Text(
                         '₹${activeRevenue.toStringAsFixed(0)}',
                         style: const TextStyle(
-                          color: Colors.white,
+                          color: AppColors.white,
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       const Text(
                         'Total Revenue',
-                        style: TextStyle(color: Colors.white),
+                        style: TextStyle(color: AppColors.white),
                       ),
                     ],
                   ),
@@ -1016,19 +1017,19 @@ class _SubscriptionAnalyticsTabState extends State<SubscriptionAnalyticsTab> {
                   child: Column(
                     children: [
                       const Icon(Icons.trending_up_rounded,
-                          color: Colors.white, size: 32),
+                          color: AppColors.white, size: 32),
                       const SizedBox(height: 8),
                       Text(
                         '₹${mrr.toStringAsFixed(0)}',
                         style: const TextStyle(
-                          color: Colors.white,
+                          color: AppColors.white,
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       const Text(
                         'MRR',
-                        style: TextStyle(color: Colors.white),
+                        style: TextStyle(color: AppColors.white),
                       ),
                     ],
                   ),
@@ -1046,7 +1047,7 @@ class _SubscriptionAnalyticsTabState extends State<SubscriptionAnalyticsTab> {
                     child: Column(
                       children: [
                         const Icon(Icons.check_circle_rounded,
-                            color: Colors.green, size: 32),
+                            color: AppColors.green, size: 32),
                         const SizedBox(height: 8),
                         Text(
                           '$activeCount',
@@ -1069,7 +1070,7 @@ class _SubscriptionAnalyticsTabState extends State<SubscriptionAnalyticsTab> {
                     child: Column(
                       children: [
                         const Icon(Icons.cancel_rounded,
-                            color: Colors.red, size: 32),
+                            color: AppColors.red, size: 32),
                         const SizedBox(height: 8),
                         Text(
                           '$expiredCount',
@@ -1107,11 +1108,11 @@ class _SubscriptionAnalyticsTabState extends State<SubscriptionAnalyticsTab> {
               final count = item['count'] ?? 0;
               final revenue = item['revenue'] ?? 0;
               final colors = [
-                Colors.blue,
-                Colors.purple,
-                Colors.orange,
-                Colors.green,
-                Colors.red,
+                AppColors.blue,
+                AppColors.purple,
+                AppColors.orange,
+                AppColors.green,
+                AppColors.red,
               ];
               final color =
                   colors[planDistribution.indexOf(item) % colors.length];
@@ -1169,7 +1170,7 @@ class _SubscriptionAnalyticsTabState extends State<SubscriptionAnalyticsTab> {
                   Text(
                     '$count active subscriptions',
                     style: TextStyle(
-                      color: Colors.grey[600],
+                      color: AppColors.grey600,
                       fontSize: 12,
                     ),
                   ),

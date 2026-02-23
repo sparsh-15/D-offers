@@ -4,6 +4,7 @@ import '../../core/constants/app_colors.dart';
 import '../../services/auth_service.dart';
 import '../../models/offer_model.dart';
 import '../../widgets/offer_card.dart';
+import '../../core/utils/theme_helper.dart';
 
 class CustomerFavoritesTab extends StatefulWidget {
   const CustomerFavoritesTab({
@@ -38,25 +39,21 @@ class _CustomerFavoritesTabState extends State<CustomerFavoritesTab> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Container(
       decoration: BoxDecoration(
-        gradient: isDark
-            ? AppColors.backgroundGradient
-            : AppColors.lightBackgroundGradient,
+        gradient: ThemeHelper.getBackgroundGradient(context),
       ),
       child: SafeArea(
         child: Column(
           children: [
             AppBar(
-              backgroundColor: Colors.transparent,
+              backgroundColor: AppColors.transparent,
               elevation: 0,
               title: Text(
                 'Favorites',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+                      fontWeight: FontWeight.bold,
+                    ),
               ),
               actions: [
                 IconButton(
@@ -79,7 +76,7 @@ class _CustomerFavoritesTabState extends State<CustomerFavoritesTab> {
                           margin: const EdgeInsets.only(bottom: 12),
                           height: 120,
                           decoration: BoxDecoration(
-                            color: isDark ? AppColors.surface : AppColors.lightSurface,
+                            color: ThemeHelper.getSurfaceColor(context),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: const Center(
@@ -138,7 +135,10 @@ class _CustomerFavoritesTabState extends State<CustomerFavoritesTab> {
                             Icon(
                               Icons.favorite_border_rounded,
                               size: 64,
-                              color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .primary
+                                  .withOpacity(0.5),
                             ),
                             const SizedBox(height: 16),
                             Text(

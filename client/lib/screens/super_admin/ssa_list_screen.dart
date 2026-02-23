@@ -79,9 +79,9 @@ class _SSAListScreenState extends State<SSAListScreen> {
         gradient: ThemeHelper.getBackgroundGradient(context),
       ),
       child: Scaffold(
-        backgroundColor: Colors.transparent,
+        backgroundColor: AppColors.transparent,
         appBar: AppBar(
-          backgroundColor: Colors.transparent,
+          backgroundColor: AppColors.transparent,
           elevation: 0,
           title: const Text('State Sales Agents (SSA)'),
           actions: [
@@ -141,10 +141,10 @@ class _SSAListScreenState extends State<SSAListScreen> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.surface : AppColors.lightSurface,
+        color: ThemeHelper.getSurfaceColor(context),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: AppColors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -211,7 +211,7 @@ class _SSAListScreenState extends State<SSAListScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.surface : AppColors.lightSurface,
+        color: ThemeHelper.getSurfaceColor(context),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isActive
@@ -346,7 +346,7 @@ class _SSAListScreenState extends State<SSAListScreen> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.cardBackground : Colors.grey[100],
+        color: isDark ? AppColors.cardBackground : AppColors.grey100,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(

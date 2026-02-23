@@ -44,12 +44,12 @@ class _AgentCouponGovernanceScreenState
       appBar: AppBar(
         title: const Text('Agent & Coupon Governance'),
         backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
+        foregroundColor: AppColors.white,
         bottom: TabBar(
           controller: _tabController,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white70,
-          indicatorColor: Colors.white,
+          labelColor: AppColors.white,
+          unselectedLabelColor: AppColors.white70,
+          indicatorColor: AppColors.white,
           tabs: const [
             Tab(text: 'SSA', icon: Icon(Icons.support_agent_rounded)),
             Tab(
@@ -235,21 +235,21 @@ class _SSAListTabState extends State<SSAListTab> {
                         children: [
                           const Icon(
                             Icons.people_rounded,
-                            color: Colors.white,
+                            color: AppColors.white,
                             size: 32,
                           ),
                           const SizedBox(height: 8),
                           Text(
                             '${_ssaList.length}',
                             style: const TextStyle(
-                              color: Colors.white,
+                              color: AppColors.white,
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           const Text(
                             'Total SSAs',
-                            style: TextStyle(color: Colors.white),
+                            style: TextStyle(color: AppColors.white),
                           ),
                         ],
                       ),
@@ -264,21 +264,21 @@ class _SSAListTabState extends State<SSAListTab> {
                         children: [
                           const Icon(
                             Icons.person_add_rounded,
-                            color: Colors.white,
+                            color: AppColors.white,
                             size: 32,
                           ),
                           const SizedBox(height: 8),
                           Text(
                             '$totalOnboarding',
                             style: const TextStyle(
-                              color: Colors.white,
+                              color: AppColors.white,
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           const Text(
                             'Onboardings',
-                            style: TextStyle(color: Colors.white),
+                            style: TextStyle(color: AppColors.white),
                           ),
                         ],
                       ),
@@ -288,28 +288,28 @@ class _SSAListTabState extends State<SSAListTab> {
                   Expanded(
                     child: GradientCard(
                       gradient: const LinearGradient(
-                        colors: [Colors.orange, Colors.deepOrange],
+                        colors: [AppColors.orange, AppColors.deepOrange],
                       ),
                       padding: const EdgeInsets.all(16),
                       child: Column(
                         children: [
                           const Icon(
                             Icons.discount_rounded,
-                            color: Colors.white,
+                            color: AppColors.white,
                             size: 32,
                           ),
                           const SizedBox(height: 8),
                           Text(
                             '₹${totalDiscounts.toStringAsFixed(0)}',
                             style: const TextStyle(
-                              color: Colors.white,
+                              color: AppColors.white,
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           const Text(
                             'Discounts',
-                            style: TextStyle(color: Colors.white),
+                            style: TextStyle(color: AppColors.white),
                           ),
                         ],
                       ),
@@ -383,10 +383,10 @@ class _SSAListTabState extends State<SSAListTab> {
       margin: const EdgeInsets.only(bottom: 12),
       child: ExpansionTile(
         leading: CircleAvatar(
-          backgroundColor: isActive ? Colors.green : Colors.grey,
+          backgroundColor: isActive ? AppColors.green : AppColors.grey,
           child: Text(
             name.substring(0, 1).toUpperCase(),
-            style: const TextStyle(color: Colors.white),
+            style: const TextStyle(color: AppColors.white),
           ),
         ),
         title: Row(
@@ -395,12 +395,12 @@ class _SSAListTabState extends State<SSAListTab> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: isActive ? Colors.green : Colors.grey,
+                color: isActive ? AppColors.green : AppColors.grey,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
                 isActive ? 'Active' : 'Inactive',
-                style: const TextStyle(color: Colors.white, fontSize: 12),
+                style: const TextStyle(color: AppColors.white, fontSize: 12),
               ),
             ),
           ],
@@ -418,7 +418,7 @@ class _SSAListTabState extends State<SSAListTab> {
                         'Onboarded',
                         '$onboardingCount',
                         Icons.person_add_rounded,
-                        Colors.blue,
+                        AppColors.blue,
                       ),
                     ),
                     Expanded(
@@ -426,7 +426,7 @@ class _SSAListTabState extends State<SSAListTab> {
                         'Pincode',
                         ssa['pincode'] ?? 'N/A',
                         Icons.location_on_rounded,
-                        Colors.orange,
+                        AppColors.orange,
                       ),
                     ),
                     Expanded(
@@ -434,7 +434,7 @@ class _SSAListTabState extends State<SSAListTab> {
                         'City',
                         ssa['city'] ?? 'N/A',
                         Icons.location_city_rounded,
-                        Colors.green,
+                        AppColors.green,
                       ),
                     ),
                   ],
@@ -457,7 +457,7 @@ class _SSAListTabState extends State<SSAListTab> {
                         label: const Text('View Coupons'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
-                          foregroundColor: Colors.white,
+                          foregroundColor: AppColors.white,
                         ),
                       ),
                     ),
@@ -488,7 +488,7 @@ class _SSAListTabState extends State<SSAListTab> {
           label,
           style: TextStyle(
             fontSize: 12,
-            color: Colors.grey[600],
+            color: AppColors.grey600,
           ),
           textAlign: TextAlign.center,
         ),
@@ -658,21 +658,21 @@ class _SalesAgentsTabState extends State<SalesAgentsTab> {
                         children: [
                           const Icon(
                             Icons.business_center_rounded,
-                            color: Colors.white,
+                            color: AppColors.white,
                             size: 32,
                           ),
                           const SizedBox(height: 8),
                           Text(
                             '${_agents.length}',
                             style: const TextStyle(
-                              color: Colors.white,
+                              color: AppColors.white,
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           const Text(
                             'Sales Agents',
-                            style: TextStyle(color: Colors.white),
+                            style: TextStyle(color: AppColors.white),
                           ),
                         ],
                       ),
@@ -687,21 +687,21 @@ class _SalesAgentsTabState extends State<SalesAgentsTab> {
                         children: [
                           const Icon(
                             Icons.person_add_rounded,
-                            color: Colors.white,
+                            color: AppColors.white,
                             size: 32,
                           ),
                           const SizedBox(height: 8),
                           Text(
                             '$totalOnboarding',
                             style: const TextStyle(
-                              color: Colors.white,
+                              color: AppColors.white,
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           const Text(
                             'Onboardings',
-                            style: TextStyle(color: Colors.white),
+                            style: TextStyle(color: AppColors.white),
                           ),
                         ],
                       ),
@@ -711,28 +711,28 @@ class _SalesAgentsTabState extends State<SalesAgentsTab> {
                   Expanded(
                     child: GradientCard(
                       gradient: const LinearGradient(
-                        colors: [Colors.orange, Colors.deepOrange],
+                        colors: [AppColors.orange, AppColors.deepOrange],
                       ),
                       padding: const EdgeInsets.all(16),
                       child: Column(
                         children: [
                           const Icon(
                             Icons.discount_rounded,
-                            color: Colors.white,
+                            color: AppColors.white,
                             size: 32,
                           ),
                           const SizedBox(height: 8),
                           Text(
                             '₹${totalDiscounts.toStringAsFixed(0)}',
                             style: const TextStyle(
-                              color: Colors.white,
+                              color: AppColors.white,
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           const Text(
                             'Discounts',
-                            style: TextStyle(color: Colors.white),
+                            style: TextStyle(color: AppColors.white),
                           ),
                         ],
                       ),
@@ -807,10 +807,10 @@ class _SalesAgentsTabState extends State<SalesAgentsTab> {
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: isActive ? Colors.blue : Colors.grey,
+          backgroundColor: isActive ? AppColors.blue : AppColors.grey,
           child: Text(
             name.substring(0, 1).toUpperCase(),
-            style: const TextStyle(color: Colors.white),
+            style: const TextStyle(color: AppColors.white),
           ),
         ),
         title: Row(
@@ -819,12 +819,12 @@ class _SalesAgentsTabState extends State<SalesAgentsTab> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: Colors.blue.withValues(alpha: 0.2),
+                color: AppColors.blue.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
                 region,
-                style: const TextStyle(color: Colors.blue, fontSize: 12),
+                style: const TextStyle(color: AppColors.blue, fontSize: 12),
               ),
             ),
           ],
@@ -1084,21 +1084,21 @@ class _CouponsTabState extends State<CouponsTab> {
                         children: [
                           const Icon(
                             Icons.local_offer_rounded,
-                            color: Colors.white,
+                            color: AppColors.white,
                             size: 32,
                           ),
                           const SizedBox(height: 8),
                           Text(
                             '$totalActivations',
                             style: const TextStyle(
-                              color: Colors.white,
+                              color: AppColors.white,
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           const Text(
                             'Activations',
-                            style: TextStyle(color: Colors.white),
+                            style: TextStyle(color: AppColors.white),
                           ),
                         ],
                       ),
@@ -1108,28 +1108,28 @@ class _CouponsTabState extends State<CouponsTab> {
                   Expanded(
                     child: GradientCard(
                       gradient: const LinearGradient(
-                        colors: [Colors.orange, Colors.deepOrange],
+                        colors: [AppColors.orange, AppColors.deepOrange],
                       ),
                       padding: const EdgeInsets.all(16),
                       child: Column(
                         children: [
                           const Icon(
                             Icons.currency_rupee_rounded,
-                            color: Colors.white,
+                            color: AppColors.white,
                             size: 32,
                           ),
                           const SizedBox(height: 8),
                           Text(
                             '₹${_totalDiscounts.toStringAsFixed(0)}',
                             style: const TextStyle(
-                              color: Colors.white,
+                              color: AppColors.white,
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           const Text(
                             'Total Discount',
-                            style: TextStyle(color: Colors.white),
+                            style: TextStyle(color: AppColors.white),
                           ),
                         ],
                       ),
@@ -1245,7 +1245,7 @@ class _CouponsTabState extends State<CouponsTab> {
                   child: Text(
                     code,
                     style: const TextStyle(
-                      color: Colors.white,
+                      color: AppColors.white,
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
                     ),
@@ -1260,7 +1260,7 @@ class _CouponsTabState extends State<CouponsTab> {
                   decoration: BoxDecoration(
                     color: isActive && !isExpired
                         ? AppColors.success.withValues(alpha: 0.2)
-                        : Colors.grey.withValues(alpha: 0.2),
+                        : AppColors.grey.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -1269,8 +1269,8 @@ class _CouponsTabState extends State<CouponsTab> {
                       fontWeight: FontWeight.bold,
                       fontSize: 12,
                       color: isExpired
-                          ? Colors.red
-                          : (isActive ? AppColors.success : Colors.grey),
+                          ? AppColors.red
+                          : (isActive ? AppColors.success : AppColors.grey),
                     ),
                   ),
                 ),
@@ -1323,13 +1323,13 @@ class _CouponsTabState extends State<CouponsTab> {
   Widget _buildInfoRow(IconData icon, String label, String value) {
     return Row(
       children: [
-        Icon(icon, size: 16, color: Colors.grey[600]),
+        Icon(icon, size: 16, color: AppColors.grey600),
         const SizedBox(width: 8),
         Text(
           '$label: ',
           style: TextStyle(
             fontSize: 12,
-            color: Colors.grey[600],
+            color: AppColors.grey600,
           ),
         ),
         Expanded(

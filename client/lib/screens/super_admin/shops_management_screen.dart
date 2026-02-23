@@ -75,7 +75,7 @@ class _ShopsManagementScreenState extends State<ShopsManagementScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      backgroundColor: AppColors.transparent,
       builder: (context) => _buildFiltersSheet(),
     );
   }
@@ -85,7 +85,7 @@ class _ShopsManagementScreenState extends State<ShopsManagementScreen> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.surface : AppColors.lightSurface,
+        color: ThemeHelper.getSurfaceColor(context),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: Column(
@@ -176,9 +176,9 @@ class _ShopsManagementScreenState extends State<ShopsManagementScreen> {
         gradient: ThemeHelper.getBackgroundGradient(context),
       ),
       child: Scaffold(
-        backgroundColor: Colors.transparent,
+        backgroundColor: AppColors.transparent,
         appBar: AppBar(
-          backgroundColor: Colors.transparent,
+          backgroundColor: AppColors.transparent,
           elevation: 0,
           title: const Text('Shops Management'),
           actions: [
@@ -210,7 +210,7 @@ class _ShopsManagementScreenState extends State<ShopsManagementScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   filled: true,
-                  fillColor: isDark ? AppColors.surface : Colors.white,
+                  fillColor: isDark ? AppColors.surface : AppColors.white,
                 ),
                 onSubmitted: (_) => _loadShops(),
               ),
@@ -251,7 +251,7 @@ class _ShopsManagementScreenState extends State<ShopsManagementScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.surface : AppColors.lightSurface,
+        color: ThemeHelper.getSurfaceColor(context),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -331,7 +331,7 @@ class _ShopsManagementScreenState extends State<ShopsManagementScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: isDark ? AppColors.cardBackground : Colors.grey[100],
+                color: isDark ? AppColors.cardBackground : AppColors.grey100,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
@@ -361,10 +361,10 @@ class _ShopsManagementScreenState extends State<ShopsManagementScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.surface : AppColors.lightSurface,
+        color: ThemeHelper.getSurfaceColor(context),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
+            color: AppColors.black.withValues(alpha: 0.1),
             blurRadius: 8,
             offset: const Offset(0, -2),
           ),

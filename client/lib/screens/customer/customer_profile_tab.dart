@@ -12,6 +12,7 @@ import '../common/about_page.dart';
 import '../../services/auth_service.dart';
 import '../../services/auth_store.dart';
 import '../../models/user_model.dart';
+import '../../core/utils/theme_helper.dart';
 
 class CustomerProfileTab extends StatefulWidget {
   const CustomerProfileTab({super.key});
@@ -37,13 +38,9 @@ class _CustomerProfileTabState extends State<CustomerProfileTab> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Container(
       decoration: BoxDecoration(
-        gradient: isDark
-            ? AppColors.backgroundGradient
-            : AppColors.lightBackgroundGradient,
+        gradient: ThemeHelper.getBackgroundGradient(context),
       ),
       child: SafeArea(
         child: FutureBuilder<UserModel>(
@@ -58,7 +55,7 @@ class _CustomerProfileTabState extends State<CustomerProfileTab> {
             return Column(
               children: [
                 AppBar(
-                  backgroundColor: Colors.transparent,
+                  backgroundColor: AppColors.transparent,
                   title: const Text('Profile'),
                   actions: const [
                     ThemeToggleButton(),
@@ -68,8 +65,8 @@ class _CustomerProfileTabState extends State<CustomerProfileTab> {
                 const CircleAvatar(
                   radius: 50,
                   backgroundColor: AppColors.primary,
-                  child:
-                      Icon(Icons.person_rounded, size: 50, color: Colors.white),
+                  child: Icon(Icons.person_rounded,
+                      size: 50, color: AppColors.white),
                 ),
                 const SizedBox(height: 16),
                 if (snapshot.connectionState == ConnectionState.waiting)

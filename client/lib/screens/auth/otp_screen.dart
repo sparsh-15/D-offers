@@ -12,6 +12,7 @@ import '../../services/auth_service.dart';
 import '../../services/auth_store.dart';
 import '../../core/utils/dialog_helper.dart';
 import 'login_screen.dart';
+import '../../core/utils/theme_helper.dart';
 
 class OtpScreen extends StatefulWidget {
   final String phoneNumber;
@@ -71,9 +72,7 @@ class _OtpScreenState extends State<OtpScreen> {
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
-          gradient: isDark
-              ? AppColors.backgroundGradient
-              : AppColors.lightBackgroundGradient,
+          gradient: ThemeHelper.getBackgroundGradient(context),
         ),
         child: SafeArea(
           child: SingleChildScrollView(
@@ -189,12 +188,12 @@ class _OtpScreenState extends State<OtpScreen> {
       width: 50,
       height: 60,
       decoration: BoxDecoration(
-        color: isDark ? AppColors.surface : AppColors.lightSurface,
+        color: ThemeHelper.getSurfaceColor(context),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: _otpControllers[index].text.isNotEmpty
               ? AppColors.primary
-              : (isDark ? Colors.white24 : Colors.black12),
+              : (isDark ? AppColors.white24 : AppColors.black12),
           width: 2,
         ),
       ),
@@ -205,8 +204,7 @@ class _OtpScreenState extends State<OtpScreen> {
         keyboardType: TextInputType.number,
         maxLength: 1,
         style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-              color:
-                  isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
+              color: ThemeHelper.getTextColor(context),
               fontWeight: FontWeight.bold,
             ),
         decoration: const InputDecoration(

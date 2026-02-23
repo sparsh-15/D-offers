@@ -17,9 +17,9 @@ class HelpSupportPage extends StatelessWidget {
         gradient: ThemeHelper.getBackgroundGradient(context),
       ),
       child: Scaffold(
-        backgroundColor: Colors.transparent,
+        backgroundColor: AppColors.transparent,
         appBar: AppBar(
-          backgroundColor: Colors.transparent,
+          backgroundColor: AppColors.transparent,
           elevation: 0,
           title: const Text('Help & Support'),
           leading: IconButton(
@@ -38,13 +38,15 @@ class HelpSupportPage extends StatelessWidget {
                     padding: const EdgeInsets.all(20),
                     child: Column(
                       children: [
-                        Icon(Icons.support_agent_rounded, size: 48, color: AppColors.primary),
+                        Icon(Icons.support_agent_rounded,
+                            size: 48, color: AppColors.primary),
                         const SizedBox(height: 16),
                         Text(
                           'We\'re here to help',
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style:
+                              Theme.of(context).textTheme.titleLarge?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
                         ),
                         const SizedBox(height: 8),
                         Text(
@@ -64,7 +66,8 @@ class HelpSupportPage extends StatelessWidget {
                   onTap: () {
                     Clipboard.setData(const ClipboardData(text: _supportEmail));
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Email copied to clipboard')),
+                      const SnackBar(
+                          content: Text('Email copied to clipboard')),
                     );
                   },
                 ),
@@ -76,7 +79,8 @@ class HelpSupportPage extends StatelessWidget {
                   onTap: () {
                     Clipboard.setData(const ClipboardData(text: _supportPhone));
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Phone number copied to clipboard')),
+                      const SnackBar(
+                          content: Text('Phone number copied to clipboard')),
                     );
                   },
                 ),
@@ -84,8 +88,8 @@ class HelpSupportPage extends StatelessWidget {
                 Text(
                   'FAQ',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                        fontWeight: FontWeight.bold,
+                      ),
                 ),
                 const SizedBox(height: 12),
                 Card(
@@ -93,17 +97,20 @@ class HelpSupportPage extends StatelessWidget {
                     children: [
                       _FaqTile(
                         question: 'How do I redeem an offer?',
-                        answer: 'Show the offer details to the shopkeeper at the store. They will verify and apply the discount.',
+                        answer:
+                            'Show the offer details to the shopkeeper at the store. They will verify and apply the discount.',
                       ),
                       const Divider(height: 1),
                       _FaqTile(
                         question: 'How can I get my shop approved?',
-                        answer: 'After registration, an admin will review your profile. You\'ll be notified once approved.',
+                        answer:
+                            'After registration, an admin will review your profile. You\'ll be notified once approved.',
                       ),
                       const Divider(height: 1),
                       _FaqTile(
                         question: 'I forgot my password',
-                        answer: 'D\'Offer uses OTP-based login. Use your registered phone number to receive a new OTP.',
+                        answer:
+                            'D\'Offer uses OTP-based login. Use your registered phone number to receive a new OTP.',
                       ),
                     ],
                   ),
@@ -153,8 +160,10 @@ class _FaqTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ExpansionTile(
-      leading: Icon(Icons.help_outline_rounded, color: AppColors.primary, size: 24),
-      title: Text(question, style: const TextStyle(fontWeight: FontWeight.w600)),
+      leading:
+          Icon(Icons.help_outline_rounded, color: AppColors.primary, size: 24),
+      title:
+          Text(question, style: const TextStyle(fontWeight: FontWeight.w600)),
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(56, 0, 16, 16),

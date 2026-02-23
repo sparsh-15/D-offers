@@ -101,7 +101,7 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
           slivers: [
             SliverAppBar(
               floating: true,
-              backgroundColor: Colors.transparent,
+              backgroundColor: AppColors.transparent,
               title: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -193,8 +193,8 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
                                   Icons.local_offer_rounded,
                                   const LinearGradient(
                                     colors: [
-                                      Color(0xFF667EEA),
-                                      Color(0xFF764BA2)
+                                      AppColors.gradientIndigo,
+                                      AppColors.gradientViolet
                                     ],
                                     begin: Alignment.topLeft,
                                     end: Alignment.bottomRight,
@@ -210,8 +210,8 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
                                   Icons.pending_rounded,
                                   const LinearGradient(
                                     colors: [
-                                      Color(0xFFF093FB),
-                                      Color(0xFFF5576C)
+                                      AppColors.gradientPink,
+                                      AppColors.gradientCoral
                                     ],
                                     begin: Alignment.topLeft,
                                     end: Alignment.bottomRight,
@@ -308,7 +308,7 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
                             'Subscription Governance',
                             'Manage plans, subscriptions & analytics',
                             Icons.subscriptions_rounded,
-                            const Color(0xFF667EEA),
+                            AppColors.gradientIndigo,
                             onTap: () {
                               Navigator.of(context).push(
                                 MaterialPageRoute(
@@ -326,7 +326,7 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
                             'Agent & Coupon Governance',
                             'Manage SSA, sales agents & coupons',
                             Icons.support_agent_rounded,
-                            const Color(0xFF764BA2),
+                            AppColors.gradientViolet,
                             onTap: () {
                               Navigator.of(context).push(
                                 MaterialPageRoute(
@@ -363,19 +363,19 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: Colors.white, size: 28),
+          Icon(icon, color: AppColors.white, size: 28),
           const SizedBox(height: 12),
           Text(
             value,
             style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                  color: Colors.white,
+                  color: AppColors.white,
                   fontWeight: FontWeight.bold,
                 ),
           ),
           Text(
             title,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.white.withOpacity(0.9),
+                  color: AppColors.white.withOpacity(0.9),
                 ),
           ),
         ],
@@ -467,9 +467,9 @@ class _UsersManagementTabState extends State<UsersManagementTab> {
       case UserRole.admin:
         return AppColors.error;
       case UserRole.companySalesAgent:
-        return Colors.purple;
+        return AppColors.purple;
       case UserRole.ssa:
-        return Colors.orange;
+        return AppColors.orange;
       case UserRole.shopkeeper:
         return AppColors.accent;
       case UserRole.customer:
@@ -514,7 +514,7 @@ class _UsersManagementTabState extends State<UsersManagementTab> {
         child: Column(
           children: [
             AppBar(
-              backgroundColor: Colors.transparent,
+              backgroundColor: AppColors.transparent,
               elevation: 0,
               title: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -550,7 +550,7 @@ class _UsersManagementTabState extends State<UsersManagementTab> {
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
+                          color: AppColors.black.withOpacity(0.1),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
@@ -1242,7 +1242,7 @@ class _ShopkeepersApprovalBodyState extends State<_ShopkeepersApprovalBody>
                               ),
                               child: const Icon(
                                 Icons.store_rounded,
-                                color: Colors.white,
+                                color: AppColors.white,
                                 size: 28,
                               ),
                             ),
@@ -1379,7 +1379,7 @@ class _ShopkeepersApprovalBodyState extends State<_ShopkeepersApprovalBody>
                                   ),
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: AppColors.success,
-                                    foregroundColor: Colors.white,
+                                    foregroundColor: AppColors.white,
                                     padding: const EdgeInsets.symmetric(
                                       vertical: 14,
                                     ),
@@ -1523,7 +1523,7 @@ class _AdminProfileTabState extends State<AdminProfileTab> {
             return Column(
               children: [
                 AppBar(
-                  backgroundColor: Colors.transparent,
+                  backgroundColor: AppColors.transparent,
                   title: const Text('Admin Profile'),
                   actions: const [
                     ThemeToggleButton(),
@@ -1534,7 +1534,7 @@ class _AdminProfileTabState extends State<AdminProfileTab> {
                   radius: 50,
                   backgroundColor: AppColors.primary,
                   child: Icon(Icons.admin_panel_settings_rounded,
-                      size: 50, color: Colors.white),
+                      size: 50, color: AppColors.white),
                 ),
                 const SizedBox(height: 16),
                 if (snapshot.connectionState == ConnectionState.waiting)

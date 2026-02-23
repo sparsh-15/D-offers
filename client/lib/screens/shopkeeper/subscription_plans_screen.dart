@@ -1,5 +1,6 @@
-import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
+import 'package:flutter/material.dart';
+
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/dialog_helper.dart';
 import '../../services/subscription_service.dart';
@@ -51,15 +52,16 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Choose Subscription Plan'),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
       ),
-      backgroundColor: Colors.grey[50],
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(
+              child: CircularProgressIndicator(color: colorScheme.primary),
+            )
           : _plans.isEmpty
               ? _buildEmptyState()
               : _buildPlansList(),
@@ -67,27 +69,29 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
   }
 
   Widget _buildEmptyState() {
+    final theme = Theme.of(context);
+
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24.0),
+        padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
               Icons.inbox_rounded,
               size: 80,
-              color: Colors.grey[400],
+              color: theme.textTheme.bodySmall?.color,
             ),
             const SizedBox(height: 16),
             Text(
               'No Plans Available',
-              style: Theme.of(context).textTheme.titleLarge,
+              style: theme.textTheme.titleLarge,
             ),
             const SizedBox(height: 8),
             Text(
-              'There are no subscription plans available for your business category at the moment.',
+              'There are no subscription plans available for your business category right now.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey[600]),
+              style: theme.textTheme.bodyMedium,
             ),
           ],
         ),
@@ -102,7 +106,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
       itemBuilder: (context, index) {
         final plan = _plans[index];
         return FadeInUp(
-          delay: Duration(milliseconds: 100 * index),
+          delay: Duration(milliseconds: 90 * index),
           child: _buildPlanCard(plan),
         );
       },
@@ -110,6 +114,10 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
   }
 
   Widget _buildPlanCard(Map<String, dynamic> plan) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final outlineColor = theme.dividerColor.withValues(alpha: 0.8);
+
     final displayName = plan['displayName'] ?? plan['name'] ?? 'Unnamed Plan';
     final description = plan['description'] ?? '';
     final monthlyPrice = plan['monthlyPrice'] ?? 0;
@@ -122,202 +130,165 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
-      elevation: 2,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: Colors.grey[300]!,
-          width: 1,
-        ),
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: outlineColor),
       ),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          color: Colors.white,
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Plan Header
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          displayName,
-                          style: Theme.of(context)
-                              .textTheme
-                              .headlineSmall
-                              ?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.primary,
-                              ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        displayName,
+                        style: theme.textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: colorScheme.primary,
                         ),
-                        if (description.isNotEmpty) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            description,
-                            style: TextStyle(
-                              color: Colors.grey[600],
-                              fontSize: 14,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Column(
-                      children: [
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '₹',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            Text(
-                              '$monthlyPrice',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                        Text(
-                          '/$durationDays days',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-
-              // Plan Details
-              _buildDetailRow(
-                Icons.local_offer_rounded,
-                'Offers',
-                maxOffers == -1 ? 'Unlimited' : '$maxOffers per month',
-              ),
-              const SizedBox(height: 12),
-              _buildDetailRow(
-                Icons.photo_library_rounded,
-                'Photos',
-                '$maxPhotos per offer',
-              ),
-              const SizedBox(height: 12),
-              _buildDetailRow(
-                Icons.analytics_rounded,
-                'Analytics',
-                analyticsEnabled ? 'Enabled' : 'Basic',
-                color: analyticsEnabled ? Colors.green[700] : Colors.grey[600],
-              ),
-              const SizedBox(height: 12),
-              _buildDetailRow(
-                Icons.support_agent_rounded,
-                'Support',
-                prioritySupport ? 'Priority' : 'Standard',
-                color: prioritySupport ? Colors.green[700] : Colors.grey[600],
-              ),
-
-              // Features
-              if (features.isNotEmpty) ...[
-                const SizedBox(height: 20),
-                Divider(color: Colors.grey[300]),
-                const SizedBox(height: 12),
-                Text(
-                  'Features',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
                       ),
+                      if (description.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          description,
+                          style: theme.textTheme.bodyMedium,
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 8),
-                ...features.map((feature) => Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: Row(
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    gradient: AppColors.primaryGradient,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(
-                            Icons.check_circle_rounded,
-                            color: Colors.green[700],
-                            size: 18,
+                          const Text(
+                            'Rs.',
+                            style: TextStyle(
+                              color: AppColors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              feature,
-                              style: TextStyle(
-                                color: Colors.grey[700],
-                                fontSize: 14,
-                              ),
+                          Text(
+                            '$monthlyPrice',
+                            style: const TextStyle(
+                              color: AppColors.white,
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
                         ],
                       ),
-                    )),
-              ],
-
-              const SizedBox(height: 20),
-
-              // Subscribe Button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => _subscribeToPlan(plan),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    elevation: 0,
+                      Text(
+                        '/$durationDays days',
+                        style: const TextStyle(
+                          color: AppColors.white,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
                   ),
-                  child: const Text(
-                    'Subscribe Now',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            _buildDetailRow(
+              icon: Icons.local_offer_rounded,
+              label: 'Offers',
+              value: maxOffers == -1 ? 'Unlimited' : '$maxOffers per month',
+            ),
+            const SizedBox(height: 12),
+            _buildDetailRow(
+              icon: Icons.photo_library_rounded,
+              label: 'Photos',
+              value: '$maxPhotos per offer',
+            ),
+            const SizedBox(height: 12),
+            _buildDetailRow(
+              icon: Icons.analytics_rounded,
+              label: 'Analytics',
+              value: analyticsEnabled ? 'Enabled' : 'Basic',
+              color: analyticsEnabled ? AppColors.success : null,
+            ),
+            const SizedBox(height: 12),
+            _buildDetailRow(
+              icon: Icons.support_agent_rounded,
+              label: 'Support',
+              value: prioritySupport ? 'Priority' : 'Standard',
+              color: prioritySupport ? AppColors.success : null,
+            ),
+            if (features.isNotEmpty) ...[
+              const SizedBox(height: 20),
+              const Divider(),
+              const SizedBox(height: 12),
+              Text(
+                'Features',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              ...features.map(
+                (feature) => Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.check_circle_rounded,
+                        color: AppColors.success,
+                        size: 18,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          feature,
+                          style: theme.textTheme.bodyMedium,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
             ],
-          ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => _subscribeToPlan(plan),
+                child: const Text('Subscribe Now'),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildDetailRow(
-    IconData icon,
-    String label,
-    String value, {
+  Widget _buildDetailRow({
+    required IconData icon,
+    required String label,
+    required String value,
     Color? color,
   }) {
+    final theme = Theme.of(context);
+    final valueColor = color ?? theme.textTheme.bodyMedium?.color;
+
     return Row(
       children: [
         Icon(
@@ -328,17 +299,16 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
         const SizedBox(width: 12),
         Text(
           '$label: ',
-          style: const TextStyle(
-            fontWeight: FontWeight.w500,
-            fontSize: 14,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+            color: theme.textTheme.bodyLarge?.color,
           ),
         ),
         Expanded(
           child: Text(
             value,
-            style: TextStyle(
-              color: color ?? Colors.grey[700],
-              fontSize: 14,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: valueColor,
             ),
           ),
         ),
@@ -347,7 +317,6 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
   }
 
   Future<void> _subscribeToPlan(Map<String, dynamic> plan) async {
-    // final planId = plan['_id'] ?? plan['id']; // TODO: Use for payment integration
     final displayName = plan['displayName'] ?? plan['name'];
     final monthlyPrice = plan['monthlyPrice'] ?? 0;
 
@@ -355,18 +324,16 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
       context: context,
       title: 'Subscribe to $displayName',
       message:
-          'You are about to subscribe to $displayName for ₹$monthlyPrice. Continue?',
+          'You are about to subscribe to $displayName for Rs.$monthlyPrice. Continue?',
       confirmText: 'Subscribe',
     );
 
     if (!confirm) return;
 
-    // TODO: Implement payment flow and subscription creation
-    // For now, show a message
     if (!mounted) return;
     DialogHelper.showInfoSnackBar(
       context,
-      'Payment integration coming soon! Plan: $displayName',
+      'Payment integration coming soon. Plan: $displayName',
     );
   }
 }

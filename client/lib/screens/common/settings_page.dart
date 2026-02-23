@@ -14,9 +14,9 @@ class SettingsPage extends StatelessWidget {
         gradient: ThemeHelper.getBackgroundGradient(context),
       ),
       child: Scaffold(
-        backgroundColor: Colors.transparent,
+        backgroundColor: AppColors.transparent,
         appBar: AppBar(
-          backgroundColor: Colors.transparent,
+          backgroundColor: AppColors.transparent,
           elevation: 0,
           title: const Text('Settings'),
           leading: IconButton(
@@ -32,14 +32,16 @@ class SettingsPage extends StatelessWidget {
                 child: Column(
                   children: [
                     ListTile(
-                      leading: Icon(Icons.dark_mode_rounded, color: AppColors.primary),
+                      leading: Icon(Icons.dark_mode_rounded,
+                          color: AppColors.primary),
                       title: const Text('Appearance'),
                       subtitle: const Text('Light / Dark / System'),
                       trailing: const ThemeToggleButton(),
                     ),
                     const Divider(height: 1),
                     ListTile(
-                      leading: Icon(Icons.notifications_rounded, color: AppColors.primary),
+                      leading: Icon(Icons.notifications_rounded,
+                          color: AppColors.primary),
                       title: const Text('Notifications'),
                       subtitle: const Text('Offer alerts and updates'),
                       trailing: Switch(
@@ -51,13 +53,16 @@ class SettingsPage extends StatelessWidget {
                     ),
                     const Divider(height: 1),
                     ListTile(
-                      leading: Icon(Icons.language_rounded, color: AppColors.primary),
+                      leading: Icon(Icons.language_rounded,
+                          color: AppColors.primary),
                       title: const Text('Language'),
                       subtitle: const Text('English'),
-                      trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16),
+                      trailing:
+                          const Icon(Icons.arrow_forward_ios_rounded, size: 16),
                       onTap: () {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Language options coming soon')),
+                          const SnackBar(
+                              content: Text('Language options coming soon')),
                         );
                       },
                     ),

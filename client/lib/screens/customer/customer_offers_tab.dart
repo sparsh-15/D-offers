@@ -5,6 +5,7 @@ import '../../services/auth_service.dart';
 import '../../services/auth_store.dart';
 import '../../models/offer_model.dart';
 import '../../widgets/offer_card.dart';
+import '../../core/utils/theme_helper.dart';
 
 class CustomerOffersTab extends StatelessWidget {
   const CustomerOffersTab({super.key});
@@ -15,9 +16,7 @@ class CustomerOffersTab extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        gradient: isDark
-            ? AppColors.backgroundGradient
-            : AppColors.lightBackgroundGradient,
+        gradient: ThemeHelper.getBackgroundGradient(context),
       ),
       child: const SafeArea(
         child: CustomerOffersBody(),
@@ -119,13 +118,13 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
     return Column(
       children: [
         AppBar(
-          backgroundColor: Colors.transparent,
+          backgroundColor: AppColors.transparent,
           elevation: 0,
           title: Text(
             'Offers Near You',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+                  fontWeight: FontWeight.bold,
+                ),
           ),
         ),
         Padding(
@@ -134,11 +133,11 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
             children: [
               Container(
                 decoration: BoxDecoration(
-                  color: isDark ? AppColors.surface : AppColors.lightSurface,
+                  color: ThemeHelper.getSurfaceColor(context),
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
+                      color: AppColors.black.withOpacity(0.1),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
@@ -176,7 +175,7 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       decoration: BoxDecoration(
-                        color: isDark ? AppColors.surface : AppColors.lightSurface,
+                        color: ThemeHelper.getSurfaceColor(context),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: DropdownButtonHideUnderline(
@@ -184,9 +183,13 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
                           value: _sortBy,
                           isExpanded: true,
                           items: const [
-                            DropdownMenuItem(value: 'newest', child: Text('Newest First')),
-                            DropdownMenuItem(value: 'most_liked', child: Text('Most Liked')),
-                            DropdownMenuItem(value: 'highest_discount', child: Text('Highest Discount')),
+                            DropdownMenuItem(
+                                value: 'newest', child: Text('Newest First')),
+                            DropdownMenuItem(
+                                value: 'most_liked', child: Text('Most Liked')),
+                            DropdownMenuItem(
+                                value: 'highest_discount',
+                                child: Text('Highest Discount')),
                           ],
                           onChanged: (value) {
                             if (value != null) {
@@ -231,7 +234,7 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
                       margin: const EdgeInsets.only(bottom: 12),
                       height: 120,
                       decoration: BoxDecoration(
-                        color: isDark ? AppColors.surface : AppColors.lightSurface,
+                        color: ThemeHelper.getSurfaceColor(context),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Center(
@@ -285,15 +288,24 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          _searchQuery.isNotEmpty || _stateFilter != null || _cityFilter != null || _pincodeFilter != null
+                          _searchQuery.isNotEmpty ||
+                                  _stateFilter != null ||
+                                  _cityFilter != null ||
+                                  _pincodeFilter != null
                               ? Icons.search_off_rounded
                               : Icons.local_offer_outlined,
                           size: 64,
-                          color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
+                          color: Theme.of(context)
+                              .colorScheme
+                              .primary
+                              .withOpacity(0.5),
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          _searchQuery.isNotEmpty || _stateFilter != null || _cityFilter != null || _pincodeFilter != null
+                          _searchQuery.isNotEmpty ||
+                                  _stateFilter != null ||
+                                  _cityFilter != null ||
+                                  _pincodeFilter != null
                               ? 'No offers match your filters'
                               : 'No offers available',
                           style: Theme.of(context).textTheme.titleMedium,
@@ -301,13 +313,19 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          _searchQuery.isNotEmpty || _stateFilter != null || _cityFilter != null || _pincodeFilter != null
+                          _searchQuery.isNotEmpty ||
+                                  _stateFilter != null ||
+                                  _cityFilter != null ||
+                                  _pincodeFilter != null
                               ? 'Try adjusting your filters or search query'
                               : 'Check back later for new offers',
                           style: Theme.of(context).textTheme.bodySmall,
                           textAlign: TextAlign.center,
                         ),
-                        if (_searchQuery.isNotEmpty || _stateFilter != null || _cityFilter != null || _pincodeFilter != null)
+                        if (_searchQuery.isNotEmpty ||
+                            _stateFilter != null ||
+                            _cityFilter != null ||
+                            _pincodeFilter != null)
                           Padding(
                             padding: const EdgeInsets.only(top: 16),
                             child: TextButton.icon(
@@ -357,7 +375,8 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
   }
 
   Widget _buildActiveFilters(BuildContext context) {
-    final hasFilters = _stateFilter != null || _cityFilter != null || _pincodeFilter != null;
+    final hasFilters =
+        _stateFilter != null || _cityFilter != null || _pincodeFilter != null;
     if (!hasFilters) return const SizedBox.shrink();
 
     return Padding(
@@ -424,9 +443,11 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
                   ),
                   items: const [
                     DropdownMenuItem(value: null, child: Text('All States')),
-                    DropdownMenuItem(value: 'Karnataka', child: Text('Karnataka')),
+                    DropdownMenuItem(
+                        value: 'Karnataka', child: Text('Karnataka')),
                     DropdownMenuItem(value: 'Delhi', child: Text('Delhi')),
-                    DropdownMenuItem(value: 'Maharashtra', child: Text('Maharashtra')),
+                    DropdownMenuItem(
+                        value: 'Maharashtra', child: Text('Maharashtra')),
                   ],
                   onChanged: (value) {
                     setDialogState(() {

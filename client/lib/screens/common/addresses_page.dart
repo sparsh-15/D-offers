@@ -92,9 +92,9 @@ class _AddressesPageState extends State<AddressesPage> {
         gradient: ThemeHelper.getBackgroundGradient(context),
       ),
       child: Scaffold(
-        backgroundColor: Colors.transparent,
+        backgroundColor: AppColors.transparent,
         appBar: AppBar(
-          backgroundColor: Colors.transparent,
+          backgroundColor: AppColors.transparent,
           elevation: 0,
           title: const Text('My Addresses'),
           leading: IconButton(
@@ -119,13 +119,17 @@ class _AddressesPageState extends State<AddressesPage> {
                             children: [
                               Row(
                                 children: [
-                                  Icon(Icons.home_rounded, color: AppColors.primary),
+                                  Icon(Icons.home_rounded,
+                                      color: AppColors.primary),
                                   const SizedBox(width: 12),
                                   Text(
                                     'Primary address',
-                                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                   ),
                                 ],
                               ),
@@ -172,7 +176,8 @@ class _AddressesPageState extends State<AddressesPage> {
                             ? const SizedBox(
                                 width: 20,
                                 height: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
                               )
                             : const Icon(Icons.save_rounded),
                         label: Text(_saving ? 'Saving...' : 'Save address'),

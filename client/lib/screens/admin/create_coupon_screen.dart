@@ -145,7 +145,7 @@ class _CreateCouponScreenState extends State<CreateCouponScreen> {
       appBar: AppBar(
         title: const Text('Create Coupon'),
         backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
+        foregroundColor: AppColors.white,
       ),
       body: Container(
         decoration:
@@ -405,7 +405,7 @@ class _CreateCouponScreenState extends State<CreateCouponScreen> {
                                   height: 20,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
-                                    color: Colors.white,
+                                    color: AppColors.white,
                                   ),
                                 )
                               : const Icon(Icons.add_rounded),
@@ -413,7 +413,7 @@ class _CreateCouponScreenState extends State<CreateCouponScreen> {
                               _isLoading ? 'Creating...' : 'Create Coupon'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,
-                            foregroundColor: Colors.white,
+                            foregroundColor: AppColors.white,
                             padding: const EdgeInsets.all(16),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),

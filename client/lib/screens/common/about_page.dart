@@ -15,9 +15,9 @@ class AboutPage extends StatelessWidget {
         gradient: ThemeHelper.getBackgroundGradient(context),
       ),
       child: Scaffold(
-        backgroundColor: Colors.transparent,
+        backgroundColor: AppColors.transparent,
         appBar: AppBar(
-          backgroundColor: Colors.transparent,
+          backgroundColor: AppColors.transparent,
           elevation: 0,
           title: const Text('About'),
           leading: IconButton(
@@ -47,15 +47,15 @@ class AboutPage extends StatelessWidget {
                 Text(
                   'D\'Offer',
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                        fontWeight: FontWeight.bold,
+                      ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   'Discover Amazing Deals Near You',
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: Theme.of(context).textTheme.bodySmall?.color,
-                  ),
+                        color: Theme.of(context).textTheme.bodySmall?.color,
+                      ),
                 ),
                 const SizedBox(height: 32),
                 Card(
@@ -66,9 +66,10 @@ class AboutPage extends StatelessWidget {
                       children: [
                         Text(
                           'About D\'Offer',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style:
+                              Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
                         ),
                         const SizedBox(height: 12),
                         const Text(
@@ -81,16 +82,25 @@ class AboutPage extends StatelessWidget {
                           children: [
                             Text(
                               'Version',
-                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: Theme.of(context).textTheme.bodySmall?.color,
-                              ),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(
+                                    color: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall
+                                        ?.color,
+                                  ),
                             ),
                             const Spacer(),
                             Text(
                               appVersion,
-                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                fontWeight: FontWeight.w600,
-                              ),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
                             ),
                           ],
                         ),

@@ -120,7 +120,7 @@ class _CreateSSAScreenState extends State<CreateSSAScreen> {
       appBar: AppBar(
         title: const Text('Create State Sales Agent (SSA)'),
         backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
+        foregroundColor: AppColors.white,
       ),
       body: Container(
         decoration:
@@ -402,14 +402,14 @@ class _CreateSSAScreenState extends State<CreateSSAScreen> {
                             height: 20,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              color: Colors.white,
+                              color: AppColors.white,
                             ),
                           )
                         : const Icon(Icons.person_add_rounded),
                     label: Text(_isLoading ? 'Creating...' : 'Create SSA'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
+                      foregroundColor: AppColors.white,
                       padding: const EdgeInsets.all(16),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),

@@ -44,14 +44,14 @@ class _ReportsScreenState extends State<ReportsScreen> {
       'title': 'Subscription Report',
       'description': 'Subscription plans, revenue, and renewals',
       'icon': Icons.subscriptions_rounded,
-      'color': const Color(0xFF667EEA),
+      'color': AppColors.gradientIndigo,
     },
     {
       'id': 'coupons',
       'title': 'Coupon Report',
       'description': 'Coupon usage and discount distribution',
       'icon': Icons.confirmation_number_rounded,
-      'color': const Color(0xFF764BA2),
+      'color': AppColors.gradientViolet,
     },
     {
       'id': 'agents',
@@ -68,7 +68,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
       appBar: AppBar(
         title: const Text('Reports'),
         backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
+        foregroundColor: AppColors.white,
       ),
       body: Container(
         decoration:
@@ -105,7 +105,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   label: const Text('Generate Report'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
+                    foregroundColor: AppColors.white,
                     padding: const EdgeInsets.all(16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -241,7 +241,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: isSelected ? report['color'] : Colors.transparent,
+          color: isSelected ? report['color'] : AppColors.transparent,
           width: 2,
         ),
       ),
@@ -285,7 +285,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                       report['description'],
                       style: TextStyle(
                         fontSize: 12,
-                        color: Colors.grey[600],
+                        color: AppColors.grey600,
                       ),
                     ),
                   ],

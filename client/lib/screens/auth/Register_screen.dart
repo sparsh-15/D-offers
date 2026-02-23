@@ -9,6 +9,7 @@ import '../../widgets/custom_button.dart';
 import '../../widgets/custom_text_field.dart';
 import '../../services/auth_service.dart';
 import 'otp_screen.dart';
+import '../../core/utils/theme_helper.dart';
 
 class RegisterScreen extends StatefulWidget {
   final UserRole role;
@@ -129,14 +130,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
-          gradient: isDark
-              ? AppColors.backgroundGradient
-              : AppColors.lightBackgroundGradient,
+          gradient: ThemeHelper.getBackgroundGradient(context),
         ),
         child: SafeArea(
           child: SingleChildScrollView(

@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
 import 'core/theme/app_theme.dart';
 import 'core/constants/app_strings.dart';
-import 'providers/theme_provider.dart';
+import 'core/constants/app_colors.dart';
 import 'screens/splash/splash_screen.dart';
 
 void main() {
@@ -26,10 +25,7 @@ void main() {
   ]);
 
   runApp(
-    ChangeNotifierProvider(
-      create: (_) => ThemeProvider(),
-      child: const MyApp(),
-    ),
+    const MyApp(),
   );
 }
 
@@ -38,17 +34,25 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<ThemeProvider>(
-      builder: (context, themeProvider, child) {
-        return MaterialApp(
-          title: AppStrings.appName,
-          debugShowCheckedModeBanner: false,
-          themeMode: themeProvider.themeMode,
-          theme: AppTheme.lightTheme,
-          darkTheme: AppTheme.darkTheme,
-          home: const SplashScreen(),
+    const overlayStyle = SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+      statusBarBrightness: Brightness.dark,
+      systemNavigationBarColor: AppColors.background,
+      systemNavigationBarIconBrightness: Brightness.light,
+    );
+
+    return MaterialApp(
+      title: AppStrings.appName,
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.appTheme,
+      builder: (context, child) {
+        return AnnotatedRegion<SystemUiOverlayStyle>(
+          value: overlayStyle,
+          child: child ?? const SizedBox.shrink(),
         );
       },
+      home: const SplashScreen(),
     );
   }
 }

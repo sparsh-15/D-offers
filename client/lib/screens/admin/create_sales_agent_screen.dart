@@ -121,7 +121,7 @@ class _CreateSalesAgentScreenState extends State<CreateSalesAgentScreen> {
       appBar: AppBar(
         title: const Text('Create Company Sales Agent'),
         backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
+        foregroundColor: AppColors.white,
       ),
       body: Container(
         decoration:
@@ -403,7 +403,7 @@ class _CreateSalesAgentScreenState extends State<CreateSalesAgentScreen> {
                             height: 20,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              color: Colors.white,
+                              color: AppColors.white,
                             ),
                           )
                         : const Icon(Icons.person_add_rounded),
@@ -411,7 +411,7 @@ class _CreateSalesAgentScreenState extends State<CreateSalesAgentScreen> {
                         Text(_isLoading ? 'Creating...' : 'Create Sales Agent'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.accent,
-                      foregroundColor: Colors.white,
+                      foregroundColor: AppColors.white,
                       padding: const EdgeInsets.all(16),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),

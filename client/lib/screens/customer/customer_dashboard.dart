@@ -61,14 +61,14 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
             );
           },
           backgroundColor: AppColors.primary,
-          child: const Icon(Icons.chat_rounded, color: Colors.white),
+          child: const Icon(Icons.chat_rounded, color: AppColors.white),
           tooltip: 'Help',
         ),
         bottomNavigationBar: Container(
           decoration: BoxDecoration(
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.3),
+                color: AppColors.black.withOpacity(0.3),
                 blurRadius: 10,
                 offset: const Offset(0, -2),
               ),

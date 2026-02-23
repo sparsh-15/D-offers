@@ -10,6 +10,7 @@ import 'otp_screen.dart';
 import 'Register_screen.dart';
 import '../../services/auth_service.dart';
 import '../../core/utils/dialog_helper.dart';
+import '../../core/utils/theme_helper.dart';
 
 class LoginScreen extends StatefulWidget {
   final UserRole role;
@@ -59,14 +60,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
-          gradient: isDark
-              ? AppColors.backgroundGradient
-              : AppColors.lightBackgroundGradient,
+          gradient: ThemeHelper.getBackgroundGradient(context),
         ),
         child: SafeArea(
           child: SingleChildScrollView(

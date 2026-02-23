@@ -21,13 +21,18 @@ class CustomButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     if (isOutlined) {
       return OutlinedButton(
         onPressed: isLoading ? null : onPressed,
         style: OutlinedButton.styleFrom(
           side: BorderSide(color: color ?? AppColors.primary, width: 2),
         ),
-        child: _buildChild(),
+        child: _buildChild(
+          context,
+          spinnerColor: color ?? colorScheme.primary,
+        ),
       );
     }
 
@@ -36,18 +41,24 @@ class CustomButton extends StatelessWidget {
       style: color != null
           ? ElevatedButton.styleFrom(backgroundColor: color)
           : null,
-      child: _buildChild(),
+      child: _buildChild(
+        context,
+        spinnerColor: colorScheme.onPrimary,
+      ),
     );
   }
 
-  Widget _buildChild() {
+  Widget _buildChild(
+    BuildContext context, {
+    Color spinnerColor = Colors.white,
+  }) {
     if (isLoading) {
-      return const SizedBox(
+      return SizedBox(
         height: 20,
         width: 20,
         child: CircularProgressIndicator(
           strokeWidth: 2,
-          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+          valueColor: AlwaysStoppedAnimation<Color>(spinnerColor),
         ),
       );
     }

@@ -67,7 +67,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(e.toString()),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.red,
         ),
       );
     }
@@ -218,7 +218,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   Widget _buildSubscriptionScreen() {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: AppColors.transparent,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
@@ -298,7 +298,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                                   children: [
                                     Icon(
                                       Icons.check_circle_rounded,
-                                      color: Colors.white,
+                                      color: AppColors.white,
                                     ),
                                     const SizedBox(width: 12),
                                     Text(
@@ -306,7 +306,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                                       style: Theme.of(context)
                                           .textTheme
                                           .titleMedium
-                                          ?.copyWith(color: Colors.white),
+                                          ?.copyWith(color: AppColors.white),
                                     ),
                                   ],
                                 ),
@@ -317,7 +317,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                                       .textTheme
                                       .bodyMedium
                                       ?.copyWith(
-                                          color: Colors.white
+                                          color: AppColors.white
                                               .withValues(alpha: 0.9)),
                                 ),
                               ],
@@ -398,13 +398,13 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: isComplete
-                    ? Colors.green.withValues(alpha: 0.1)
+                    ? AppColors.green.withValues(alpha: 0.1)
                     : AppColors.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
                 isComplete ? Icons.check_circle_rounded : icon,
-                color: isComplete ? Colors.green : AppColors.primary,
+                color: isComplete ? AppColors.green : AppColors.primary,
               ),
             ),
             const SizedBox(width: 16),
@@ -426,7 +426,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                             vertical: 2,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.grey.withValues(alpha: 0.2),
+                            color: AppColors.grey.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
@@ -485,7 +485,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Shop name is required'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.red,
         ),
       );
       return;
@@ -514,7 +514,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Profile updated successfully'),
-          backgroundColor: Colors.green,
+          backgroundColor: AppColors.green,
         ),
       );
       _checkStatus(); // Recheck status
@@ -523,7 +523,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(e.toString()),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.red,
         ),
       );
     }

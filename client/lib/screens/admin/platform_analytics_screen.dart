@@ -35,7 +35,7 @@ class _PlatformAnalyticsScreenState extends State<PlatformAnalyticsScreen> {
       appBar: AppBar(
         title: const Text('Platform Analytics'),
         backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
+        foregroundColor: AppColors.white,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
@@ -217,14 +217,14 @@ class _PlatformAnalyticsScreenState extends State<PlatformAnalyticsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Icon(icon, color: Colors.white, size: 32),
+          Icon(icon, color: AppColors.white, size: 32),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 value,
                 style: const TextStyle(
-                  color: Colors.white,
+                  color: AppColors.white,
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
                 ),
@@ -232,7 +232,7 @@ class _PlatformAnalyticsScreenState extends State<PlatformAnalyticsScreen> {
               Text(
                 title,
                 style: const TextStyle(
-                  color: Colors.white,
+                  color: AppColors.white,
                   fontSize: 12,
                 ),
               ),
@@ -394,7 +394,7 @@ class _PlatformAnalyticsScreenState extends State<PlatformAnalyticsScreen> {
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         children: [
-          Icon(icon, size: 20, color: color ?? Colors.grey[600]),
+          Icon(icon, size: 20, color: color ?? AppColors.grey600),
           const SizedBox(width: 12),
           Expanded(
             child: Text(

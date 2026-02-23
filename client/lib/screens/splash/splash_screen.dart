@@ -3,6 +3,7 @@ import 'package:animate_do/animate_do.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
 import '../role_selection/role_selection_screen.dart';
+import '../../core/utils/theme_helper.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -30,14 +31,10 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
-          gradient: isDark
-              ? AppColors.backgroundGradient
-              : AppColors.lightBackgroundGradient,
+          gradient: ThemeHelper.getBackgroundGradient(context),
         ),
         child: Center(
           child: Column(

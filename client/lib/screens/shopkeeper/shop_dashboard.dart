@@ -96,21 +96,21 @@ class _ShopDashboardState extends State<ShopDashboard> {
             BottomNavigationBarItem(
               icon: Icon(
                 Icons.dashboard_rounded,
-                color: !_hasActiveSubscription ? Colors.grey : null,
+                color: !_hasActiveSubscription ? AppColors.grey : null,
               ),
               label: 'Dashboard',
             ),
             BottomNavigationBarItem(
               icon: Icon(
                 Icons.local_offer_rounded,
-                color: !_hasActiveSubscription ? Colors.grey : null,
+                color: !_hasActiveSubscription ? AppColors.grey : null,
               ),
               label: 'Offers',
             ),
             BottomNavigationBarItem(
               icon: Icon(
                 Icons.people_rounded,
-                color: !_hasActiveSubscription ? Colors.grey : null,
+                color: !_hasActiveSubscription ? AppColors.grey : null,
               ),
               label: 'Leads',
             ),
@@ -168,7 +168,7 @@ class _ShopHomeTabState extends State<ShopHomeTab> {
           slivers: [
             SliverAppBar(
               floating: true,
-              backgroundColor: Colors.transparent,
+              backgroundColor: AppColors.transparent,
               title: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -260,7 +260,7 @@ class _ShopHomeTabState extends State<ShopHomeTab> {
                                   totalLikes.toString(),
                                   Icons.favorite_rounded,
                                   const LinearGradient(
-                                    colors: [Colors.pink, Colors.red],
+                                    colors: [AppColors.pink, AppColors.red],
                                     begin: Alignment.topLeft,
                                     end: Alignment.bottomRight,
                                   ),
@@ -277,7 +277,10 @@ class _ShopHomeTabState extends State<ShopHomeTab> {
                                           .toStringAsFixed(1),
                                   Icons.trending_up_rounded,
                                   const LinearGradient(
-                                    colors: [Colors.orange, Colors.deepOrange],
+                                    colors: [
+                                      AppColors.orange,
+                                      AppColors.deepOrange
+                                    ],
                                     begin: Alignment.topLeft,
                                     end: Alignment.bottomRight,
                                   ),
@@ -339,19 +342,19 @@ class _ShopHomeTabState extends State<ShopHomeTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: Colors.white, size: 28),
+          Icon(icon, color: AppColors.white, size: 28),
           const SizedBox(height: 12),
           Text(
             value,
             style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                  color: Colors.white,
+                  color: AppColors.white,
                   fontWeight: FontWeight.bold,
                 ),
           ),
           Text(
             title,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.white.withOpacity(0.9),
+                  color: AppColors.white.withOpacity(0.9),
                 ),
           ),
         ],
@@ -458,7 +461,7 @@ class _OffersManagementBodyState extends State<_OffersManagementBody> {
     return Column(
       children: [
         AppBar(
-          backgroundColor: Colors.transparent,
+          backgroundColor: AppColors.transparent,
           title: const Text('My Offers'),
           actions: [
             IconButton(
@@ -604,7 +607,7 @@ class LeadsTab extends StatelessWidget {
         child: Column(
           children: [
             AppBar(
-              backgroundColor: Colors.transparent,
+              backgroundColor: AppColors.transparent,
               title: const Text('Customer Leads'),
             ),
             Expanded(
@@ -651,14 +654,14 @@ class ShopProfileTab extends StatelessWidget {
                   children: [
                     const Icon(
                       Icons.workspace_premium_rounded,
-                      color: Colors.white,
+                      color: AppColors.white,
                       size: 40,
                     ),
                     const SizedBox(height: 12),
                     Text(
                       'Subscribe to Unlock All Features',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: Colors.white,
+                            color: AppColors.white,
                             fontWeight: FontWeight.bold,
                           ),
                       textAlign: TextAlign.center,
@@ -667,7 +670,7 @@ class ShopProfileTab extends StatelessWidget {
                     Text(
                       'Create offers, reach customers, and grow your business',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Colors.white.withValues(alpha: 0.9),
+                            color: AppColors.white.withValues(alpha: 0.9),
                           ),
                       textAlign: TextAlign.center,
                     ),
@@ -682,7 +685,7 @@ class ShopProfileTab extends StatelessWidget {
                         );
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
+                        backgroundColor: AppColors.white,
                         foregroundColor: AppColors.accent,
                       ),
                       child: const Text('View Plans'),

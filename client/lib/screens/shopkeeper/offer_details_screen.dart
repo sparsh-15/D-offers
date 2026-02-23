@@ -4,6 +4,7 @@ import 'dart:io';
 import '../../models/offer_model.dart';
 import '../../services/auth_service.dart';
 import '../../services/upload_service.dart';
+import '../../core/constants/app_colors.dart';
 import '../../core/utils/dialog_helper.dart';
 
 class OfferDetailsScreen extends StatefulWidget {
@@ -234,10 +235,10 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
                 leading: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.blue.withOpacity(0.1),
+                    color: AppColors.blue.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(Icons.camera_alt, color: Colors.blue),
+                  child: const Icon(Icons.camera_alt, color: AppColors.blue),
                 ),
                 title: const Text('Take Photo'),
                 subtitle: const Text('Use camera to capture'),
@@ -250,10 +251,11 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
                 leading: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.1),
+                    color: AppColors.green.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(Icons.photo_library, color: Colors.green),
+                  child:
+                      const Icon(Icons.photo_library, color: AppColors.green),
                 ),
                 title: const Text('Pick from Gallery'),
                 subtitle: const Text('Choose a single photo'),
@@ -266,11 +268,11 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
                 leading: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.purple.withOpacity(0.1),
+                    color: AppColors.purple.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Icon(Icons.photo_library_outlined,
-                      color: Colors.purple),
+                      color: AppColors.purple),
                 ),
                 title: const Text('Pick Multiple from Gallery'),
                 subtitle: const Text('Choose multiple photos'),
@@ -283,10 +285,10 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
                 leading: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.orange.withOpacity(0.1),
+                    color: AppColors.orange.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(Icons.link, color: Colors.orange),
+                  child: const Icon(Icons.link, color: AppColors.orange),
                 ),
                 title: const Text('Add from URL'),
                 subtitle: const Text('Enter photo URL manually'),
@@ -530,7 +532,7 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
                       borderRadius: BorderRadius.circular(8),
                       side: BorderSide(
                           color:
-                              isDark ? Colors.grey[700]! : Colors.grey[300]!),
+                              isDark ? AppColors.grey700! : AppColors.grey300!),
                     ),
                   ),
                 ),
@@ -555,7 +557,7 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
                       borderRadius: BorderRadius.circular(8),
                       side: BorderSide(
                           color:
-                              isDark ? Colors.grey[700]! : Colors.grey[300]!),
+                              isDark ? AppColors.grey700! : AppColors.grey300!),
                     ),
                   ),
                 ),
@@ -626,10 +628,10 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
               Container(
                 height: 120,
                 decoration: BoxDecoration(
-                  color: isDark ? Colors.grey[800] : Colors.grey[200],
+                  color: isDark ? AppColors.grey800 : AppColors.grey200,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: isDark ? Colors.grey[700]! : Colors.grey[300]!,
+                    color: isDark ? AppColors.grey700! : AppColors.grey300!,
                     style: BorderStyle.solid,
                     width: 2,
                   ),
@@ -653,7 +655,7 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
                           margin: const EdgeInsets.only(right: 8),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(12),
-                            color: Colors.grey[300],
+                            color: AppColors.grey300,
                           ),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(12),
@@ -674,9 +676,10 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
                           top: 4,
                           right: 12,
                           child: IconButton(
-                            icon: const Icon(Icons.close, color: Colors.white),
+                            icon:
+                                const Icon(Icons.close, color: AppColors.white),
                             style: IconButton.styleFrom(
-                              backgroundColor: Colors.black54,
+                              backgroundColor: AppColors.black54,
                               padding: const EdgeInsets.all(4),
                             ),
                             onPressed: () {

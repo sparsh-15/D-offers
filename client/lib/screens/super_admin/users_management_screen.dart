@@ -137,7 +137,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      backgroundColor: AppColors.transparent,
       builder: (context) => _buildFiltersSheet(),
     );
   }
@@ -147,7 +147,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.surface : AppColors.lightSurface,
+        color: ThemeHelper.getSurfaceColor(context),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: Column(
@@ -277,9 +277,9 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
         gradient: ThemeHelper.getBackgroundGradient(context),
       ),
       child: Scaffold(
-        backgroundColor: Colors.transparent,
+        backgroundColor: AppColors.transparent,
         appBar: AppBar(
-          backgroundColor: Colors.transparent,
+          backgroundColor: AppColors.transparent,
           elevation: 0,
           title: const Text('Users Management'),
           actions: [
@@ -311,7 +311,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   filled: true,
-                  fillColor: isDark ? AppColors.surface : Colors.white,
+                  fillColor: isDark ? AppColors.surface : AppColors.white,
                 ),
                 onSubmitted: (_) => _loadUsers(),
               ),
@@ -352,7 +352,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.surface : AppColors.lightSurface,
+        color: ThemeHelper.getSurfaceColor(context),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -470,10 +470,10 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.surface : AppColors.lightSurface,
+        color: ThemeHelper.getSurfaceColor(context),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
+            color: AppColors.black.withValues(alpha: 0.1),
             blurRadius: 8,
             offset: const Offset(0, -2),
           ),

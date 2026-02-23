@@ -56,7 +56,7 @@ class _ShopProfileBodyState extends State<ShopProfileBody> {
     return Column(
       children: [
         AppBar(
-          backgroundColor: Colors.transparent,
+          backgroundColor: AppColors.transparent,
           title: const Text('Shop Profile'),
           actions: const [
             ThemeToggleButton(),
@@ -66,7 +66,7 @@ class _ShopProfileBodyState extends State<ShopProfileBody> {
         const CircleAvatar(
           radius: 50,
           backgroundColor: AppColors.primary,
-          child: Icon(Icons.store_rounded, size: 50, color: Colors.white),
+          child: Icon(Icons.store_rounded, size: 50, color: AppColors.white),
         ),
         const SizedBox(height: 16),
         Text(
@@ -397,7 +397,7 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
                 padding: const EdgeInsets.only(top: 8),
                 child: Text(
                   '${_availableAreas.length} areas found',
-                  style: const TextStyle(fontSize: 12, color: Colors.blue),
+                  style: const TextStyle(fontSize: 12, color: AppColors.blue),
                 ),
               ),
             const SizedBox(height: 8),
@@ -439,7 +439,7 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
                             'Previous category "${widget.profile!.category}" is no longer valid. Please select a new category.',
                             style: TextStyle(
                               fontSize: 12,
-                              color: Colors.orange[700],
+                              color: AppColors.orange700,
                             ),
                           ),
                         ),

@@ -17,19 +17,32 @@ class _CustomerChatBotScreenState extends State<CustomerChatBotScreen> {
 
   /// Dummy Q&A: keyword(s) in query (lowercase) -> response.
   static final Map<String, String> _dummyQna = {
-    'what is doffer': 'D\'Offer is a hyperlocal deals app. Discover offers from shops near you, save favorites, and get the best deals in your area.',
-    'what is this app': 'D\'Offer helps you discover amazing deals near you. Browse offers by location, like your favorites, and redeem them at the store.',
-    'how do i redeem': 'To redeem an offer, open the offer details and show it to the shopkeeper at the store. They will verify and apply the discount for you.',
-    'redeem offer': 'Show the offer to the shopkeeper when you visit the store. They\'ll confirm and give you the discount.',
-    'save offer': 'Tap the heart icon on any offer to save it. Saved offers appear in the Favorites tab for easy access.',
-    'favorites': 'Your liked offers are in the Favorites tab—tap the heart icon in the bottom navigation to view them.',
-    'where are my favorites': 'Go to the Favorites tab (heart icon) in the bottom bar to see all offers you\'ve liked.',
-    'how do i like': 'Tap the heart icon on an offer card to like it. Liked offers are saved in your Favorites tab.',
-    'filter': 'Use the filter icon on the Offers tab to filter by state, city, or pincode. You can also use the search bar to find specific offers.',
-    'search': 'On the Offers tab, use the search bar at the top to search by offer title or description. Use filters for location.',
-    'help': 'I can help with: redeeming offers, saving favorites, searching and filtering. Try asking "How do I redeem an offer?" or "Where are my favorites?"',
-    'hello': 'Hi! I\'m the D\'Offer assistant. Ask me about offers, favorites, or how to redeem deals.',
-    'hi': 'Hello! How can I help you today? You can ask about redeeming offers, saving favorites, or using the app.',
+    'what is doffer':
+        'D\'Offer is a hyperlocal deals app. Discover offers from shops near you, save favorites, and get the best deals in your area.',
+    'what is this app':
+        'D\'Offer helps you discover amazing deals near you. Browse offers by location, like your favorites, and redeem them at the store.',
+    'how do i redeem':
+        'To redeem an offer, open the offer details and show it to the shopkeeper at the store. They will verify and apply the discount for you.',
+    'redeem offer':
+        'Show the offer to the shopkeeper when you visit the store. They\'ll confirm and give you the discount.',
+    'save offer':
+        'Tap the heart icon on any offer to save it. Saved offers appear in the Favorites tab for easy access.',
+    'favorites':
+        'Your liked offers are in the Favorites tab—tap the heart icon in the bottom navigation to view them.',
+    'where are my favorites':
+        'Go to the Favorites tab (heart icon) in the bottom bar to see all offers you\'ve liked.',
+    'how do i like':
+        'Tap the heart icon on an offer card to like it. Liked offers are saved in your Favorites tab.',
+    'filter':
+        'Use the filter icon on the Offers tab to filter by state, city, or pincode. You can also use the search bar to find specific offers.',
+    'search':
+        'On the Offers tab, use the search bar at the top to search by offer title or description. Use filters for location.',
+    'help':
+        'I can help with: redeeming offers, saving favorites, searching and filtering. Try asking "How do I redeem an offer?" or "Where are my favorites?"',
+    'hello':
+        'Hi! I\'m the D\'Offer assistant. Ask me about offers, favorites, or how to redeem deals.',
+    'hi':
+        'Hello! How can I help you today? You can ask about redeeming offers, saving favorites, or using the app.',
   };
 
   static const List<String> _suggestedQuestions = [
@@ -120,9 +133,9 @@ class _CustomerChatBotScreenState extends State<CustomerChatBotScreen> {
         gradient: ThemeHelper.getBackgroundGradient(context),
       ),
       child: Scaffold(
-        backgroundColor: Colors.transparent,
+        backgroundColor: AppColors.transparent,
         appBar: AppBar(
-          backgroundColor: Colors.transparent,
+          backgroundColor: AppColors.transparent,
           elevation: 0,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back_rounded),
@@ -133,7 +146,8 @@ class _CustomerChatBotScreenState extends State<CustomerChatBotScreen> {
               CircleAvatar(
                 radius: 18,
                 backgroundColor: AppColors.primary.withOpacity(0.3),
-                child: const Icon(Icons.smart_toy_rounded, color: AppColors.primary, size: 22),
+                child: const Icon(Icons.smart_toy_rounded,
+                    color: AppColors.primary, size: 22),
               ),
               const SizedBox(width: 10),
               const Text('Help'),
@@ -145,7 +159,8 @@ class _CustomerChatBotScreenState extends State<CustomerChatBotScreen> {
             Expanded(
               child: ListView.builder(
                 controller: _scrollController,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 itemCount: _messages.length,
                 itemBuilder: (context, index) {
                   final msg = _messages[index];
@@ -167,7 +182,7 @@ class _CustomerChatBotScreenState extends State<CustomerChatBotScreen> {
                     return ActionChip(
                       label: Text(q, style: const TextStyle(fontSize: 13)),
                       onPressed: () => _onSuggestedTap(q),
-                      backgroundColor: isDark ? AppColors.surface : AppColors.lightSurface,
+                      backgroundColor: ThemeHelper.getSurfaceColor(context),
                     );
                   }).toList(),
                 ),
@@ -175,7 +190,9 @@ class _CustomerChatBotScreenState extends State<CustomerChatBotScreen> {
             Container(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
               decoration: BoxDecoration(
-                color: isDark ? AppColors.surface.withOpacity(0.5) : AppColors.lightSurface.withOpacity(0.9),
+                color: isDark
+                    ? AppColors.surface.withOpacity(0.5)
+                    : AppColors.lightSurface.withOpacity(0.9),
               ),
               child: SafeArea(
                 child: Row(
@@ -187,12 +204,15 @@ class _CustomerChatBotScreenState extends State<CustomerChatBotScreen> {
                         decoration: InputDecoration(
                           hintText: 'Ask about offers, favorites...',
                           filled: true,
-                          fillColor: isDark ? AppColors.cardBackground : Colors.grey.shade100,
+                          fillColor: isDark
+                              ? AppColors.cardBackground
+                              : AppColors.grey100,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(24),
                             borderSide: BorderSide.none,
                           ),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 12),
                         ),
                         maxLines: 3,
                         minLines: 1,
@@ -209,7 +229,8 @@ class _CustomerChatBotScreenState extends State<CustomerChatBotScreen> {
                         borderRadius: BorderRadius.circular(24),
                         child: const Padding(
                           padding: EdgeInsets.all(12),
-                          child: Icon(Icons.send_rounded, color: Colors.white, size: 24),
+                          child: Icon(Icons.send_rounded,
+                              color: AppColors.white, size: 24),
                         ),
                       ),
                     ),
@@ -249,11 +270,12 @@ class _ChatBubble extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.8),
+        constraints:
+            BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.8),
         decoration: BoxDecoration(
           color: isUser
               ? AppColors.primary
-              : (isDark ? AppColors.surface : AppColors.lightSurface),
+              : (ThemeHelper.getSurfaceColor(context)),
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(18),
             topRight: const Radius.circular(18),
@@ -262,7 +284,7 @@ class _ChatBubble extends StatelessWidget {
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
+              color: AppColors.black.withOpacity(0.08),
               blurRadius: 6,
               offset: const Offset(0, 2),
             ),
@@ -271,7 +293,8 @@ class _ChatBubble extends StatelessWidget {
         child: Text(
           text,
           style: TextStyle(
-            color: isUser ? Colors.white : (isDark ? AppColors.textPrimary : AppColors.lightTextPrimary),
+            color:
+                isUser ? AppColors.white : (ThemeHelper.getTextColor(context)),
             fontSize: 15,
             height: 1.4,
           ),
