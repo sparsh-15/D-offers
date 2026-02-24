@@ -22,4 +22,12 @@ class ThemeHelper {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return isDark ? AppColors.textPrimary : AppColors.lightTextPrimary;
   }
+
+  static Widget? buildBackButton(BuildContext context) {
+    if (!Navigator.of(context).canPop()) return null;
+    return IconButton(
+      icon: const Icon(Icons.arrow_back_rounded),
+      onPressed: () => Navigator.of(context).maybePop(),
+    );
+  }
 }

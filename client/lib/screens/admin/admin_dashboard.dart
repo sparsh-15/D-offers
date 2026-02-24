@@ -35,7 +35,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
   final List<Widget> _screens = [
     const AdminHomeTab(),
     const UsersManagementTab(),
-    const ShopkeepersApprovalTab(),
     const AdminProfileTab(),
   ];
 
@@ -59,10 +58,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
             BottomNavigationBarItem(
               icon: Icon(Icons.people_rounded),
               label: 'Users',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.approval_rounded),
-              label: 'Approvals',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.admin_panel_settings_rounded),
