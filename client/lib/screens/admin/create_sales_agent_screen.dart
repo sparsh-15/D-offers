@@ -369,7 +369,7 @@ class _CreateSalesAgentScreenState extends State<CreateSalesAgentScreen> {
                         if (_areas.isNotEmpty) ...[
                           const SizedBox(height: 16),
                           DropdownButtonFormField<String>(
-                            value: _selectedArea,
+                            initialValue: _selectedArea,
                             decoration: const InputDecoration(
                               labelText: 'Region/Area',
                               prefixIcon: Icon(Icons.place_rounded),

@@ -6,10 +6,10 @@ import 'app_palette.dart';
 import 'app_text_styles.dart';
 
 class AppTheme {
-  // Single app theme (professional dark)
-  static ThemeData get appTheme => _buildTheme(AppPalette.dark());
-  static ThemeData get darkTheme => appTheme;
-  static ThemeData get lightTheme => appTheme;
+  // Default app theme (Teal Mint light)
+  static ThemeData get appTheme => lightTheme;
+  static ThemeData get darkTheme => _buildTheme(AppPalette.dark());
+  static ThemeData get lightTheme => _buildTheme(AppPalette.light());
 
   static ThemeData _buildTheme(AppPalette palette) {
     return ThemeData(

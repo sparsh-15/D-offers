@@ -12,9 +12,9 @@ void main() {
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
-      systemNavigationBarColor: Colors.black,
-      systemNavigationBarIconBrightness: Brightness.light,
+      statusBarIconBrightness: Brightness.dark,
+      systemNavigationBarColor: AppColors.lightBackground,
+      systemNavigationBarIconBrightness: Brightness.dark,
     ),
   );
 
@@ -36,16 +36,18 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     const overlayStyle = SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
-      statusBarBrightness: Brightness.dark,
-      systemNavigationBarColor: AppColors.background,
-      systemNavigationBarIconBrightness: Brightness.light,
+      statusBarIconBrightness: Brightness.dark,
+      statusBarBrightness: Brightness.light,
+      systemNavigationBarColor: AppColors.lightBackground,
+      systemNavigationBarIconBrightness: Brightness.dark,
     );
 
     return MaterialApp(
       title: AppStrings.appName,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.appTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: ThemeMode.light,
       builder: (context, child) {
         return AnnotatedRegion<SystemUiOverlayStyle>(
           value: overlayStyle,
