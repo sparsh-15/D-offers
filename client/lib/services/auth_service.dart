@@ -165,6 +165,8 @@ class AuthService {
     String? name,
     String? address,
     String? pincode,
+    String? city,
+    String? state,
   }) async {
     final token = AuthStore.token;
     if (token == null) throw Exception('Not authenticated');
@@ -173,6 +175,8 @@ class AuthService {
     if (name != null) body['name'] = name;
     if (address != null) body['address'] = address;
     if (pincode != null) body['pincode'] = pincode;
+    if (city != null) body['city'] = city;
+    if (state != null) body['state'] = state;
     final resp = await _client.put(
       uri,
       headers: {
@@ -454,7 +458,8 @@ class AuthService {
   Future<Map<String, dynamic>> lookupPincode(String pincode) async {
     final uri = Uri.parse('${ApiConfig.metaUrl}/pincode/$pincode');
     final resp = await _client.get(uri);
-    final data = _handleResponse(resp) as Map<String, dynamic>;
+    final response = _handleResponse(resp) as Map<String, dynamic>;
+    final data = (response['data'] as Map<String, dynamic>?) ?? response;
 
     // Parse areas list
     final areasList = (data['areas'] as List<dynamic>?)?.map((area) {

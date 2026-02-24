@@ -5,6 +5,7 @@ import '../../core/utils/theme_helper.dart';
 import '../../models/user_model.dart';
 import '../../services/auth_service.dart';
 import '../../services/auth_store.dart';
+import '../../widgets/pincode_location_section.dart';
 
 /// Shared Edit Profile page for Customer and Admin (user name, pincode, address).
 class EditProfilePage extends StatefulWidget {
@@ -24,8 +25,13 @@ class EditProfilePage extends StatefulWidget {
 class _EditProfilePageState extends State<EditProfilePage> {
   late final TextEditingController _nameController;
   late final TextEditingController _pincodeController;
+  late final TextEditingController _cityController;
+  late final TextEditingController _stateController;
   late final TextEditingController _addressController;
   bool _saving = false;
+  bool _isLoadingPincode = false;
+  List<Map<String, dynamic>> _availableAreas = [];
+  String? _selectedArea;
 
   @override
   void initState() {
@@ -33,15 +39,73 @@ class _EditProfilePageState extends State<EditProfilePage> {
     final u = widget.user ?? AuthStore.currentUser;
     _nameController = TextEditingController(text: u?.name ?? '');
     _pincodeController = TextEditingController(text: u?.pincode ?? '');
+    _cityController = TextEditingController(text: u?.city ?? '');
+    _stateController = TextEditingController(text: u?.state ?? '');
     _addressController = TextEditingController(text: u?.address ?? '');
+    _pincodeController.addListener(_onPincodeChanged);
   }
 
   @override
   void dispose() {
+    _pincodeController.removeListener(_onPincodeChanged);
     _nameController.dispose();
     _pincodeController.dispose();
+    _cityController.dispose();
+    _stateController.dispose();
     _addressController.dispose();
     super.dispose();
+  }
+
+  void _onPincodeChanged() {
+    final pincode = _pincodeController.text.trim();
+    if (pincode.length == 6) {
+      _lookupPincode(pincode);
+    } else {
+      setState(() {
+        _availableAreas = [];
+        _selectedArea = null;
+      });
+      _cityController.clear();
+      _stateController.clear();
+    }
+  }
+
+  Future<void> _lookupPincode(String pincode) async {
+    setState(() => _isLoadingPincode = true);
+    try {
+      final result = await AuthService.instance.lookupPincode(pincode);
+      if (!mounted) return;
+
+      final areas = result['areas'] as List<Map<String, dynamic>>? ?? [];
+      final state = result['state']?.toString() ?? '';
+      final district = result['district']?.toString() ?? '';
+
+      setState(() {
+        _stateController.text = state;
+        _availableAreas = areas;
+        _cityController.text = district;
+        _selectedArea = areas.isNotEmpty ? areas[0]['name']?.toString() : null;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _availableAreas = [];
+        _selectedArea = null;
+      });
+      _cityController.clear();
+      _stateController.clear();
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingPincode = false);
+      }
+    }
+  }
+
+  void _onAreaSelected(String? areaName) {
+    if (areaName == null) return;
+    setState(() {
+      _selectedArea = areaName;
+    });
   }
 
   Future<void> _save() async {
@@ -60,6 +124,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
         pincode: _pincodeController.text.trim().isEmpty
             ? null
             : _pincodeController.text.trim(),
+        city: _cityController.text.trim().isEmpty
+            ? null
+            : _cityController.text.trim(),
+        state: _stateController.text.trim().isEmpty
+            ? null
+            : _stateController.text.trim(),
       );
       if (!mounted) return;
       widget.onSaved?.call();
@@ -75,8 +145,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = ThemeHelper.isDarkMode(context);
-
     return Container(
       decoration: BoxDecoration(
         gradient: ThemeHelper.getBackgroundGradient(context),
@@ -108,28 +176,15 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   textCapitalization: TextCapitalization.words,
                 ),
                 const SizedBox(height: 16),
-                TextField(
-                  controller: _pincodeController,
-                  decoration: const InputDecoration(
-                    labelText: 'Pincode',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.pin_drop_rounded),
-                    hintText: '6-digit pincode',
-                  ),
-                  keyboardType: TextInputType.number,
-                  maxLength: 6,
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _addressController,
-                  decoration: const InputDecoration(
-                    labelText: 'Address',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.location_on_rounded),
-                    alignLabelWithHint: true,
-                  ),
-                  maxLines: 3,
-                  textCapitalization: TextCapitalization.sentences,
+                PincodeLocationSection(
+                  pincodeController: _pincodeController,
+                  cityController: _cityController,
+                  stateController: _stateController,
+                  addressController: _addressController,
+                  isLoadingPincode: _isLoadingPincode,
+                  availableAreas: _availableAreas,
+                  selectedArea: _selectedArea,
+                  onAreaChanged: _onAreaSelected,
                 ),
                 const SizedBox(height: 32),
                 FilledButton.icon(

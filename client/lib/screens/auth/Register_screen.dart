@@ -7,6 +7,7 @@ import '../../core/utils/dialog_helper.dart';
 import '../../models/role_enum.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_text_field.dart';
+import '../../widgets/pincode_location_section.dart';
 import '../../services/auth_service.dart';
 import 'otp_screen.dart';
 import '../../core/utils/theme_helper.dart';
@@ -77,17 +78,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
       setState(() {
         _stateController.text = result['state']?.toString() ?? '';
         _availableAreas = areas;
+        _cityController.text = result['district']?.toString() ?? '';
 
-        // Auto-select first area if only one available
-        if (areas.length == 1) {
-          _selectedArea = areas[0]['name'];
-          _cityController.text = areas[0]['name'] ?? '';
-        } else if (areas.isEmpty) {
-          // Fallback to district if no areas
-          _cityController.text = result['district']?.toString() ?? '';
+        if (areas.isNotEmpty) {
+          _selectedArea = areas[0]['name']?.toString();
         } else {
-          // Multiple areas - user needs to select
-          _cityController.clear();
           _selectedArea = null;
         }
       });
@@ -111,7 +106,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (areaName == null) return;
     setState(() {
       _selectedArea = areaName;
-      _cityController.text = areaName;
     });
   }
 
@@ -201,17 +195,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     },
                   ),
                   const SizedBox(height: 16),
-                  CustomTextField(
-                    controller: _pincodeController,
-                    label: 'Pincode',
-                    hint: '6-digit pincode',
-                    prefixIcon: Icons.location_on_rounded,
-                    keyboardType: TextInputType.number,
-                    maxLength: 6,
-                    inputFormatters: [
-                      FilteringTextInputFormatter.digitsOnly,
-                    ],
-                    validator: (value) {
+                  PincodeLocationSection(
+                    pincodeController: _pincodeController,
+                    cityController: _cityController,
+                    stateController: _stateController,
+                    addressController: _addressController,
+                    isLoadingPincode: _isLoadingPincode,
+                    availableAreas: _availableAreas,
+                    selectedArea: _selectedArea,
+                    onAreaChanged: _onAreaSelected,
+                    addressLabel: 'Address (optional)',
+                    pincodeValidator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Please enter pincode';
                       }
@@ -220,107 +214,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       }
                       return null;
                     },
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _availableAreas.length > 1
-                            ? DropdownButtonFormField<String>(
-                                value: _selectedArea,
-                                decoration: InputDecoration(
-                                  labelText: 'City / Area',
-                                  prefixIcon:
-                                      const Icon(Icons.location_city_rounded),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                                hint: const Text('Select your area'),
-                                items: _availableAreas.map((area) {
-                                  return DropdownMenuItem<String>(
-                                    value: area['name'],
-                                    child: Text(area['name'] ?? ''),
-                                  );
-                                }).toList(),
-                                onChanged:
-                                    _isLoadingPincode ? null : _onAreaSelected,
-                                validator: (value) {
-                                  if (value == null || value.trim().isEmpty) {
-                                    return 'Please select area';
-                                  }
-                                  return null;
-                                },
-                              )
-                            : CustomTextField(
-                                controller: _cityController,
-                                label: 'City',
-                                hint: _availableAreas.isEmpty
-                                    ? 'Enter city'
-                                    : 'Auto-filled',
-                                prefixIcon: Icons.location_city_rounded,
-                                enabled: !_isLoadingPincode,
-                                validator: (value) {
-                                  if (value == null || value.trim().isEmpty) {
-                                    return 'City required';
-                                  }
-                                  return null;
-                                },
-                              ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: CustomTextField(
-                          controller: _stateController,
-                          label: 'State',
-                          hint: 'Auto-filled',
-                          prefixIcon: Icons.map_rounded,
-                          enabled: !_isLoadingPincode,
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'State required';
-                            }
-                            return null;
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (_isLoadingPincode)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: Row(
-                        children: [
-                          const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Looking up pincode...',
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ],
-                      ),
-                    ),
-                  if (_availableAreas.length > 1 && !_isLoadingPincode)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: Text(
-                        '${_availableAreas.length} areas found. Please select your area.',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: AppColors.primary,
-                            ),
-                      ),
-                    ),
-                  const SizedBox(height: 16),
-                  CustomTextField(
-                    controller: _addressController,
-                    label: 'Address (optional)',
-                    hint: 'House / Street / Locality',
-                    prefixIcon: Icons.home_rounded,
-                    maxLines: 2,
+                    cityValidator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'City required';
+                      }
+                      return null;
+                    },
+                    areaValidator: (value) {
+                      if (_availableAreas.isNotEmpty &&
+                          (value == null || value.trim().isEmpty)) {
+                        return 'Please select area';
+                      }
+                      return null;
+                    },
+                    stateValidator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'State required';
+                      }
+                      return null;
+                    },
                   ),
                   const SizedBox(height: 32),
                   CustomButton(

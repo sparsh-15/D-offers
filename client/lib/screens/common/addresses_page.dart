@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/dialog_helper.dart';
 import '../../core/utils/theme_helper.dart';
-import '../../models/user_model.dart';
 import '../../services/auth_service.dart';
-import '../../services/auth_store.dart';
+import '../../widgets/pincode_location_section.dart';
 
 /// My Addresses page – view and edit primary address (shared for Customer).
 class AddressesPage extends StatefulWidget {
@@ -20,12 +19,15 @@ class AddressesPage extends StatefulWidget {
 }
 
 class _AddressesPageState extends State<AddressesPage> {
-  UserModel? _user;
   bool _loading = true;
   bool _saving = false;
+  bool _isLoadingPincode = false;
   late final TextEditingController _addressController;
   late final TextEditingController _pincodeController;
   late final TextEditingController _cityController;
+  late final TextEditingController _stateController;
+  List<Map<String, dynamic>> _availableAreas = [];
+  String? _selectedArea;
 
   @override
   void initState() {
@@ -33,14 +35,18 @@ class _AddressesPageState extends State<AddressesPage> {
     _addressController = TextEditingController();
     _pincodeController = TextEditingController();
     _cityController = TextEditingController();
+    _stateController = TextEditingController();
+    _pincodeController.addListener(_onPincodeChanged);
     _load();
   }
 
   @override
   void dispose() {
     _addressController.dispose();
+    _pincodeController.removeListener(_onPincodeChanged);
     _pincodeController.dispose();
     _cityController.dispose();
+    _stateController.dispose();
     super.dispose();
   }
 
@@ -49,10 +55,10 @@ class _AddressesPageState extends State<AddressesPage> {
       final user = await AuthService.instance.fetchCurrentUser();
       if (!mounted) return;
       setState(() {
-        _user = user;
         _addressController.text = user.address;
         _pincodeController.text = user.pincode;
         _cityController.text = user.city;
+        _stateController.text = user.state;
         _loading = false;
       });
     } catch (e) {
@@ -72,6 +78,12 @@ class _AddressesPageState extends State<AddressesPage> {
         pincode: _pincodeController.text.trim().isEmpty
             ? null
             : _pincodeController.text.trim(),
+        city: _cityController.text.trim().isEmpty
+            ? null
+            : _cityController.text.trim(),
+        state: _stateController.text.trim().isEmpty
+            ? null
+            : _stateController.text.trim(),
       );
       if (!mounted) return;
       widget.onSaved?.call();
@@ -134,36 +146,15 @@ class _AddressesPageState extends State<AddressesPage> {
                                 ],
                               ),
                               const SizedBox(height: 16),
-                              TextField(
-                                controller: _addressController,
-                                decoration: const InputDecoration(
-                                  labelText: 'Address',
-                                  border: OutlineInputBorder(),
-                                  alignLabelWithHint: true,
-                                ),
-                                maxLines: 3,
-                              ),
-                              const SizedBox(height: 12),
-                              TextField(
-                                controller: _pincodeController,
-                                decoration: const InputDecoration(
-                                  labelText: 'Pincode',
-                                  border: OutlineInputBorder(),
-                                ),
-                                keyboardType: TextInputType.number,
-                                maxLength: 6,
-                              ),
-                              const SizedBox(height: 12),
-                              TextField(
-                                controller: _cityController,
-                                decoration: const InputDecoration(
-                                  labelText: 'City',
-                                  border: OutlineInputBorder(),
-                                ),
-                                readOnly: true,
-                                onTap: () {
-                                  // City can be updated via pincode lookup elsewhere; keep read-only here for simplicity
-                                },
+                              PincodeLocationSection(
+                                pincodeController: _pincodeController,
+                                cityController: _cityController,
+                                stateController: _stateController,
+                                addressController: _addressController,
+                                isLoadingPincode: _isLoadingPincode,
+                                availableAreas: _availableAreas,
+                                selectedArea: _selectedArea,
+                                onAreaChanged: _onAreaSelected,
                               ),
                             ],
                           ),
@@ -192,5 +183,54 @@ class _AddressesPageState extends State<AddressesPage> {
         ),
       ),
     );
+  }
+
+  void _onPincodeChanged() {
+    final pincode = _pincodeController.text.trim();
+    if (pincode.length == 6) {
+      _lookupPincode(pincode);
+    } else {
+      setState(() {
+        _availableAreas = [];
+        _selectedArea = null;
+      });
+      _cityController.clear();
+      _stateController.clear();
+    }
+  }
+
+  Future<void> _lookupPincode(String pincode) async {
+    setState(() => _isLoadingPincode = true);
+    try {
+      final result = await AuthService.instance.lookupPincode(pincode);
+      if (!mounted) return;
+      final areas = result['areas'] as List<Map<String, dynamic>>? ?? [];
+      final state = result['state']?.toString() ?? '';
+      final district = result['district']?.toString() ?? '';
+
+      setState(() {
+        _stateController.text = state;
+        _availableAreas = areas;
+        _cityController.text = district;
+        _selectedArea = areas.isNotEmpty ? areas[0]['name']?.toString() : null;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _availableAreas = [];
+        _selectedArea = null;
+      });
+      _cityController.clear();
+      _stateController.clear();
+    } finally {
+      if (mounted) setState(() => _isLoadingPincode = false);
+    }
+  }
+
+  void _onAreaSelected(String? areaName) {
+    if (areaName == null) return;
+    setState(() {
+      _selectedArea = areaName;
+    });
   }
 }

@@ -7,6 +7,7 @@ import '../../services/auth_service.dart';
 import '../../models/shopkeeper_profile_model.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/gradient_card.dart';
+import '../../widgets/pincode_location_section.dart';
 import 'subscription_plans_screen.dart';
 
 class OnboardingFlow extends StatefulWidget {
@@ -544,6 +545,7 @@ class _ProfileDialogState extends State<_ProfileDialog> {
   late final TextEditingController addressController;
   late final TextEditingController pincodeController;
   late final TextEditingController cityController;
+  late final TextEditingController stateController;
   late final TextEditingController descriptionController;
 
   bool _isLoadingPincode = false;
@@ -563,6 +565,7 @@ class _ProfileDialogState extends State<_ProfileDialog> {
     pincodeController =
         TextEditingController(text: widget.profile?.pincode ?? '');
     cityController = TextEditingController(text: widget.profile?.city ?? '');
+    stateController = TextEditingController();
     descriptionController =
         TextEditingController(text: widget.profile?.description ?? '');
 
@@ -617,6 +620,7 @@ class _ProfileDialogState extends State<_ProfileDialog> {
     addressController.dispose();
     pincodeController.dispose();
     cityController.dispose();
+    stateController.dispose();
     descriptionController.dispose();
     super.dispose();
   }
@@ -625,6 +629,13 @@ class _ProfileDialogState extends State<_ProfileDialog> {
     final pincode = pincodeController.text;
     if (pincode.length == 6) {
       _lookupPincode(pincode);
+    } else {
+      setState(() {
+        _availableAreas = [];
+        _selectedArea = null;
+      });
+      cityController.clear();
+      stateController.clear();
     }
   }
 
@@ -637,17 +648,10 @@ class _ProfileDialogState extends State<_ProfileDialog> {
       final areas = result['areas'] as List<Map<String, dynamic>>? ?? [];
 
       setState(() {
+        stateController.text = result['state']?.toString() ?? '';
         _availableAreas = areas;
-
-        if (areas.length == 1) {
-          _selectedArea = areas[0]['name'];
-          cityController.text = areas[0]['name'] ?? '';
-        } else if (areas.isEmpty) {
-          cityController.text = result['district']?.toString() ?? '';
-        } else {
-          cityController.clear();
-          _selectedArea = null;
-        }
+        cityController.text = result['district']?.toString() ?? '';
+        _selectedArea = areas.isNotEmpty ? areas[0]['name']?.toString() : null;
       });
     } catch (e) {
       // Silently fail
@@ -662,7 +666,6 @@ class _ProfileDialogState extends State<_ProfileDialog> {
     if (areaName == null) return;
     setState(() {
       _selectedArea = areaName;
-      cityController.text = areaName;
     });
   }
 
@@ -682,63 +685,17 @@ class _ProfileDialogState extends State<_ProfileDialog> {
               ),
             ),
             const SizedBox(height: 12),
-            TextField(
-              controller: addressController,
-              decoration: const InputDecoration(
-                labelText: 'Address',
-                hintText: 'Street address',
-              ),
+            PincodeLocationSection(
+              pincodeController: pincodeController,
+              cityController: cityController,
+              stateController: stateController,
+              addressController: addressController,
+              isLoadingPincode: _isLoadingPincode,
+              availableAreas: _availableAreas,
+              selectedArea: _selectedArea,
+              onAreaChanged: _onAreaSelected,
+              addressLabel: 'Address',
             ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: pincodeController,
-              decoration: const InputDecoration(
-                labelText: 'Pincode *',
-                hintText: '6-digit pincode',
-              ),
-              keyboardType: TextInputType.number,
-              maxLength: 6,
-            ),
-            const SizedBox(height: 12),
-            _availableAreas.length > 1
-                ? DropdownButtonFormField<String>(
-                    initialValue: _selectedArea,
-                    decoration:
-                        const InputDecoration(labelText: 'City / Area *'),
-                    hint: const Text('Select your area'),
-                    isExpanded: true,
-                    items: _availableAreas.map((area) {
-                      return DropdownMenuItem<String>(
-                        value: area['name'],
-                        child: Text(area['name'] ?? ''),
-                      );
-                    }).toList(),
-                    onChanged: _isLoadingPincode ? null : _onAreaSelected,
-                  )
-                : TextField(
-                    controller: cityController,
-                    decoration: const InputDecoration(
-                      labelText: 'City *',
-                      hintText: 'Your city',
-                    ),
-                    enabled: !_isLoadingPincode,
-                  ),
-            if (_isLoadingPincode)
-              const Padding(
-                padding: EdgeInsets.only(top: 8),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                    SizedBox(width: 8),
-                    Text('Looking up pincode...',
-                        style: TextStyle(fontSize: 12)),
-                  ],
-                ),
-              ),
             const SizedBox(height: 12),
             _isLoadingCategories
                 ? const Padding(

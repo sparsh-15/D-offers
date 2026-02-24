@@ -8,6 +8,7 @@ import '../../services/subscription_service.dart';
 import '../../models/shopkeeper_profile_model.dart';
 import '../../widgets/theme_toggle.dart';
 import '../../widgets/profile_option_tile.dart';
+import '../../widgets/pincode_location_section.dart';
 import '../auth/login_screen.dart';
 import '../common/settings_page.dart';
 import '../common/help_support_page.dart';
@@ -288,6 +289,13 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
     final pincode = pincodeController.text;
     if (pincode.length == 6) {
       _lookupPincode(pincode);
+    } else {
+      setState(() {
+        _availableAreas = [];
+        _selectedArea = null;
+      });
+      cityController.clear();
+      stateController.clear();
     }
   }
 
@@ -302,19 +310,8 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
       setState(() {
         stateController.text = result['state']?.toString() ?? '';
         _availableAreas = areas;
-
-        // Auto-select first area if only one available
-        if (areas.length == 1) {
-          _selectedArea = areas[0]['name'];
-          cityController.text = areas[0]['name'] ?? '';
-        } else if (areas.isEmpty) {
-          // Fallback to district if no areas
-          cityController.text = result['district']?.toString() ?? '';
-        } else {
-          // Multiple areas - user needs to select
-          cityController.clear();
-          _selectedArea = null;
-        }
+        cityController.text = result['district']?.toString() ?? '';
+        _selectedArea = areas.isNotEmpty ? areas[0]['name']?.toString() : null;
       });
     } catch (e) {
       // Silently fail - user can enter manually
@@ -329,7 +326,6 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
     if (areaName == null) return;
     setState(() {
       _selectedArea = areaName;
-      cityController.text = areaName;
     });
   }
 
@@ -346,60 +342,17 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
               decoration: const InputDecoration(labelText: 'Shop Name'),
             ),
             const SizedBox(height: 8),
-            TextField(
-              controller: addressController,
-              decoration: const InputDecoration(labelText: 'Address'),
+            PincodeLocationSection(
+              pincodeController: pincodeController,
+              cityController: cityController,
+              stateController: stateController,
+              addressController: addressController,
+              isLoadingPincode: _isLoadingPincode,
+              availableAreas: _availableAreas,
+              selectedArea: _selectedArea,
+              onAreaChanged: _onAreaSelected,
+              addressLabel: 'Address',
             ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: pincodeController,
-              decoration: const InputDecoration(labelText: 'Pincode'),
-              keyboardType: TextInputType.number,
-              maxLength: 6,
-            ),
-            const SizedBox(height: 8),
-            _availableAreas.length > 1
-                ? DropdownButtonFormField<String>(
-                    value: _selectedArea,
-                    decoration: const InputDecoration(labelText: 'City / Area'),
-                    hint: const Text('Select your area'),
-                    items: _availableAreas.map((area) {
-                      return DropdownMenuItem<String>(
-                        value: area['name'],
-                        child: Text(area['name'] ?? ''),
-                      );
-                    }).toList(),
-                    onChanged: _isLoadingPincode ? null : _onAreaSelected,
-                  )
-                : TextField(
-                    controller: cityController,
-                    decoration: const InputDecoration(labelText: 'City'),
-                    enabled: !_isLoadingPincode,
-                  ),
-            if (_isLoadingPincode)
-              const Padding(
-                padding: EdgeInsets.only(top: 8),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                    SizedBox(width: 8),
-                    Text('Looking up pincode...',
-                        style: TextStyle(fontSize: 12)),
-                  ],
-                ),
-              ),
-            if (_availableAreas.length > 1 && !_isLoadingPincode)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text(
-                  '${_availableAreas.length} areas found',
-                  style: const TextStyle(fontSize: 12, color: AppColors.blue),
-                ),
-              ),
             const SizedBox(height: 8),
             _isLoadingCategories
                 ? const Padding(

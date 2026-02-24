@@ -14,14 +14,14 @@ function issueToken(user) {
 
 async function signup(req, res, next) {
   try {
-    const { phone, role, name, pincode, address } = req.body;
+    const { phone, role, name, pincode, city, address } = req.body;
     if (!phone || !role || !name || !pincode) {
       return res.status(400).json({
         success: false,
         message: 'Phone, role, name and pincode are required',
       });
     }
-    await otpService.sendOtp(phone.trim(), role, { name, pincode, address });
+    await otpService.sendOtp(phone.trim(), role, { name, pincode, city, address });
     res.status(200).json({ success: true, message: 'Signup OTP sent' });
   } catch (err) {
     next(err);
@@ -30,7 +30,7 @@ async function signup(req, res, next) {
 
 async function sendOtp(req, res, next) {
   try {
-    const { phone, role, name, pincode, address } = req.body;
+    const { phone, role, name, pincode, city, address } = req.body;
     const clientIp = req.ip || req.connection.remoteAddress;
     
     console.log(`[AUTH] sendOtp request - Role: ${role}, Phone: ${phone?.substring(0, 3)}***, IP: ${clientIp}`);
@@ -40,7 +40,7 @@ async function sendOtp(req, res, next) {
       return res.status(400).json({ success: false, message: 'Phone is required' });
     }
     
-    await otpService.sendOtp(phone.trim(), role, { name, pincode, address });
+    await otpService.sendOtp(phone.trim(), role, { name, pincode, city, address });
     console.log(`[AUTH] sendOtp success - Role: ${role}, Phone: ${phone?.substring(0, 3)}***`);
     res.status(200).json({ success: true, message: 'OTP sent' });
   } catch (err) {
@@ -103,7 +103,7 @@ async function me(req, res, next) {
 
 async function updateMe(req, res, next) {
   try {
-    const { name, address, pincode } = req.body;
+    const { name, address, pincode, city, state } = req.body;
     const user = await userRepository.findById(req.user.userId);
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
@@ -112,13 +112,17 @@ async function updateMe(req, res, next) {
     const updates = {};
     if (name !== undefined) updates.name = String(name).trim();
     if (address !== undefined) updates.address = String(address).trim();
+    if (city !== undefined) updates.city = String(city).trim();
+    if (state !== undefined) updates.state = String(state).trim();
     if (pincode !== undefined && String(pincode).trim()) {
       const resolved = await resolveCityStateFromPincode(pincode);
       updates.pincode = resolved.pincode;
+      const requestedCity = city !== undefined ? String(city).trim() : '';
       updates.city =
+        requestedCity ||
         (resolved.areas && resolved.areas[0] && resolved.areas[0].name) ||
         user.city;
-      updates.state = resolved.state || user.state;
+      updates.state = resolved.state || (state !== undefined ? String(state).trim() : user.state);
     }
 
     const updated = await userRepository.updateById(req.user.userId, updates);
