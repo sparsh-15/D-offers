@@ -793,7 +793,10 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
-                  initialValue: _stateFilter,
+                  value: ['Karnataka', 'Delhi', 'Maharashtra']
+                          .contains(_stateFilter)
+                      ? _stateFilter
+                      : null,
                   decoration: const InputDecoration(
                     labelText: 'State',
                     prefixIcon: Icon(Icons.map_rounded),
