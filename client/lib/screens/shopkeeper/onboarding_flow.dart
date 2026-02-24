@@ -4,6 +4,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/utils/theme_helper.dart';
 import '../../core/utils/dialog_helper.dart';
 import '../../services/auth_service.dart';
+import '../../services/subscription_service.dart';
 import '../../models/shopkeeper_profile_model.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/gradient_card.dart';
@@ -45,8 +46,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       // Check subscription (you'll need to add this API call)
       Map<String, dynamic>? subscription;
       try {
-        // TODO: Add API call to check subscription status
-        subscription = null; // For now, assume no subscription
+        subscription = await SubscriptionService.instance.getSubscription();
       } catch (e) {
         subscription = null;
       }
@@ -82,9 +82,9 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   }
 
   bool _hasActiveSubscription() {
-    // TODO: Check actual subscription status
     return _subscriptionStatus != null &&
-        _subscriptionStatus!['status'] == 'active';
+        (_subscriptionStatus!['isActive'] == true ||
+            _subscriptionStatus!['status'] == 'active');
   }
 
   @override
@@ -493,7 +493,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     }
 
     try {
-      final updated = await AuthService.instance.upsertShopkeeperProfile(
+      await AuthService.instance.upsertShopkeeperProfile(
         shopName: result['shopName']!.trim(),
         address: result['address']?.trim().isEmpty ?? true
             ? null
@@ -512,12 +512,24 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             : result['description']!.trim(),
       );
       if (!mounted) return;
+      try {
+        await AuthService.instance.completeOnboardingProfile();
+      } catch (_) {
+        if (mounted) {
+          DialogHelper.showInfoSnackBar(
+            context,
+            'Profile saved, but onboarding status could not be updated. Please log in again.',
+          );
+        }
+      }
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Profile updated successfully'),
           backgroundColor: AppColors.green,
         ),
       );
+      if (!mounted) return;
       _checkStatus(); // Recheck status
     } catch (e) {
       if (!mounted) return;
@@ -705,7 +717,7 @@ class _ProfileDialogState extends State<_ProfileDialog> {
                     ),
                   )
                 : DropdownButtonFormField<String>(
-                    value: _selectedCategory,
+                    initialValue: _selectedCategory,
                     decoration: const InputDecoration(
                       labelText: 'Business Category',
                       hintText: 'Select your business type',

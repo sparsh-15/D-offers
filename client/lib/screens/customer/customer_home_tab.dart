@@ -2,13 +2,16 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
+import 'package:iconsax/iconsax.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
 import '../../services/auth_service.dart';
 import '../../services/auth_store.dart';
+import '../../services/location_service.dart';
 import '../../models/offer_model.dart';
 import '../../widgets/offer_card.dart';
 import '../../core/utils/theme_helper.dart';
+import '../../core/utils/dialog_helper.dart';
 
 class CustomerHomeTab extends StatefulWidget {
   const CustomerHomeTab({
@@ -26,7 +29,12 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
   late Future<List<OfferModel>> _featuredOffersFuture;
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
-  bool _useCurrentLocation = true;
+  bool _useCurrentLocation = false;
+  bool _isLoadingLocation = false;
+  String? _currentLocationText;
+  String? _currentPincode;
+  String? _currentCity;
+  String? _currentState;
   Timer? _flashDealTimer;
   Duration _flashDealCountdown =
       const Duration(hours: 2, minutes: 15, seconds: 20);
@@ -82,8 +90,18 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
   }
 
   Future<List<OfferModel>> _fetchOffers() {
+    if (_useCurrentLocation && _currentPincode != null) {
+      // Use detected current location
+      return AuthService.instance.getCustomerOffers(
+        pincode: _currentPincode,
+        city: _currentCity,
+        state: _currentState,
+      );
+    }
+
+    // Use profile location
     final user = AuthStore.currentUser;
-    if (!_useCurrentLocation || user == null) {
+    if (user == null) {
       return AuthService.instance.getCustomerOffers();
     }
 
@@ -96,6 +114,73 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
       city: city.isEmpty ? null : city,
       state: state.isEmpty ? null : state,
     );
+  }
+
+  Future<void> _getCurrentLocation() async {
+    setState(() {
+      _isLoadingLocation = true;
+    });
+
+    try {
+      final locationData =
+          await LocationService.instance.getCurrentLocationWithAddress();
+
+      if (!mounted) return;
+
+      setState(() {
+        _currentPincode = locationData['pincode'] as String?;
+        _currentCity = locationData['city'] as String?;
+        _currentState = locationData['state'] as String?;
+        _currentLocationText = [
+          if (_currentCity?.isNotEmpty == true) _currentCity,
+          if (_currentPincode?.isNotEmpty == true) _currentPincode,
+        ].join(', ');
+        _useCurrentLocation = true;
+        _isLoadingLocation = false;
+      });
+
+      // Refresh offers with new location
+      _refresh();
+
+      DialogHelper.showSuccessSnackBar(
+        context,
+        'Location detected: $_currentLocationText',
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _isLoadingLocation = false;
+        _useCurrentLocation = false;
+      });
+
+      String errorMessage = 'Failed to get current location';
+      if (e.toString().contains('denied')) {
+        errorMessage =
+            'Location permission denied. Please enable location access in settings.';
+      } else if (e.toString().contains('disabled')) {
+        errorMessage = 'Location services are disabled. Please enable them.';
+      }
+
+      DialogHelper.showErrorSnackBar(context, errorMessage);
+    }
+  }
+
+  void _toggleCurrentLocation() {
+    if (_useCurrentLocation) {
+      // Turn off current location
+      setState(() {
+        _useCurrentLocation = false;
+        _currentLocationText = null;
+        _currentPincode = null;
+        _currentCity = null;
+        _currentState = null;
+      });
+      _refresh();
+    } else {
+      // Get current location
+      _getCurrentLocation();
+    }
   }
 
   List<OfferModel> _searchFiltered(List<OfferModel> offers) {
@@ -428,18 +513,29 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                               }
                               return FilterChip(
                                 selected: _useCurrentLocation,
-                                onSelected: (selected) {
-                                  setState(() {
-                                    _useCurrentLocation = selected;
-                                  });
-                                  _refresh();
-                                },
-                                avatar: const Icon(Icons.my_location_rounded,
-                                    size: 18),
+                                onSelected: (selected) =>
+                                    _toggleCurrentLocation(),
+                                avatar: _isLoadingLocation
+                                    ? const SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : Icon(
+                                        _useCurrentLocation
+                                            ? Iconsax.gps
+                                            : Iconsax.location,
+                                        size: 18,
+                                      ),
                                 label: Text(
-                                  locationLabel.isEmpty
-                                      ? 'Near me'
-                                      : 'Near me: $locationLabel',
+                                  _isLoadingLocation
+                                      ? 'Detecting...'
+                                      : (_useCurrentLocation &&
+                                              _currentLocationText != null
+                                          ? 'Current: $_currentLocationText'
+                                          : 'Use Current Location'),
                                 ),
                               );
                             },

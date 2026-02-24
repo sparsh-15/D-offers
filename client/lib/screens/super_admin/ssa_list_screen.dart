@@ -81,6 +81,7 @@ class _SSAListScreenState extends State<SSAListScreen> {
       child: Scaffold(
         backgroundColor: AppColors.transparent,
         appBar: AppBar(
+          leading: ThemeHelper.buildBackButton(context),
           backgroundColor: AppColors.transparent,
           elevation: 0,
           title: const Text('State Sales Agents (SSA)'),

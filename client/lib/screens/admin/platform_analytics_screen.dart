@@ -33,6 +33,7 @@ class _PlatformAnalyticsScreenState extends State<PlatformAnalyticsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: ThemeHelper.buildBackButton(context),
         title: const Text('Platform Analytics'),
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.white,

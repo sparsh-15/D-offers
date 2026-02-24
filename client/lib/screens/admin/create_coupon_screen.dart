@@ -153,6 +153,7 @@ class _CreateCouponScreenState extends State<CreateCouponScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: ThemeHelper.buildBackButton(context),
         title: const Text('Create Coupon'),
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.white,
@@ -186,10 +187,12 @@ class _CreateCouponScreenState extends State<CreateCouponScreen> {
                                     width: double.infinity,
                                     padding: const EdgeInsets.all(12),
                                     decoration: BoxDecoration(
-                                      color: AppColors.primary.withValues(alpha: 0.07),
+                                      color: AppColors.primary
+                                          .withValues(alpha: 0.07),
                                       borderRadius: BorderRadius.circular(10),
                                       border: Border.all(
-                                        color: AppColors.primary.withValues(alpha: 0.2),
+                                        color: AppColors.primary
+                                            .withValues(alpha: 0.2),
                                       ),
                                     ),
                                     child: const Text(
@@ -202,8 +205,10 @@ class _CreateCouponScreenState extends State<CreateCouponScreen> {
                                     controller: _descriptionController,
                                     decoration: const InputDecoration(
                                       labelText: 'Description (Optional)',
-                                      hintText: 'e.g., Welcome discount for new users',
-                                      prefixIcon: Icon(Icons.description_rounded),
+                                      hintText:
+                                          'e.g., Welcome discount for new users',
+                                      prefixIcon:
+                                          Icon(Icons.description_rounded),
                                       border: OutlineInputBorder(),
                                     ),
                                     maxLines: 2,
@@ -322,15 +327,18 @@ class _CreateCouponScreenState extends State<CreateCouponScreen> {
                                     width: double.infinity,
                                     padding: const EdgeInsets.all(12),
                                     decoration: BoxDecoration(
-                                      color: AppColors.success.withValues(alpha: 0.08),
+                                      color: AppColors.success
+                                          .withValues(alpha: 0.08),
                                       borderRadius: BorderRadius.circular(10),
                                       border: Border.all(
-                                        color: AppColors.success.withValues(alpha: 0.25),
+                                        color: AppColors.success
+                                            .withValues(alpha: 0.25),
                                       ),
                                     ),
                                     child: Text(
                                       'Selected agent max percentage discount: $selectedAgentMaxDiscount%',
-                                      style: const TextStyle(fontWeight: FontWeight.w600),
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.w600),
                                     ),
                                   ),
                                 ],
@@ -348,14 +356,16 @@ class _CreateCouponScreenState extends State<CreateCouponScreen> {
                                   const SizedBox(height: innerGap),
                                   OutlinedButton.icon(
                                     onPressed: _selectExpiryDate,
-                                    icon: const Icon(Icons.calendar_today_rounded),
+                                    icon: const Icon(
+                                        Icons.calendar_today_rounded),
                                     label: Text(
                                       _expiryDate == null
                                           ? 'Set Expiry Date (Optional)'
                                           : 'Expires: ${DateFormat('MMM d, y').format(_expiryDate!)}',
                                     ),
                                     style: OutlinedButton.styleFrom(
-                                      minimumSize: const Size(double.infinity, 48),
+                                      minimumSize:
+                                          const Size(double.infinity, 48),
                                     ),
                                   ),
                                   if (_expiryDate != null) ...[

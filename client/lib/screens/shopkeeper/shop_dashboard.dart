@@ -5,6 +5,7 @@ import '../../core/utils/theme_helper.dart';
 import '../../core/utils/dialog_helper.dart';
 import '../../widgets/gradient_card.dart';
 import '../../services/auth_service.dart';
+import '../../services/subscription_service.dart';
 import '../../models/offer_model.dart';
 import 'shop_profile_body.dart';
 import '../../widgets/offer_card.dart';
@@ -44,15 +45,29 @@ class _ShopDashboardState extends State<ShopDashboard> {
   }
 
   Future<void> _checkSubscriptionStatus() async {
-    // TODO: Check actual subscription status from API
-    // For now, assume no subscription
-    setState(() {
-      _hasActiveSubscription = false;
-      // Force user to Profile tab if no subscription
-      if (!_hasActiveSubscription) {
+    try {
+      final subscription = await SubscriptionService.instance.getSubscription();
+      final isActive = subscription['isActive'] == true ||
+          subscription['status'] == 'active';
+      if (!mounted) return;
+      setState(() {
+        _hasActiveSubscription = isActive;
+        if (!_hasActiveSubscription) {
+          _selectedIndex = 3;
+        }
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _hasActiveSubscription = false;
         _selectedIndex = 3;
-      }
-    });
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Unable to verify subscription. Please log in again.'),
+        ),
+      );
+    }
   }
 
   @override
@@ -354,7 +369,7 @@ class _ShopHomeTabState extends State<ShopHomeTab> {
           Text(
             title,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppColors.white.withOpacity(0.9),
+                  color: AppColors.white.withValues(alpha: 0.9),
                 ),
           ),
         ],
@@ -375,7 +390,7 @@ class _ShopHomeTabState extends State<ShopHomeTab> {
         leading: Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: color.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(icon, color: color),
@@ -585,11 +600,11 @@ class _OffersManagementBodyState extends State<_OffersManagementBody> {
     if (!confirm) return;
     try {
       await AuthService.instance.deleteOffer(offer.id);
-      if (!mounted) return;
+      if (!context.mounted) return;
       DialogHelper.showSuccessSnackBar(context, 'Offer deleted');
       await _refresh();
     } catch (e) {
-      if (!mounted) return;
+      if (!context.mounted) return;
       DialogHelper.showErrorSnackBar(context, e.toString());
     }
   }
@@ -625,12 +640,120 @@ class LeadsTab extends StatelessWidget {
   }
 }
 
-class ShopProfileTab extends StatelessWidget {
+class ShopProfileTab extends StatefulWidget {
   const ShopProfileTab({super.key});
 
   @override
+  State<ShopProfileTab> createState() => _ShopProfileTabState();
+}
+
+class _ShopProfileTabState extends State<ShopProfileTab> {
+  Map<String, dynamic>? _subscription;
+  int? _offerCount;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSubscriptionDetails();
+  }
+
+  Future<void> _loadSubscriptionDetails() async {
+    setState(() => _loading = true);
+    try {
+      final dashboard = await AuthService.instance.getShopkeeperDashboard();
+      final subscription = dashboard['subscription'] as Map<String, dynamic>?;
+      int? offerCount;
+      if (subscription != null &&
+          (subscription['status'] == 'active' ||
+              subscription['isActive'] == true)) {
+        final offers = await AuthService.instance.getShopkeeperOffers();
+        offerCount = offers.where((o) => o.status != 'inactive').length;
+      }
+      if (!mounted) return;
+      setState(() {
+        _subscription = subscription;
+        _offerCount = offerCount;
+        _loading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+    }
+  }
+
+  String _formatDate(dynamic value) {
+    if (value == null) return '—';
+    final date = DateTime.tryParse(value.toString());
+    if (date == null) return '—';
+    final y = date.year.toString().padLeft(4, '0');
+    final m = date.month.toString().padLeft(2, '0');
+    final d = date.day.toString().padLeft(2, '0');
+    return '$y-$m-$d';
+  }
+
+  Widget _buildSubscriptionCard(BuildContext context) {
+    if (_loading) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: LinearProgressIndicator(),
+      );
+    }
+    if (_subscription == null) {
+      return const SizedBox.shrink();
+    }
+    final planSnapshot =
+        _subscription?['planSnapshot'] as Map<String, dynamic>?;
+    final planName =
+        planSnapshot?['displayName'] ?? planSnapshot?['name'] ?? 'Plan';
+    final status = (_subscription?['status'] ?? 'inactive').toString();
+    final maxOffers = planSnapshot?['maxOffers'];
+    final offerLimitLabel = maxOffers == null || maxOffers == -1
+        ? 'Unlimited offers'
+        : '${_offerCount ?? 0} / $maxOffers offers used';
+    final startDate = _formatDate(_subscription?['startDate']);
+    final endDate = _formatDate(_subscription?['endDate']);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      decoration: BoxDecoration(
+        color: ThemeHelper.getSurfaceColor(context),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Subscription',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '$planName • ${status.toUpperCase()}',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            offerLimitLabel,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Valid: $startDate → $endDate',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // Check if user has active subscription
     final dashboardState =
         context.findAncestorStateOfType<_ShopDashboardState>();
     final hasSubscription = dashboardState?._hasActiveSubscription ?? false;
@@ -641,6 +764,7 @@ class ShopProfileTab extends StatelessWidget {
       child: SafeArea(
         child: Column(
           children: [
+            _buildSubscriptionCard(context),
             if (!hasSubscription)
               Container(
                 width: double.infinity,
@@ -677,7 +801,6 @@ class ShopProfileTab extends StatelessWidget {
                     const SizedBox(height: 16),
                     ElevatedButton(
                       onPressed: () {
-                        // TODO: Navigate to subscription plans
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text('Subscription plans coming soon'),

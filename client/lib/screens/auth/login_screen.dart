@@ -1,6 +1,7 @@
 import 'package:animate_do/animate_do.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:iconsax/iconsax.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
@@ -49,14 +50,28 @@ class _LoginScreenState extends State<LoginScreen> {
                   FadeInDown(
                     child: Center(
                       child: Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: const BoxDecoration(
-                          color: AppColors.surface,
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              AppColors.primary.withValues(alpha: 0.2),
+                              AppColors.accent.withValues(alpha: 0.1),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
                           shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.primary.withValues(alpha: 0.3),
+                              blurRadius: 20,
+                              spreadRadius: 2,
+                            ),
+                          ],
                         ),
                         child: const Icon(
-                          Icons.verified_user_rounded,
-                          size: 60,
+                          Iconsax.login,
+                          size: 64,
                           color: AppColors.primary,
                         ),
                       ),
@@ -86,50 +101,22 @@ class _LoginScreenState extends State<LoginScreen> {
                       padding: const EdgeInsets.only(top: 16),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
+                          horizontal: 12,
+                          vertical: 8,
                         ),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: AppColors.primary.withOpacity(0.3),
-                            width: 1,
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.info_outline_rounded,
-                              size: 20,
-                              color: AppColors.primary,
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                'Login with your mobile number and OTP.',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodySmall
-                                    ?.copyWith(
-                                      color: AppColors.primary,
-                                      fontSize: 12,
-                                    ),
-                              ),
-                            ),
-                          ],
-                        ),
+                       
+                      
                       ),
                     ),
                   ),
-                  const SizedBox(height: 60),
+                  const SizedBox(height: 30),
                   FadeInUp(
                     delay: const Duration(milliseconds: 400),
                     child: CustomTextField(
                       controller: _phoneController,
                       label: AppStrings.enterMobile,
                       hint: AppStrings.mobileHint,
-                      prefixIcon: Icons.phone_rounded,
+                      prefixIcon: Iconsax.mobile,
                       keyboardType: TextInputType.phone,
                       maxLength: 10,
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
@@ -151,7 +138,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       text: AppStrings.sendOtp,
                       onPressed: _handleLogin,
                       isLoading: _isLoading,
-                      icon: Icons.send_rounded,
+                      icon: Iconsax.arrow_right_1,
                     ),
                   ),
                   const SizedBox(height: 18),

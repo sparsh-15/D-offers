@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:iconsax/iconsax.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
@@ -143,7 +144,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   Align(
                     alignment: Alignment.centerLeft,
                     child: IconButton(
-                      icon: const Icon(Icons.arrow_back_ios_rounded),
+                      icon: const Icon(Iconsax.arrow_left_2),
                       onPressed: () => Navigator.pop(context),
                       color: AppColors.primary,
                     ),
@@ -165,7 +166,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     controller: _nameController,
                     label: 'Full Name',
                     hint: 'Enter your name',
-                    prefixIcon: Icons.person_rounded,
+                    prefixIcon: Iconsax.user,
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
                         return 'Please enter your name';
@@ -178,7 +179,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     controller: _phoneController,
                     label: AppStrings.enterMobile,
                     hint: AppStrings.mobileHint,
-                    prefixIcon: Icons.phone_rounded,
+                    prefixIcon: Iconsax.mobile,
                     keyboardType: TextInputType.phone,
                     maxLength: 10,
                     inputFormatters: [
@@ -239,7 +240,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     text: AppStrings.sendOtp,
                     onPressed: _handleSignup,
                     isLoading: _isLoading,
-                    icon: Icons.send_rounded,
+                    icon: Iconsax.arrow_right_1,
                   ),
                 ],
               ),

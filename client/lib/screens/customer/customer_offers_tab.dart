@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
+import 'package:iconsax/iconsax.dart';
 import '../../core/constants/app_colors.dart';
 import '../../services/auth_service.dart';
 import '../../services/auth_store.dart';
+import '../../services/location_service.dart';
 import '../../models/offer_model.dart';
 import '../../widgets/offer_card.dart';
 import '../../core/utils/theme_helper.dart';
+import '../../core/utils/dialog_helper.dart';
 
 class CustomerOffersTab extends StatelessWidget {
   const CustomerOffersTab({super.key});
@@ -40,6 +43,10 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
   String _ageGroupFilter = 'all';
   String _searchQuery = '';
   String _sortBy = 'newest';
+  double _minRating = 0.0;
+  bool _useCurrentLocation = false;
+  bool _isLoadingLocation = false;
+  String? _currentLocationText;
   final _cityController = TextEditingController();
   final _pincodeController = TextEditingController();
   final _searchController = TextEditingController();
@@ -83,6 +90,77 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
     });
   }
 
+  Future<void> _getCurrentLocation() async {
+    setState(() {
+      _isLoadingLocation = true;
+    });
+
+    try {
+      final locationData =
+          await LocationService.instance.getCurrentLocationWithAddress();
+
+      if (!mounted) return;
+
+      final pincode = locationData['pincode'] as String?;
+      final city = locationData['city'] as String?;
+      final state = locationData['state'] as String?;
+
+      setState(() {
+        _pincodeFilter = pincode;
+        _cityFilter = city;
+        _stateFilter = state;
+        _currentLocationText = [
+          if (city?.isNotEmpty == true) city,
+          if (pincode?.isNotEmpty == true) pincode,
+        ].join(', ');
+        _useCurrentLocation = true;
+        _isLoadingLocation = false;
+      });
+
+      // Update controllers
+      if (pincode != null) _pincodeController.text = pincode;
+      if (city != null) _cityController.text = city;
+
+      // Refresh offers with new location
+      _refresh();
+
+      DialogHelper.showSuccessSnackBar(
+        context,
+        'Location detected: $_currentLocationText',
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _isLoadingLocation = false;
+        _useCurrentLocation = false;
+      });
+
+      String errorMessage = 'Failed to get current location';
+      if (e.toString().contains('denied')) {
+        errorMessage =
+            'Location permission denied. Please enable location access in settings.';
+      } else if (e.toString().contains('disabled')) {
+        errorMessage = 'Location services are disabled. Please enable them.';
+      }
+
+      DialogHelper.showErrorSnackBar(context, errorMessage);
+    }
+  }
+
+  void _toggleCurrentLocation() {
+    if (_useCurrentLocation) {
+      // Turn off current location
+      setState(() {
+        _useCurrentLocation = false;
+        _currentLocationText = null;
+      });
+    } else {
+      // Get current location
+      _getCurrentLocation();
+    }
+  }
+
   List<OfferModel> _filterAndSortOffers(List<OfferModel> offers) {
     var filtered = offers;
 
@@ -123,6 +201,11 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
         break;
       case 'most_liked':
         filtered.sort((a, b) => b.likesCount.compareTo(a.likesCount));
+        break;
+      case 'nearest':
+        // Sort by nearest - for now using a placeholder
+        // In production, this would use actual distance calculation
+        filtered.sort((a, b) => 0);
         break;
       case 'discount_high_to_low':
         filtered.sort((a, b) {
@@ -225,7 +308,8 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
         _pincodeFilter != null ||
         _categoryFilter != _allKey ||
         _genderFilter != _allKey ||
-        _ageGroupFilter != _allKey;
+        _ageGroupFilter != _allKey ||
+        _minRating > 0.0;
   }
 
   void _clearAllFilters() {
@@ -238,6 +322,7 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
       _categoryFilter = _allKey;
       _genderFilter = _allKey;
       _ageGroupFilter = _allKey;
+      _minRating = 0.0;
       _cityController.clear();
       _pincodeController.clear();
     });
@@ -319,6 +404,8 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
                             DropdownMenuItem(
                                 value: 'most_liked', child: Text('Most Liked')),
                             DropdownMenuItem(
+                                value: 'nearest', child: Text('Nearest')),
+                            DropdownMenuItem(
                                 value: 'discount_high_to_low',
                                 child: Text('Discount High to Low')),
                             DropdownMenuItem(
@@ -343,6 +430,47 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
                     label: const Text('Filters'),
                   ),
                 ],
+              ),
+              const SizedBox(height: 8),
+              // Current Location Button
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed:
+                        _isLoadingLocation ? null : _toggleCurrentLocation,
+                    icon: _isLoadingLocation
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Icon(
+                            _useCurrentLocation
+                                ? Iconsax.gps
+                                : Iconsax.location,
+                          ),
+                    label: Text(
+                      _isLoadingLocation
+                          ? 'Detecting Location...'
+                          : (_useCurrentLocation && _currentLocationText != null
+                              ? 'Current: $_currentLocationText'
+                              : 'Use Current Location'),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: _useCurrentLocation
+                          ? AppColors.primary.withValues(alpha: 0.1)
+                          : null,
+                      side: BorderSide(
+                        color: _useCurrentLocation
+                            ? AppColors.primary
+                            : AppColors.grey400,
+                        width: _useCurrentLocation ? 2 : 1,
+                      ),
+                    ),
+                  ),
+                ),
               ),
               const SizedBox(height: 8),
             ],
@@ -557,6 +685,16 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
                 });
               },
             ),
+          if (_minRating > 0.0)
+            Chip(
+              avatar: const Icon(Icons.star_rounded, size: 16),
+              label: Text('Rating: ${_minRating.toStringAsFixed(1)}+'),
+              onDeleted: () {
+                setState(() {
+                  _minRating = 0.0;
+                });
+              },
+            ),
         ],
       ),
     );
@@ -695,6 +833,34 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
                     isDense: true,
                   ),
                 ),
+                const SizedBox(height: 16),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.star_rounded, size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Minimum Rating: ${_minRating.toStringAsFixed(1)}',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                      ],
+                    ),
+                    Slider(
+                      value: _minRating,
+                      min: 0.0,
+                      max: 5.0,
+                      divisions: 10,
+                      label: _minRating.toStringAsFixed(1),
+                      onChanged: (value) {
+                        setDialogState(() {
+                          _minRating = value;
+                        });
+                      },
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -708,6 +874,7 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
                   _categoryFilter = _allKey;
                   _genderFilter = _allKey;
                   _ageGroupFilter = _allKey;
+                  _minRating = 0.0;
                   _cityController.clear();
                   _pincodeController.clear();
                 });

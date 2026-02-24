@@ -20,7 +20,6 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
   // Filters
   String? _selectedRole;
   bool? _selectedIsActive;
-  String? _selectedApprovalStatus;
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _pincodeController = TextEditingController();
 
@@ -56,7 +55,6 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
       final result = await SuperAdminService.instance.getAllUsers(
         role: _selectedRole,
         isActive: _selectedIsActive,
-        approvalStatus: _selectedApprovalStatus,
         pincode: _pincodeController.text.trim().isEmpty
             ? null
             : _pincodeController.text.trim(),
@@ -109,30 +107,6 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
     }
   }
 
-  Future<void> _updateApprovalStatus(String userId, String status) async {
-    try {
-      await SuperAdminService.instance.updateApprovalStatus(userId, status);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('User $status successfully'),
-            backgroundColor: AppColors.success,
-          ),
-        );
-        _loadUsers();
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: AppColors.error,
-          ),
-        );
-      }
-    }
-  }
-
   void _showFilters() {
     showModalBottomSheet(
       context: context,
@@ -166,7 +140,6 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
                   setState(() {
                     _selectedRole = null;
                     _selectedIsActive = null;
-                    _selectedApprovalStatus = null;
                     _pincodeController.clear();
                     _currentPage = 1;
                   });
@@ -216,25 +189,6 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
             },
           ),
           const SizedBox(height: 12),
-          DropdownButtonFormField<String>(
-            value: _selectedApprovalStatus,
-            decoration: const InputDecoration(
-              labelText: 'Approval Status',
-              border: OutlineInputBorder(),
-            ),
-            items: const [
-              DropdownMenuItem(value: null, child: Text('All')),
-              DropdownMenuItem(value: 'pending', child: Text('Pending')),
-              DropdownMenuItem(value: 'approved', child: Text('Approved')),
-              DropdownMenuItem(value: 'rejected', child: Text('Rejected')),
-            ],
-            onChanged: (value) {
-              setState(() {
-                _selectedApprovalStatus = value;
-              });
-            },
-          ),
-          const SizedBox(height: 12),
           TextField(
             controller: _pincodeController,
             decoration: const InputDecoration(
@@ -279,6 +233,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
       child: Scaffold(
         backgroundColor: AppColors.transparent,
         appBar: AppBar(
+          leading: ThemeHelper.buildBackButton(context),
           backgroundColor: AppColors.transparent,
           elevation: 0,
           title: const Text('Users Management'),
@@ -345,7 +300,6 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
   Widget _buildUserCard(
       Map<String, dynamic> user, bool isDark, ThemeData theme) {
     final isActive = user['isActive'] as bool? ?? true;
-    final approvalStatus = user['approvalStatus'] as String? ?? 'approved';
     final role = user['role'] as String? ?? '';
 
     return Container(
@@ -410,11 +364,14 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
                 ),
               ),
               Chip(
-                label: Text(approvalStatus.toUpperCase()),
-                backgroundColor:
-                    _getApprovalColor(approvalStatus).withValues(alpha: 0.2),
+                label: Text((user['approvalStatus'] as String? ?? 'approved')
+                    .toUpperCase()),
+                backgroundColor: _getApprovalColor(
+                        user['approvalStatus'] as String? ?? 'approved')
+                    .withValues(alpha: 0.2),
                 labelStyle: TextStyle(
-                  color: _getApprovalColor(approvalStatus),
+                  color: _getApprovalColor(
+                      user['approvalStatus'] as String? ?? 'approved'),
                   fontSize: 12,
                 ),
               ),
@@ -429,38 +386,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
                 ),
             ],
           ),
-          if (approvalStatus == 'pending') ...[
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => _updateApprovalStatus(
-                        user['_id'] as String, 'approved'),
-                    icon: const Icon(Icons.check, size: 16),
-                    label: const Text('Approve'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.success,
-                      side: BorderSide(color: AppColors.success),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => _updateApprovalStatus(
-                        user['_id'] as String, 'rejected'),
-                    icon: const Icon(Icons.close, size: 16),
-                    label: const Text('Reject'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.error,
-                      side: BorderSide(color: AppColors.error),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
+          const SizedBox(height: 4),
         ],
       ),
     );

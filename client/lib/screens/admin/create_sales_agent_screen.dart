@@ -119,6 +119,7 @@ class _CreateSalesAgentScreenState extends State<CreateSalesAgentScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: ThemeHelper.buildBackButton(context),
         title: const Text('Create Company Sales Agent'),
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.white,

@@ -189,6 +189,14 @@ class _ShopProfileBodyState extends State<ShopProfileBody> {
       );
       if (!mounted) return;
       setState(() => _profile = updated);
+      try {
+        await AuthService.instance.completeOnboardingProfile();
+      } catch (_) {
+        DialogHelper.showInfoSnackBar(
+          context,
+          'Profile saved, but onboarding status could not be updated. Please log in again.',
+        );
+      }
       DialogHelper.showSuccessSnackBar(context, 'Shop profile updated');
     } catch (e) {
       if (!mounted) return;

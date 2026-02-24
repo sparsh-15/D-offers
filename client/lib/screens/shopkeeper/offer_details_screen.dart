@@ -3,6 +3,7 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../../models/offer_model.dart';
 import '../../services/auth_service.dart';
+import '../../services/subscription_service.dart';
 import '../../services/upload_service.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/dialog_helper.dart';
@@ -36,8 +37,14 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
   DateTime? _validFrom;
   DateTime? _validTo;
   List<String> _photoUrls = [];
-  List<File> _localPhotos = [];
+  final List<File> _localPhotos = [];
   bool _isLoading = false;
+  Map<String, dynamic>? _subscription;
+  int? _currentOfferCount;
+  bool _loadingSubscription = false;
+  bool _loadingCategories = false;
+  List<Map<String, dynamic>> _categories = [];
+  String? _selectedCategory;
 
   @override
   void initState() {
@@ -47,6 +54,8 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
       _descriptionController.text = widget.offer!.description;
       _termsController.text = widget.offer!.termsAndConditions;
       _categoryController.text = widget.offer!.category;
+      _selectedCategory =
+          widget.offer!.category.isNotEmpty ? widget.offer!.category : null;
       _discountType = widget.offer!.discountType;
       _discountValueController.text =
           widget.offer!.discountValue?.toString() ?? '';
@@ -55,6 +64,8 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
       _validTo = widget.offer!.validTo;
       _photoUrls = List.from(widget.offer!.photos);
     }
+    _loadSubscriptionDetails();
+    _loadCategories();
   }
 
   @override
@@ -66,6 +77,112 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
     _discountValueController.dispose();
     _photoUrlController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadSubscriptionDetails() async {
+    setState(() => _loadingSubscription = true);
+    try {
+      final dashboard = await AuthService.instance.getShopkeeperDashboard();
+      final subscription = dashboard['subscription'] as Map<String, dynamic>?;
+      int? offerCount;
+      if (subscription != null &&
+          (subscription['status'] == 'active' ||
+              subscription['isActive'] == true)) {
+        final offers = await AuthService.instance.getShopkeeperOffers();
+        offerCount = offers.where((o) => o.status != 'inactive').length;
+      }
+      if (!mounted) return;
+      setState(() {
+        _subscription = subscription;
+        _currentOfferCount = offerCount;
+        _loadingSubscription = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loadingSubscription = false);
+    }
+  }
+
+  Future<void> _loadCategories() async {
+    setState(() => _loadingCategories = true);
+    try {
+      final response = await SubscriptionService.instance.getCategories();
+      if (!mounted) return;
+      setState(() {
+        _categories = response;
+        _loadingCategories = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loadingCategories = false);
+    }
+  }
+
+  String _formatDate(dynamic value) {
+    if (value == null) return '—';
+    final date = DateTime.tryParse(value.toString());
+    if (date == null) return '—';
+    final y = date.year.toString().padLeft(4, '0');
+    final m = date.month.toString().padLeft(2, '0');
+    final d = date.day.toString().padLeft(2, '0');
+    return '$y-$m-$d';
+  }
+
+  Widget _buildSubscriptionSummary(BuildContext context) {
+    if (_loadingSubscription) {
+      return const Padding(
+        padding: EdgeInsets.only(bottom: 16),
+        child: LinearProgressIndicator(),
+      );
+    }
+    if (_subscription == null) return const SizedBox.shrink();
+    final planSnapshot =
+        _subscription?['planSnapshot'] as Map<String, dynamic>?;
+    final planName =
+        planSnapshot?['displayName'] ?? planSnapshot?['name'] ?? 'Plan';
+    final status = (_subscription?['status'] ?? 'inactive').toString();
+    final maxOffers = planSnapshot?['maxOffers'];
+    final offerLimitLabel = maxOffers == null || maxOffers == -1
+        ? 'Unlimited offers'
+        : '${_currentOfferCount ?? 0} / $maxOffers offers used';
+    final startDate = _formatDate(_subscription?['startDate']);
+    final endDate = _formatDate(_subscription?['endDate']);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Subscription Details',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '$planName • ${status.toUpperCase()}',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            offerLimitLabel,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Valid: $startDate → $endDate',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ],
+      ),
+    );
   }
 
   void _addPhotoUrl() {
@@ -235,7 +352,7 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
                 leading: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: AppColors.blue.withOpacity(0.1),
+                    color: AppColors.blue.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Icon(Icons.camera_alt, color: AppColors.blue),
@@ -251,7 +368,7 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
                 leading: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: AppColors.green.withOpacity(0.1),
+                    color: AppColors.green.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child:
@@ -268,7 +385,7 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
                 leading: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: AppColors.purple.withOpacity(0.1),
+                    color: AppColors.purple.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Icon(Icons.photo_library_outlined,
@@ -285,7 +402,7 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
                 leading: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: AppColors.orange.withOpacity(0.1),
+                    color: AppColors.orange.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Icon(Icons.link, color: AppColors.orange),
@@ -355,6 +472,21 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
       ];
 
       if (widget.offer == null) {
+        final planSnapshot =
+            _subscription?['planSnapshot'] as Map<String, dynamic>?;
+        final maxOffers = planSnapshot?['maxOffers'];
+        if (maxOffers != null &&
+            maxOffers != -1 &&
+            _currentOfferCount != null &&
+            _currentOfferCount! >= maxOffers) {
+          if (!mounted) return;
+          DialogHelper.showInfoSnackBar(
+            context,
+            'Offer limit reached (${_currentOfferCount!}/$maxOffers). Upgrade your plan to add more.',
+          );
+          setState(() => _isLoading = false);
+          return;
+        }
         await AuthService.instance.createOffer(
           title: _titleController.text.trim(),
           description: _descriptionController.text.trim(),
@@ -433,6 +565,7 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            _buildSubscriptionSummary(context),
             TextFormField(
               controller: _titleController,
               decoration: const InputDecoration(
@@ -452,21 +585,40 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
               maxLines: 3,
             ),
             const SizedBox(height: 16),
-            TextFormField(
-              controller: _categoryController,
-              decoration: const InputDecoration(
-                labelText: 'Category',
-                border: OutlineInputBorder(),
-                hintText: 'e.g., Food, Electronics, Fashion',
+            if (_loadingCategories)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: LinearProgressIndicator(),
+              )
+            else
+              DropdownButtonFormField<String>(
+                initialValue: _selectedCategory,
+                decoration: const InputDecoration(
+                  labelText: 'Category',
+                  border: OutlineInputBorder(),
+                  hintText: 'Select a category',
+                ),
+                isExpanded: true,
+                items: _categories.map((category) {
+                  return DropdownMenuItem<String>(
+                    value: category['value'],
+                    child: Text(category['label']),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    _selectedCategory = value;
+                    _categoryController.text = value ?? '';
+                  });
+                },
               ),
-            ),
             const SizedBox(height: 16),
             Row(
               children: [
                 Expanded(
                   flex: 2,
                   child: DropdownButtonFormField<String>(
-                    value: _discountType,
+                    initialValue: _discountType,
                     decoration: const InputDecoration(
                       labelText: 'Type',
                       border: OutlineInputBorder(),
@@ -475,7 +627,7 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
                     ),
                     items: const [
                       DropdownMenuItem(value: 'percentage', child: Text('%')),
-                      DropdownMenuItem(value: 'fixed', child: Text('₹')),
+                      DropdownMenuItem(value: 'fixed', child: Text('Rs')),
                     ],
                     onChanged: (v) => setState(() => _discountType = v!),
                   ),
@@ -488,7 +640,7 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
                     decoration: InputDecoration(
                       labelText: 'Value',
                       border: const OutlineInputBorder(),
-                      suffixText: _discountType == 'percentage' ? '%' : '₹',
+                      suffixText: _discountType == 'percentage' ? '%' : 'Rs',
                     ),
                     keyboardType: TextInputType.number,
                   ),
@@ -498,7 +650,7 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
             const SizedBox(height: 16),
             if (widget.offer != null)
               DropdownButtonFormField<String>(
-                value: _status,
+                initialValue: _status,
                 decoration: const InputDecoration(
                   labelText: 'Status',
                   border: OutlineInputBorder(),
@@ -531,8 +683,8 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                       side: BorderSide(
-                          color:
-                              isDark ? AppColors.grey700! : AppColors.grey300!),
+                        color: isDark ? AppColors.grey700 : AppColors.grey300,
+                      ),
                     ),
                   ),
                 ),
@@ -556,8 +708,8 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                       side: BorderSide(
-                          color:
-                              isDark ? AppColors.grey700! : AppColors.grey300!),
+                        color: isDark ? AppColors.grey700 : AppColors.grey300,
+                      ),
                     ),
                   ),
                 ),
@@ -631,7 +783,7 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
                   color: isDark ? AppColors.grey800 : AppColors.grey200,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: isDark ? AppColors.grey700! : AppColors.grey300!,
+                    color: isDark ? AppColors.grey700 : AppColors.grey300,
                     style: BorderStyle.solid,
                     width: 2,
                   ),

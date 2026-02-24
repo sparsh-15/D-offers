@@ -419,4 +419,66 @@ class SubscriptionService {
       rethrow;
     }
   }
+
+  // ============ Shopkeeper Subscription ============
+
+  Future<Map<String, dynamic>> getSubscription() async {
+    try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}/subscription');
+      print('[SUBSCRIPTION] Fetching shopkeeper subscription');
+
+      final response = await _client.get(uri, headers: _getHeaders());
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) {
+          return data['subscription'] as Map<String, dynamic>;
+        }
+      }
+
+      throw Exception('Failed to fetch subscription status');
+    } catch (e) {
+      print('[SUBSCRIPTION] getSubscription error: $e');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> activateSubscription({
+    required String planId,
+    required int durationMonths,
+    required String paymentMethod,
+    String? transactionId,
+  }) async {
+    try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}/subscription/activate');
+      print('[SUBSCRIPTION] Activating subscription');
+
+      final body = {
+        'planId': planId,
+        'durationMonths': durationMonths,
+        'paymentMethod': paymentMethod,
+        if (transactionId != null) 'transactionId': transactionId,
+      };
+
+      final response = await _client.post(
+        uri,
+        headers: _getHeaders(),
+        body: jsonEncode(body),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) {
+          return data['subscription'] as Map<String, dynamic>;
+        }
+      }
+
+      final errorData = jsonDecode(response.body);
+      throw Exception(
+          errorData['message'] ?? 'Failed to activate subscription');
+    } catch (e) {
+      print('[SUBSCRIPTION] activateSubscription error: $e');
+      rethrow;
+    }
+  }
 }

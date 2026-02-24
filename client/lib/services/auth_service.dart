@@ -243,6 +243,35 @@ class AuthService {
     );
   }
 
+  // Onboarding - shopkeeper
+  Future<Map<String, dynamic>> getOnboardingStatus() async {
+    final token = AuthStore.token;
+    if (token == null) throw Exception('Not authenticated');
+    final uri = Uri.parse('${ApiConfig.baseUrl}/onboarding/status');
+    final resp = await _client.get(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $token',
+      },
+    );
+    final data = _handleResponse(resp) as Map<String, dynamic>;
+    return data['onboarding'] as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> completeOnboardingProfile() async {
+    final token = AuthStore.token;
+    if (token == null) throw Exception('Not authenticated');
+    final uri = Uri.parse('${ApiConfig.baseUrl}/onboarding/complete-profile');
+    final resp = await _client.post(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $token',
+      },
+    );
+    final data = _handleResponse(resp) as Map<String, dynamic>;
+    return data['onboarding'] as Map<String, dynamic>;
+  }
+
   // Shopkeeper offers
   Future<List<OfferModel>> getShopkeeperOffers() async {
     final token = AuthStore.token;
@@ -452,6 +481,20 @@ class AuthService {
       },
     );
     _handleResponse(resp);
+  }
+
+  Future<Map<String, dynamic>> getShopkeeperDashboard() async {
+    final token = AuthStore.token;
+    if (token == null) throw Exception('Not authenticated');
+    final uri = Uri.parse('${ApiConfig.shopkeeperUrl}/dashboard');
+    final resp = await _client.get(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $token',
+      },
+    );
+    final data = _handleResponse(resp) as Map<String, dynamic>;
+    return data['dashboard'] as Map<String, dynamic>;
   }
 
   // Pincode lookup

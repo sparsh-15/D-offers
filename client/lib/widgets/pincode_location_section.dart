@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:iconsax/iconsax.dart';
 
 class PincodeLocationSection extends StatelessWidget {
   final TextEditingController pincodeController;
@@ -45,7 +46,7 @@ class PincodeLocationSection extends StatelessWidget {
           decoration: const InputDecoration(
             labelText: 'Pincode',
             hintText: '6-digit pincode',
-            prefixIcon: Icon(Icons.pin_drop_rounded),
+            prefixIcon: Icon(Iconsax.location),
           ),
           keyboardType: TextInputType.number,
           maxLength: 6,
@@ -73,7 +74,7 @@ class PincodeLocationSection extends StatelessWidget {
           decoration: const InputDecoration(
             labelText: 'City (Auto)',
             hintText: 'Auto-fetched from pincode',
-            prefixIcon: Icon(Icons.location_city_rounded),
+            prefixIcon: Icon(Iconsax.building),
           ),
           enabled: false,
           validator: cityValidator,
@@ -85,7 +86,7 @@ class PincodeLocationSection extends StatelessWidget {
           decoration: const InputDecoration(
             labelText: 'Area',
             hintText: 'Select area',
-            prefixIcon: Icon(Icons.apartment_rounded),
+            prefixIcon: Icon(Iconsax.map_1),
           ),
           items: availableAreas.map((area) {
             final areaName = area['name']?.toString() ?? '';
@@ -112,7 +113,7 @@ class PincodeLocationSection extends StatelessWidget {
           decoration: const InputDecoration(
             labelText: 'State (Auto)',
             hintText: 'Auto-fetched from pincode',
-            prefixIcon: Icon(Icons.map_rounded),
+            prefixIcon: Icon(Iconsax.global),
           ),
           enabled: false,
           validator: stateValidator,
@@ -123,7 +124,7 @@ class PincodeLocationSection extends StatelessWidget {
             controller: addressController,
             decoration: InputDecoration(
               labelText: addressLabel,
-              prefixIcon: const Icon(Icons.home_rounded),
+              prefixIcon: const Icon(Iconsax.house),
               alignLabelWithHint: true,
             ),
             maxLines: 3,

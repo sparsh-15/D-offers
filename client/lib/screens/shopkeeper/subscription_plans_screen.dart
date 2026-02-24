@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/dialog_helper.dart';
+import '../../core/utils/theme_helper.dart';
 import '../../services/subscription_service.dart';
+import 'payment_screen.dart';
 
 class SubscriptionPlansScreen extends StatefulWidget {
   final String shopCategory;
@@ -56,6 +58,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: ThemeHelper.buildBackButton(context),
         title: const Text('Choose Subscription Plan'),
       ),
       body: _loading
@@ -318,22 +321,24 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
 
   Future<void> _subscribeToPlan(Map<String, dynamic> plan) async {
     final displayName = plan['displayName'] ?? plan['name'];
-    final monthlyPrice = plan['monthlyPrice'] ?? 0;
 
-    final confirm = await DialogHelper.showConfirmDialog(
-      context: context,
-      title: 'Subscribe to $displayName',
-      message:
-          'You are about to subscribe to $displayName for Rs.$monthlyPrice. Continue?',
-      confirmText: 'Subscribe',
-    );
-
-    if (!confirm) return;
-
+    // Navigate to payment screen
     if (!mounted) return;
-    DialogHelper.showInfoSnackBar(
-      context,
-      'Payment integration coming soon. Plan: $displayName',
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => PaymentScreen(
+          plan: plan,
+          onPaymentSuccess: () {
+            // Show success message
+            DialogHelper.showSuccessSnackBar(
+              context,
+              'Successfully subscribed to $displayName!',
+            );
+            // Navigate back to dashboard or refresh
+            Navigator.of(context).pop(); // Pop subscription plans screen
+          },
+        ),
+      ),
     );
   }
 }

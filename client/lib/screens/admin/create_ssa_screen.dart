@@ -118,6 +118,7 @@ class _CreateSSAScreenState extends State<CreateSSAScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: ThemeHelper.buildBackButton(context),
         title: const Text('Create State Sales Agent (SSA)'),
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.white,

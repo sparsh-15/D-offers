@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:animate_do/animate_do.dart';
+import 'package:iconsax/iconsax.dart';
 import '../../models/role_enum.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
@@ -83,7 +84,7 @@ class _OtpScreenState extends State<OtpScreen> {
                 Align(
                   alignment: Alignment.centerLeft,
                   child: IconButton(
-                    icon: const Icon(Icons.arrow_back_ios_rounded),
+                    icon: const Icon(Iconsax.arrow_left_2),
                     onPressed: () => Navigator.pop(context),
                     color: AppColors.primary,
                   ),
@@ -92,14 +93,28 @@ class _OtpScreenState extends State<OtpScreen> {
                 FadeInDown(
                   child: Center(
                     child: Container(
-                      padding: const EdgeInsets.all(20),
+                      padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
-                        color: AppColors.surface,
+                        gradient: LinearGradient(
+                          colors: [
+                            AppColors.primary.withValues(alpha: 0.2),
+                            AppColors.accent.withValues(alpha: 0.1),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
                         shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withValues(alpha: 0.3),
+                            blurRadius: 20,
+                            spreadRadius: 2,
+                          ),
+                        ],
                       ),
                       child: const Icon(
-                        Icons.lock_rounded,
-                        size: 60,
+                        Iconsax.shield_tick,
+                        size: 64,
                         color: AppColors.primary,
                       ),
                     ),
@@ -141,7 +156,7 @@ class _OtpScreenState extends State<OtpScreen> {
                     text: AppStrings.verifyOtp,
                     onPressed: _handleVerifyOtp,
                     isLoading: _isLoading,
-                    icon: Icons.verified_rounded,
+                    icon: Iconsax.tick_circle,
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -267,15 +282,6 @@ class _OtpScreenState extends State<OtpScreen> {
         return;
       }
 
-      // For login flow, check shopkeeper approval status
-      if (user.role == UserRole.shopkeeper &&
-          user.approvalStatus != 'approved') {
-        DialogHelper.showInfoSnackBar(
-          context,
-          'Your shopkeeper account is ${user.approvalStatus}. Please wait for admin approval.',
-        );
-        return;
-      }
       _navigateByRole();
     } catch (e) {
       if (!mounted) return;
