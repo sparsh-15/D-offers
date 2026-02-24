@@ -103,6 +103,7 @@ model User {
   region         String             @default("")
   territory      String             @default("")
   address        String             @default("")
+  maxCouponDiscountPercent Int      @default(50) @map("max_coupon_discount_percent")
   approvalStatus ApprovalStatusEnum @default(approved) @map("approval_status")
   permissions    String[]           @default([])
   isActive       Boolean            @default(true) @map("is_active")

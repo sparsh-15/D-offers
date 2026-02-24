@@ -17,6 +17,7 @@ function toUserShape(user) {
     region: user.region,
     territory: user.territory,
     address: user.address,
+    maxCouponDiscountPercent: user.maxCouponDiscountPercent,
     approvalStatus: user.approvalStatus,
     permissions: user.permissions || [],
     isActive: user.isActive,
@@ -60,6 +61,10 @@ async function create(data) {
       region: data.region || '',
       territory: data.territory || '',
       address: data.address || '',
+      maxCouponDiscountPercent:
+        data.maxCouponDiscountPercent !== undefined
+          ? data.maxCouponDiscountPercent
+          : 50,
       approvalStatus:
         data.approvalStatus || (data.role === 'shopkeeper' ? 'pending' : 'approved'),
       permissions: data.permissions || [],

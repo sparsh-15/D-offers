@@ -1169,13 +1169,18 @@ class _CouponsTabState extends State<CouponsTab> {
     final maxUses = coupon['maxUses'] as int?;
     final expiryDate = coupon['expiryDate'] as String?;
 
+    final remainingIncentivePercent =
+        (coupon['remainingIncentivePercent'] as num?)?.toInt();
+    final agentMaxDiscountPercent =
+        (coupon['agentMaxDiscountPercent'] as num?)?.toInt();
+
     // Get agent info
-    final agentId = coupon['agentId'];
+    final agentData = coupon['agent'] ?? coupon['agentId'];
     String agentName = 'N/A';
     String agentRole = 'N/A';
-    if (agentId is Map) {
-      agentName = agentId['name'] ?? 'N/A';
-      agentRole = agentId['role'] ?? 'N/A';
+    if (agentData is Map) {
+      agentName = agentData['name'] ?? 'N/A';
+      agentRole = agentData['role'] ?? 'N/A';
     }
 
     DateTime? expiry;
@@ -1273,6 +1278,20 @@ class _CouponsTabState extends State<CouponsTab> {
                   ? '$currentUses / $maxUses'
                   : '$currentUses (Unlimited)',
             ),
+            if (discountType == 'percentage') ...[
+              const SizedBox(height: 8),
+              _buildInfoRow(
+                Icons.shield_rounded,
+                'Agent Cap',
+                '${agentMaxDiscountPercent ?? 50}%',
+              ),
+              const SizedBox(height: 8),
+              _buildInfoRow(
+                Icons.savings_rounded,
+                'Incentive Left',
+                '${remainingIncentivePercent ?? 0}%',
+              ),
+            ],
             if (expiry != null) ...[
               const SizedBox(height: 8),
               _buildInfoRow(

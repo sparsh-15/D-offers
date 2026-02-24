@@ -151,7 +151,6 @@ class AgentGovernanceService {
   }
 
   Future<Map<String, dynamic>> createCoupon({
-    required String code,
     required String discountType,
     required num discountValue,
     required String agentId,
@@ -163,7 +162,6 @@ class AgentGovernanceService {
     if (token == null) throw Exception('Not authenticated');
 
     final body = {
-      'code': code,
       'discountType': discountType,
       'discountValue': discountValue,
       'agentId': agentId,
