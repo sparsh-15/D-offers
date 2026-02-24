@@ -11,7 +11,18 @@ const ROLES = [
 
 module.exports = {
   port: process.env.PORT || 3000,
-  mongodbUri: process.env.MONGODB_URI || 'mongodb://localhost:27017/doffers',
+  dbProvider: 'postgres',
+  dbReadProvider: 'postgres',
+  databaseUrl: process.env.DATABASE_URL || '',
+  pgbouncerUrl: process.env.PGBOUNCER_URL || '',
+  adminSeed: {
+    enabled: process.env.ADMIN_SEED_ENABLED !== 'false',
+    phone: process.env.ADMIN_PHONE || '',
+    name: process.env.ADMIN_NAME || 'Admin',
+    pincode: process.env.ADMIN_PINCODE || '',
+    address: process.env.ADMIN_ADDRESS || '',
+    role: process.env.ADMIN_ROLE || 'super_admin',
+  },
   jwt: {
     secret: process.env.JWT_SECRET || 'dev-secret-change-in-production',
     expiry: process.env.JWT_EXPIRY || '7d',

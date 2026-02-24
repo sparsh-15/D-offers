@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
 const config = require('../config');
 const otpService = require('../services/otpService');
-const User = require('../models/User');
+const userRepository = require('../repositories/userRepository');
 const { resolveCityStateFromPincode } = require('../services/pincodeService');
 
 function issueToken(user) {
@@ -77,16 +77,14 @@ async function verifyOtp(req, res, next) {
 
 async function me(req, res, next) {
   try {
-    const user = await User.findById(req.user.userId)
-      .select('name phone role pincode city state address approvalStatus createdAt')
-      .lean();
+    const user = await userRepository.findById(req.user.userId);
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
     res.status(200).json({
       success: true,
       user: {
-        id: user._id,
+        id: user.id,
         name: user.name,
         phone: user.phone,
         role: user.role,
@@ -106,41 +104,38 @@ async function me(req, res, next) {
 async function updateMe(req, res, next) {
   try {
     const { name, address, pincode } = req.body;
-    const user = await User.findById(req.user.userId);
+    const user = await userRepository.findById(req.user.userId);
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    if (name !== undefined) {
-      user.name = String(name).trim();
-    }
-    if (address !== undefined) {
-      user.address = String(address).trim();
-    }
+    const updates = {};
+    if (name !== undefined) updates.name = String(name).trim();
+    if (address !== undefined) updates.address = String(address).trim();
     if (pincode !== undefined && String(pincode).trim()) {
       const resolved = await resolveCityStateFromPincode(pincode);
-      user.pincode = resolved.pincode;
-      user.city =
+      updates.pincode = resolved.pincode;
+      updates.city =
         (resolved.areas && resolved.areas[0] && resolved.areas[0].name) ||
         user.city;
-      user.state = resolved.state || user.state;
+      updates.state = resolved.state || user.state;
     }
 
-    await user.save();
+    const updated = await userRepository.updateById(req.user.userId, updates);
 
     return res.status(200).json({
       success: true,
       user: {
-        id: user._id,
-        name: user.name,
-        phone: user.phone,
-        role: user.role,
-        pincode: user.pincode,
-        city: user.city,
-        state: user.state,
-        address: user.address,
-        approvalStatus: user.approvalStatus,
-        createdAt: user.createdAt,
+        id: updated.id,
+        name: updated.name,
+        phone: updated.phone,
+        role: updated.role,
+        pincode: updated.pincode,
+        city: updated.city,
+        state: updated.state,
+        address: updated.address,
+        approvalStatus: updated.approvalStatus,
+        createdAt: updated.createdAt,
       },
     });
   } catch (err) {

@@ -1,5 +1,6 @@
-const ShopkeeperProfile = require('../models/ShopkeeperProfile');
-const mongoose = require('mongoose');
+const shopkeeperProfileRepository = require('../repositories/shopkeeperProfileRepository');
+const { prisma } = require('../db/prisma');
+const { resolvePgId } = require('../repositories/idResolver');
 
 async function getProfile(req, res, next) {
   try {
@@ -8,32 +9,19 @@ async function getProfile(req, res, next) {
     if (adminRoles.includes(req.user.role) && req.query.userId) {
       userId = req.query.userId;
     }
-    if (!mongoose.Types.ObjectId.isValid(userId)) {
+    const pgUserId = await resolvePgId('users', userId);
+    if (!pgUserId) {
       const err = new Error('Invalid user id');
       err.statusCode = 400;
       return next(err);
     }
-    const profile = await ShopkeeperProfile.findOne({ userId }).lean();
+    const profile = await prisma.shopkeeperProfile.findUnique({ where: { userId: pgUserId } });
     if (!profile) {
       const err = new Error('Profile not found');
       err.statusCode = 404;
       return next(err);
     }
-    res.status(200).json({
-      success: true,
-      profile: {
-        id: profile._id,
-        userId: profile.userId,
-        shopName: profile.shopName,
-        address: profile.address,
-        pincode: profile.pincode,
-        city: profile.city,
-        category: profile.category,
-        description: profile.description,
-        createdAt: profile.createdAt,
-        updatedAt: profile.updatedAt,
-      },
-    });
+    res.status(200).json({ success: true, profile });
   } catch (err) {
     next(err);
   }
@@ -47,62 +35,15 @@ async function upsertProfile(req, res, next) {
       err.statusCode = 400;
       return next(err);
     }
-    const userId = req.user.userId;
-    const update = {
+    const profile = await shopkeeperProfileRepository.upsertByUserId(req.user.userId, {
       shopName: shopName.trim(),
       address: address != null ? String(address).trim() : undefined,
       pincode: pincode != null ? String(pincode).trim() : undefined,
       city: city != null ? String(city).trim() : undefined,
       category: category != null ? String(category).trim() : undefined,
       description: description != null ? String(description).trim() : undefined,
-    };
-    const profile = await ShopkeeperProfile.findOneAndUpdate(
-      { userId },
-      { $set: update },
-      { new: true, upsert: true, runValidators: true }
-    );
-    res.status(200).json({
-      success: true,
-      profile: {
-        id: profile._id,
-        userId: profile.userId,
-        shopName: profile.shopName,
-        address: profile.address,
-        pincode: profile.pincode,
-        city: profile.city,
-        category: profile.category,
-        description: profile.description,
-        createdAt: profile.createdAt,
-        updatedAt: profile.updatedAt,
-      },
     });
-  } catch (err) {
-    next(err);
-  }
-}
-async function getDashboard(req, res, next) {
-  try {
-    const userId = req.user.userId;
-
-    // Get profile
-    const profile = await ShopkeeperProfile.findOne({ userId }).lean();
-
-    // Get subscription status from middleware (if available)
-    const subscriptionStatus = req.subscriptionStatus || null;
-
-    res.status(200).json({
-      success: true,
-      dashboard: {
-        profile: profile ? {
-          id: profile._id,
-          shopName: profile.shopName,
-          address: profile.address,
-          city: profile.city,
-          category: profile.category,
-        } : null,
-        subscription: subscriptionStatus,
-      },
-    });
+    res.status(200).json({ success: true, profile });
   } catch (err) {
     next(err);
   }
@@ -110,25 +51,21 @@ async function getDashboard(req, res, next) {
 
 async function getDashboard(req, res, next) {
   try {
-    const userId = req.user.userId;
-    
-    // Get profile
-    const profile = await ShopkeeperProfile.findOne({ userId }).lean();
-    
-    // Get subscription status from middleware (if available)
-    const subscriptionStatus = req.subscriptionStatus || null;
-    
+    const pgUserId = await resolvePgId('users', req.user.userId);
+    const profile = await prisma.shopkeeperProfile.findUnique({ where: { userId: pgUserId } });
     res.status(200).json({
       success: true,
       dashboard: {
-        profile: profile ? {
-          id: profile._id,
-          shopName: profile.shopName,
-          address: profile.address,
-          city: profile.city,
-          category: profile.category,
-        } : null,
-        subscription: subscriptionStatus,
+        profile: profile
+          ? {
+              id: profile.id,
+              shopName: profile.shopName,
+              address: profile.address,
+              city: profile.city,
+              category: profile.category,
+            }
+          : null,
+        subscription: req.subscription || null,
       },
     });
   } catch (err) {
@@ -136,8 +73,4 @@ async function getDashboard(req, res, next) {
   }
 }
 
-module.exports = {
-  getProfile,
-  upsertProfile,
-  getDashboard,
-};
+module.exports = { getProfile, upsertProfile, getDashboard };

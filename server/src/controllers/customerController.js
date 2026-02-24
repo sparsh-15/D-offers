@@ -1,13 +1,9 @@
-const mongoose = require('mongoose');
-const Offer = require('../models/Offer');
-const User = require('../models/User');
-const ShopkeeperProfile = require('../models/ShopkeeperProfile');
+const { prisma } = require('../db/prisma');
+const offerRepository = require('../repositories/offerRepository');
+const { resolvePgId } = require('../repositories/idResolver');
 
-function buildCaseInsensitiveRegex(value) {
-  const escaped = String(value)
-    .trim()
-    .replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return new RegExp(`^${escaped}$`, 'i');
+function ci(value) {
+  return String(value || '').trim();
 }
 
 async function listOffers(req, res, next) {
@@ -16,145 +12,66 @@ async function listOffers(req, res, next) {
     const limitNum = Math.min(Math.max(parseInt(limit, 10) || 100, 1), 200);
     const skipNum = Math.max(parseInt(skip, 10) || 0, 0);
 
-    const filter = {};
-    
-    // Only filter by status if explicitly provided, otherwise show all
-    if (status) {
-      filter.status = status;
-    }
+    const where = {};
+    if (status) where.status = status;
 
-    // Location filtering: pincode > city > state
-    const hasGeoFilter =
-      (pincode && String(pincode).trim()) ||
-      (city && String(city).trim()) ||
-      (state && String(state).trim());
+    const userFilter = { role: 'shopkeeper', approvalStatus: 'approved' };
+    if (ci(pincode)) userFilter.pincode = ci(pincode);
+    if (ci(city)) userFilter.city = { equals: ci(city), mode: 'insensitive' };
+    if (ci(state)) userFilter.state = { equals: ci(state), mode: 'insensitive' };
 
-    console.log(`[CUSTOMER_OFFERS] Request - Status: ${status || 'all'}, Filters: ${hasGeoFilter ? `pincode=${pincode || ''}, city=${city || ''}, state=${state || ''}` : 'none'}`);
+    const approvedShopkeepers = await prisma.user.findMany({
+      where: userFilter,
+      select: { id: true },
+    });
+    const shopkeeperIds = approvedShopkeepers.map((u) => u.id);
+    if (!shopkeeperIds.length) return res.status(200).json({ success: true, offers: [] });
+    where.shopkeeperId = { in: shopkeeperIds };
 
-    // Resolve shopkeepers by location only when filters are provided
-    if (hasGeoFilter) {
-      const ids = new Set();
+    const offers = await prisma.offer.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      skip: skipNum,
+      take: limitNum,
+    });
 
-      if (pincode && String(pincode).trim()) {
-        const normalizedPincode = String(pincode).trim();
-        const byUser = await User.find({
-          role: 'shopkeeper',
-          approvalStatus: 'approved',
-          pincode: normalizedPincode,
-        })
-          .select('_id')
-          .lean();
-        const byProfile = await ShopkeeperProfile.find({
-          pincode: normalizedPincode,
-        })
-          .select('userId')
-          .lean();
-        byUser.forEach((u) => ids.add(String(u._id)));
-        byProfile.forEach((p) => ids.add(String(p.userId)));
-      } else if (city && String(city).trim()) {
-        const cityRegex = buildCaseInsensitiveRegex(city);
-        const byUser = await User.find({
-          role: 'shopkeeper',
-          approvalStatus: 'approved',
-          city: cityRegex,
-        })
-          .select('_id')
-          .lean();
-        const byProfile = await ShopkeeperProfile.find({
-          city: cityRegex,
-        })
-          .select('userId')
-          .lean();
-        byUser.forEach((u) => ids.add(String(u._id)));
-        byProfile.forEach((p) => ids.add(String(p.userId)));
-      } else if (state && String(state).trim()) {
-        const stateRegex = buildCaseInsensitiveRegex(state);
-        const byUser = await User.find({
-          role: 'shopkeeper',
-          approvalStatus: 'approved',
-          state: stateRegex,
-        })
-          .select('_id')
-          .lean();
-        byUser.forEach((u) => ids.add(String(u._id)));
-      }
-
-      if (ids.size === 0) {
-        return res.status(200).json({ success: true, offers: [] });
-      }
-
-      const shopkeeperIds = Array.from(ids).map(
-        (id) => new mongoose.Types.ObjectId(id)
-      );
-      filter.shopkeeperId = { $in: shopkeeperIds };
-      console.log(`[CUSTOMER_OFFERS] Location filter applied - Found ${ids.size} shopkeepers`);
-    } else {
-      // When no location filters, only show offers from approved shopkeepers
-      const approvedShopkeepers = await User.find({
-        role: 'shopkeeper',
-        approvalStatus: 'approved',
-      })
-        .select('_id')
-        .lean();
-      const shopkeeperIds = approvedShopkeepers.map((u) => new mongoose.Types.ObjectId(u._id));
-      if (shopkeeperIds.length > 0) {
-        filter.shopkeeperId = { $in: shopkeeperIds };
-        console.log(`[CUSTOMER_OFFERS] Showing all offers from ${shopkeeperIds.length} approved shopkeepers`);
-      } else {
-        console.log(`[CUSTOMER_OFFERS] No approved shopkeepers found`);
-      }
-    }
-
-    // Don't filter by date - show all offers regardless of validity dates
-    // const now = new Date();
-    // filter.$or = [{ validTo: null }, { validTo: { $gte: now } }];
-
-    const offers = await Offer.find(filter)
-      .sort({ createdAt: -1 })
-      .skip(skipNum)
-      .limit(limitNum)
-      .lean();
-
-    console.log(`[CUSTOMER_OFFERS] Returning ${offers.length} offers`);
-
-    const userId = req.user.userId;
-    const userIdStr = String(userId);
-
-    const shopkeeperIds = [...new Set(offers.map((o) => o.shopkeeperId).filter(Boolean))];
-    const profiles = await ShopkeeperProfile.find({ userId: { $in: shopkeeperIds } })
-      .select('userId shopName')
-      .lean();
+    const profiles = await prisma.shopkeeperProfile.findMany({
+      where: { userId: { in: shopkeeperIds } },
+      select: { userId: true, shopName: true },
+    });
     const shopNameByUserId = {};
     profiles.forEach((p) => {
-      shopNameByUserId[String(p.userId)] = p.shopName || 'Shop';
+      shopNameByUserId[p.userId] = p.shopName || 'Shop';
     });
+
+    const pgUserId = await resolvePgId('users', req.user.userId);
+    const likes = await prisma.offerLike.findMany({
+      where: { userId: pgUserId, offerId: { in: offers.map((o) => o.id) } },
+      select: { offerId: true },
+    });
+    const likedOfferIds = new Set(likes.map((l) => l.offerId));
 
     res.status(200).json({
       success: true,
-      offers: offers.map((o) => {
-        const likedByArray = o.likedBy || [];
-        const isLiked = likedByArray.some(id => String(id) === userIdStr);
-        const skId = o.shopkeeperId?.toString() || o.shopkeeperId;
-        return {
-          id: o._id?.toString() || o._id,
-          shopkeeperId: skId,
-          shopName: shopNameByUserId[skId] || null,
-          title: o.title || '',
-          description: o.description || '',
-          photos: o.photos || [],
-          termsAndConditions: o.termsAndConditions || '',
-          category: o.category || '',
-          discountType: o.discountType || '',
-          discountValue: o.discountValue,
-          validFrom: o.validFrom ? o.validFrom.toISOString() : null,
-          validTo: o.validTo ? o.validTo.toISOString() : null,
-          status: o.status || 'active',
-          likesCount: likedByArray.length,
-          isLiked: isLiked,
-          createdAt: o.createdAt ? o.createdAt.toISOString() : null,
-          updatedAt: o.updatedAt ? o.updatedAt.toISOString() : null,
-        };
-      }),
+      offers: offers.map((o) => ({
+        id: o.id,
+        shopkeeperId: o.shopkeeperId,
+        shopName: shopNameByUserId[o.shopkeeperId] || null,
+        title: o.title || '',
+        description: o.description || '',
+        photos: o.photos || [],
+        termsAndConditions: o.termsAndConditions || '',
+        category: o.category || '',
+        discountType: o.discountType || '',
+        discountValue: o.discountValue,
+        validFrom: o.validFrom ? o.validFrom.toISOString() : null,
+        validTo: o.validTo ? o.validTo.toISOString() : null,
+        status: o.status || 'active',
+        likesCount: o.likesCount || 0,
+        isLiked: likedOfferIds.has(o.id),
+        createdAt: o.createdAt ? o.createdAt.toISOString() : null,
+        updatedAt: o.updatedAt ? o.updatedAt.toISOString() : null,
+      })),
     });
   } catch (err) {
     next(err);
@@ -163,46 +80,20 @@ async function listOffers(req, res, next) {
 
 async function toggleLike(req, res, next) {
   try {
-    const { id } = req.params;
-    const userId = req.user.userId;
-
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      const err = new Error('Invalid offer id');
-      err.statusCode = 400;
-      return next(err);
-    }
-
-    const offer = await Offer.findById(id);
+    const offerId = (await resolvePgId('offers', req.params.id)) || req.params.id;
+    const userId = (await resolvePgId('users', req.user.userId)) || req.user.userId;
+    const offer = await prisma.offer.findUnique({ where: { id: offerId } });
     if (!offer) {
       const err = new Error('Offer not found');
       err.statusCode = 404;
       return next(err);
     }
-
-    const likedByArray = offer.likedBy || [];
-    const userIdObj = new mongoose.Types.ObjectId(userId);
-    const isLiked = likedByArray.some(id => id.toString() === userId.toString());
-
-    if (isLiked) {
-      // Remove like
-      offer.likedBy = likedByArray.filter(id => id.toString() !== userId.toString());
-      offer.likesCount = Math.max(0, offer.likesCount - 1);
-    } else {
-      // Add like
-      if (!offer.likedBy) {
-        offer.likedBy = [];
-      }
-      offer.likedBy.push(userIdObj);
-      offer.likesCount = (offer.likesCount || 0) + 1;
-    }
-
-    await offer.save();
-
-    res.status(200).json({
-      success: true,
-      isLiked: !isLiked,
-      likesCount: offer.likedBy.length,
+    const existing = await prisma.offerLike.findUnique({
+      where: { offerId_userId: { offerId, userId } },
     });
+    const isLiked = !!existing;
+    const likesCount = await offerRepository.toggleLike(offerId, userId, isLiked);
+    res.status(200).json({ success: true, isLiked: !isLiked, likesCount });
   } catch (err) {
     next(err);
   }
@@ -210,59 +101,51 @@ async function toggleLike(req, res, next) {
 
 async function getLikedOffers(req, res, next) {
   try {
-    const userId = req.user.userId;
-    const userIdObj = new mongoose.Types.ObjectId(userId);
-
-    // Find all offers liked by this user
-    const offers = await Offer.find({
-      likedBy: userIdObj,
-    })
-      .sort({ createdAt: -1 })
-      .lean();
-
-    const shopkeeperIds = [...new Set(offers.map((o) => o.shopkeeperId).filter(Boolean))];
-    const profiles = await ShopkeeperProfile.find({ userId: { $in: shopkeeperIds } })
-      .select('userId shopName')
-      .lean();
+    const userId = (await resolvePgId('users', req.user.userId)) || req.user.userId;
+    const likes = await prisma.offerLike.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      select: { offerId: true },
+    });
+    const offerIds = likes.map((l) => l.offerId);
+    if (!offerIds.length) return res.status(200).json({ success: true, offers: [] });
+    const offers = await prisma.offer.findMany({
+      where: { id: { in: offerIds } },
+      orderBy: { createdAt: 'desc' },
+    });
+    const profiles = await prisma.shopkeeperProfile.findMany({
+      where: { userId: { in: offers.map((o) => o.shopkeeperId) } },
+      select: { userId: true, shopName: true },
+    });
     const shopNameByUserId = {};
     profiles.forEach((p) => {
-      shopNameByUserId[String(p.userId)] = p.shopName || 'Shop';
+      shopNameByUserId[p.userId] = p.shopName || 'Shop';
     });
-
     res.status(200).json({
       success: true,
-      offers: offers.map((o) => {
-        const likedByArray = o.likedBy || [];
-        const skId = o.shopkeeperId?.toString() || o.shopkeeperId;
-        return {
-          id: o._id?.toString() || o._id,
-          shopkeeperId: skId,
-          shopName: shopNameByUserId[skId] || null,
-          title: o.title || '',
-          description: o.description || '',
-          photos: o.photos || [],
-          termsAndConditions: o.termsAndConditions || '',
-          category: o.category || '',
-          discountType: o.discountType || '',
-          discountValue: o.discountValue,
-          validFrom: o.validFrom ? o.validFrom.toISOString() : null,
-          validTo: o.validTo ? o.validTo.toISOString() : null,
-          status: o.status || 'active',
-          likesCount: likedByArray.length,
-          isLiked: true,
-          createdAt: o.createdAt ? o.createdAt.toISOString() : null,
-          updatedAt: o.updatedAt ? o.updatedAt.toISOString() : null,
-        };
-      }),
+      offers: offers.map((o) => ({
+        id: o.id,
+        shopkeeperId: o.shopkeeperId,
+        shopName: shopNameByUserId[o.shopkeeperId] || null,
+        title: o.title || '',
+        description: o.description || '',
+        photos: o.photos || [],
+        termsAndConditions: o.termsAndConditions || '',
+        category: o.category || '',
+        discountType: o.discountType || '',
+        discountValue: o.discountValue,
+        validFrom: o.validFrom ? o.validFrom.toISOString() : null,
+        validTo: o.validTo ? o.validTo.toISOString() : null,
+        status: o.status || 'active',
+        likesCount: o.likesCount || 0,
+        isLiked: true,
+        createdAt: o.createdAt ? o.createdAt.toISOString() : null,
+        updatedAt: o.updatedAt ? o.updatedAt.toISOString() : null,
+      })),
     });
   } catch (err) {
     next(err);
   }
 }
 
-module.exports = {
-  listOffers,
-  toggleLike,
-  getLikedOffers,
-};
-
+module.exports = { listOffers, toggleLike, getLikedOffers };

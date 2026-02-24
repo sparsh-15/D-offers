@@ -1,169 +1,123 @@
-const OnboardingStatus = require('../models/OnboardingStatus');
-const ShopkeeperProfile = require('../models/ShopkeeperProfile');
-const Subscription = require('../models/Subscription');
+const { prisma } = require('../db/prisma');
+const { resolvePgId } = require('../repositories/idResolver');
 
-/**
- * Get current onboarding status
- */
+function shape(onboarding) {
+  const currentStep =
+    !onboarding.businessProfileCompleted
+      ? 1
+      : !onboarding.termsAccepted
+      ? 2
+      : !onboarding.subscriptionActivated
+      ? 3
+      : 4;
+  return {
+    currentStep,
+    businessProfileCompleted: onboarding.businessProfileCompleted,
+    termsAccepted: onboarding.termsAccepted,
+    subscriptionActivated: onboarding.subscriptionActivated,
+    onboardingCompleted: onboarding.onboardingCompleted,
+  };
+}
+
 async function getOnboardingStatus(req, res, next) {
   try {
-    let onboarding = await OnboardingStatus.findOne({ userId: req.user.userId });
-
+    const userId = await resolvePgId('users', req.user.userId);
+    let onboarding = await prisma.onboardingStatus.findUnique({ where: { userId } });
     if (!onboarding) {
-      // Create initial onboarding status
-      onboarding = await OnboardingStatus.create({
-        userId: req.user.userId,
-        currentStep: 1,
-      });
+      onboarding = await prisma.onboardingStatus.create({ data: { userId, currentStep: 1 } });
     }
-
-    // Check actual completion status
-    const profile = await ShopkeeperProfile.findOne({ userId: req.user.userId });
-    const subscription = await Subscription.findOne({ userId: req.user.userId });
-
-    // Update flags based on actual data
-    onboarding.businessProfileCompleted = !!profile && !!profile.shopName;
-    onboarding.subscriptionActivated = subscription ? subscription.isActive() : false;
-
-    await onboarding.save();
-
-    res.status(200).json({
-      success: true,
-      onboarding: {
-        currentStep: onboarding.getNextStep() || 4, // 4 means completed
-        businessProfileCompleted: onboarding.businessProfileCompleted,
-        termsAccepted: onboarding.termsAccepted,
-        subscriptionActivated: onboarding.subscriptionActivated,
-        onboardingCompleted: onboarding.isComplete(),
+    const profile = await prisma.shopkeeperProfile.findUnique({ where: { userId } });
+    const subscription = await prisma.subscription.findFirst({
+      where: { shopkeeperId: userId, status: 'active' },
+      orderBy: { createdAt: 'desc' },
+    });
+    onboarding = await prisma.onboardingStatus.update({
+      where: { userId },
+      data: {
+        businessProfileCompleted: !!profile && !!profile.shopName,
+        subscriptionActivated:
+          !!subscription && !!subscription.endDate && new Date(subscription.endDate) > new Date(),
       },
     });
+    res.status(200).json({ success: true, onboarding: shape(onboarding) });
   } catch (err) {
     next(err);
   }
 }
 
-/**
- * Accept terms and conditions
- */
 async function acceptTerms(req, res, next) {
   try {
-    let onboarding = await OnboardingStatus.findOne({ userId: req.user.userId });
-
-    if (!onboarding) {
-      onboarding = await OnboardingStatus.create({
-        userId: req.user.userId,
-      });
-    }
-
-    onboarding.termsAccepted = true;
-    onboarding.termsAcceptedAt = new Date();
-    onboarding.currentStep = Math.max(onboarding.currentStep, 3);
-
-    await onboarding.save();
-
-    res.status(200).json({
-      success: true,
-      message: 'Terms and conditions accepted',
-      onboarding: {
-        currentStep: onboarding.getNextStep() || 4,
-        businessProfileCompleted: onboarding.businessProfileCompleted,
-        termsAccepted: onboarding.termsAccepted,
-        subscriptionActivated: onboarding.subscriptionActivated,
-        onboardingCompleted: onboarding.isComplete(),
-      },
-    });
+    const userId = await resolvePgId('users', req.user.userId);
+    const existing = await prisma.onboardingStatus.findUnique({ where: { userId } });
+    const onboarding = existing
+      ? await prisma.onboardingStatus.update({
+          where: { userId },
+          data: {
+            termsAccepted: true,
+            termsAcceptedAt: new Date(),
+            currentStep: Math.max(existing.currentStep, 3),
+          },
+        })
+      : await prisma.onboardingStatus.create({
+          data: { userId, termsAccepted: true, termsAcceptedAt: new Date(), currentStep: 3 },
+        });
+    res.status(200).json({ success: true, message: 'Terms and conditions accepted', onboarding: shape(onboarding) });
   } catch (err) {
     next(err);
   }
 }
 
-/**
- * Complete business profile step
- */
 async function completeBusinessProfile(req, res, next) {
   try {
-    // Check if profile exists
-    const profile = await ShopkeeperProfile.findOne({ userId: req.user.userId });
-
+    const userId = await resolvePgId('users', req.user.userId);
+    const profile = await prisma.shopkeeperProfile.findUnique({ where: { userId } });
     if (!profile || !profile.shopName) {
-      return res.status(400).json({
-        success: false,
-        message: 'Business profile must be completed first',
-      });
+      return res.status(400).json({ success: false, message: 'Business profile must be completed first' });
     }
-
-    let onboarding = await OnboardingStatus.findOne({ userId: req.user.userId });
-
-    if (!onboarding) {
-      onboarding = await OnboardingStatus.create({
-        userId: req.user.userId,
-      });
-    }
-
-    onboarding.businessProfileCompleted = true;
-    onboarding.currentStep = Math.max(onboarding.currentStep, 2);
-
-    await onboarding.save();
-
-    res.status(200).json({
-      success: true,
-      message: 'Business profile completed',
-      onboarding: {
-        currentStep: onboarding.getNextStep() || 4,
-        businessProfileCompleted: onboarding.businessProfileCompleted,
-        termsAccepted: onboarding.termsAccepted,
-        subscriptionActivated: onboarding.subscriptionActivated,
-        onboardingCompleted: onboarding.isComplete(),
-      },
-    });
+    const existing = await prisma.onboardingStatus.findUnique({ where: { userId } });
+    const onboarding = existing
+      ? await prisma.onboardingStatus.update({
+          where: { userId },
+          data: {
+            businessProfileCompleted: true,
+            currentStep: Math.max(existing.currentStep, 2),
+          },
+        })
+      : await prisma.onboardingStatus.create({
+          data: { userId, businessProfileCompleted: true, currentStep: 2 },
+        });
+    res.status(200).json({ success: true, message: 'Business profile completed', onboarding: shape(onboarding) });
   } catch (err) {
     next(err);
   }
 }
 
-/**
- * Mark onboarding as complete (after subscription activation)
- */
 async function completeOnboarding(req, res, next) {
   try {
-    const onboarding = await OnboardingStatus.findOne({ userId: req.user.userId });
-
-    if (!onboarding) {
-      return res.status(404).json({
-        success: false,
-        message: 'Onboarding not found',
-      });
-    }
-
-    // Verify all steps are complete
+    const userId = await resolvePgId('users', req.user.userId);
+    const onboarding = await prisma.onboardingStatus.findUnique({ where: { userId } });
+    if (!onboarding) return res.status(404).json({ success: false, message: 'Onboarding not found' });
     if (!onboarding.businessProfileCompleted) {
-      return res.status(400).json({
-        success: false,
-        message: 'Business profile must be completed',
-      });
+      return res.status(400).json({ success: false, message: 'Business profile must be completed' });
     }
-
     if (!onboarding.termsAccepted) {
-      return res.status(400).json({
-        success: false,
-        message: 'Terms and conditions must be accepted',
-      });
+      return res.status(400).json({ success: false, message: 'Terms and conditions must be accepted' });
     }
-
-    const subscription = await Subscription.findOne({ userId: req.user.userId });
-    if (!subscription || !subscription.isActive()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Active subscription required',
-      });
+    const subscription = await prisma.subscription.findFirst({
+      where: { shopkeeperId: userId, status: 'active' },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!subscription || !subscription.endDate || new Date(subscription.endDate) <= new Date()) {
+      return res.status(400).json({ success: false, message: 'Active subscription required' });
     }
-
-    onboarding.subscriptionActivated = true;
-    onboarding.onboardingCompleted = true;
-    onboarding.currentStep = 4;
-
-    await onboarding.save();
-
+    await prisma.onboardingStatus.update({
+      where: { userId },
+      data: {
+        subscriptionActivated: true,
+        onboardingCompleted: true,
+        currentStep: 4,
+      },
+    });
     res.status(200).json({
       success: true,
       message: 'Onboarding completed successfully',
@@ -180,9 +134,4 @@ async function completeOnboarding(req, res, next) {
   }
 }
 
-module.exports = {
-  getOnboardingStatus,
-  acceptTerms,
-  completeBusinessProfile,
-  completeOnboarding,
-};
+module.exports = { getOnboardingStatus, acceptTerms, completeBusinessProfile, completeOnboarding };

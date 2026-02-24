@@ -1,453 +1,193 @@
-const User = require('../models/User');
-const ShopkeeperProfile = require('../models/ShopkeeperProfile');
-const Subscription = require('../models/Subscription');
-const AuditLog = require('../models/AuditLog');
+const { prisma } = require('../db/prisma');
 const { logAdminAction } = require('../middleware/roleAuth');
+const { resolvePgId } = require('../repositories/idResolver');
 
-/**
- * Get dashboard analytics
- */
 async function getDashboardAnalytics(req, res, next) {
   try {
-    // Total users by role
-    const usersByRole = await User.aggregate([
-      {
-        $group: {
-          _id: '$role',
-          count: { $sum: 1 },
-          active: {
-            $sum: { $cond: [{ $eq: ['$isActive', true] }, 1, 0] },
-          },
-          inactive: {
-            $sum: { $cond: [{ $eq: ['$isActive', false] }, 1, 0] },
-          },
-        },
-      },
-    ]);
-
-    // Total shops
-    const totalShops = await ShopkeeperProfile.countDocuments();
-
-    // Subscription stats
-    const subscriptionStats = await Subscription.aggregate([
-      {
-        $group: {
-          _id: '$status',
-          count: { $sum: 1 },
-          totalRevenue: { $sum: '$monthlyPrice' },
-        },
-      },
-    ]);
-
-    // Calculate MRR (Monthly Recurring Revenue)
-    const activeSubscriptions = subscriptionStats.find(s => s._id === 'active') || { count: 0, totalRevenue: 0 };
-    const mrr = activeSubscriptions.totalRevenue;
-
-    // Recent activity count
-    const recentActivityCount = await AuditLog.countDocuments({
-      createdAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+    const users = await prisma.user.groupBy({
+      by: ['role', 'isActive'],
+      _count: { _all: true },
     });
-
+    const usersByRole = {};
+    users.forEach((u) => {
+      if (!usersByRole[u.role]) usersByRole[u.role] = { total: 0, active: 0, inactive: 0 };
+      usersByRole[u.role].total += u._count._all;
+      if (u.isActive) usersByRole[u.role].active += u._count._all;
+      else usersByRole[u.role].inactive += u._count._all;
+    });
+    const totalShops = await prisma.shopkeeperProfile.count();
+    const subStats = await prisma.subscription.groupBy({
+      by: ['status'],
+      _count: { _all: true },
+      _sum: { actualPrice: true },
+    });
+    const recentActivityCount = await prisma.auditLog.count({
+      where: { createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } },
+    });
+    const byStatus = {};
+    subStats.forEach((s) => {
+      byStatus[s.status] = { count: s._count._all, revenue: Number(s._sum.actualPrice || 0) };
+    });
+    const mrr = byStatus.active?.revenue || 0;
     res.json({
       success: true,
-      data: {
-        usersByRole: usersByRole.reduce((acc, item) => {
-          acc[item._id] = {
-            total: item.count,
-            active: item.active,
-            inactive: item.inactive,
-          };
-          return acc;
-        }, {}),
-        totalShops,
-        subscriptions: {
-          byStatus: subscriptionStats.reduce((acc, item) => {
-            acc[item._id] = {
-              count: item.count,
-              revenue: item.totalRevenue,
-            };
-            return acc;
-          }, {}),
-          mrr,
-        },
-        recentActivityCount,
-      },
+      data: { usersByRole, totalShops, subscriptions: { byStatus, mrr }, recentActivityCount },
     });
   } catch (err) {
-    console.error('[SUPER_ADMIN] getDashboardAnalytics error:', err);
     next(err);
   }
 }
 
-/**
- * Get all users with filters
- */
 async function getAllUsers(req, res, next) {
   try {
-    const {
-      role,
-      isActive,
-      approvalStatus,
-      pincode,
-      search,
-      page = 1,
-      limit = 20,
-    } = req.query;
-
-    const filter = {};
-
-    if (role) filter.role = role;
-    if (isActive !== undefined) filter.isActive = isActive === 'true';
-    if (approvalStatus) filter.approvalStatus = approvalStatus;
-    if (pincode) filter.pincode = pincode;
+    const { role, isActive, approvalStatus, pincode, search, page = 1, limit = 20 } = req.query;
+    const where = {};
+    if (role) where.role = role;
+    if (isActive !== undefined) where.isActive = isActive === 'true';
+    if (approvalStatus) where.approvalStatus = approvalStatus;
+    if (pincode) where.pincode = pincode;
     if (search) {
-      filter.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { phone: { $regex: search, $options: 'i' } },
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { phone: { contains: search, mode: 'insensitive' } },
       ];
     }
-
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-
+    const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
     const [users, total] = await Promise.all([
-      User.find(filter)
-        .select('-__v')
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(parseInt(limit))
-        .lean(),
-      User.countDocuments(filter),
+      prisma.user.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: parseInt(limit, 10) }),
+      prisma.user.count({ where }),
     ]);
-
-    res.json({
-      success: true,
-      data: {
-        users,
-        pagination: {
-          total,
-          page: parseInt(page),
-          limit: parseInt(limit),
-          pages: Math.ceil(total / parseInt(limit)),
-        },
-      },
-    });
+    res.json({ success: true, data: { users, pagination: { total, page: parseInt(page, 10), limit: parseInt(limit, 10), pages: Math.ceil(total / parseInt(limit, 10)) } } });
   } catch (err) {
-    console.error('[SUPER_ADMIN] getAllUsers error:', err);
     next(err);
   }
 }
 
-/**
- * Get all shops with filters
- */
 async function getAllShops(req, res, next) {
   try {
-    const {
-      subscriptionStatus,
-      pincode,
-      city,
-      category,
-      search,
-      page = 1,
-      limit = 20,
-    } = req.query;
-
-    const userFilter = { role: 'shopkeeper' };
-    if (pincode) userFilter.pincode = pincode;
-    if (city) userFilter.city = city;
-
-    const shopFilter = {};
-    if (category) shopFilter.category = category;
-    if (search) {
-      shopFilter.shopName = { $regex: search, $options: 'i' };
-    }
-
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-
-    // Get shopkeeper users
-    const shopkeeperUsers = await User.find(userFilter).select('_id').lean();
-    const shopkeeperIds = shopkeeperUsers.map(u => u._id);
-
-    shopFilter.userId = { $in: shopkeeperIds };
-
-    // Get shops with user and subscription data
-    const shops = await ShopkeeperProfile.find(shopFilter)
-      .populate({
-        path: 'userId',
-        select: 'name phone pincode city isActive approvalStatus createdAt',
-      })
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit))
-      .lean();
-
-    // Get subscription data for each shop
+    const { subscriptionStatus, pincode, city, category, search, page = 1, limit = 20 } = req.query;
+    const userWhere = { role: 'shopkeeper' };
+    if (pincode) userWhere.pincode = pincode;
+    if (city) userWhere.city = city;
+    const users = await prisma.user.findMany({ where: userWhere, select: { id: true } });
+    const shopWhere = { userId: { in: users.map((u) => u.id) } };
+    if (category) shopWhere.category = category;
+    if (search) shopWhere.shopName = { contains: search, mode: 'insensitive' };
+    const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
+    const [shops, total] = await Promise.all([
+      prisma.shopkeeperProfile.findMany({
+        where: shopWhere,
+        include: { user: { select: { name: true, phone: true, pincode: true, city: true, isActive: true, approvalStatus: true, createdAt: true } } },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: parseInt(limit, 10),
+      }),
+      prisma.shopkeeperProfile.count({ where: shopWhere }),
+    ]);
     const shopsWithSubscription = await Promise.all(
-      shops.map(async shop => {
-        const subscription = await Subscription.findOne({
-          shopkeeperId: shop.userId._id,
-        })
-          .sort({ createdAt: -1 })
-          .lean();
-
-        return {
-          ...shop,
-          subscription: subscription || null,
-        };
+      shops.map(async (shop) => {
+        const sub = await prisma.subscription.findFirst({ where: { shopkeeperId: shop.userId }, orderBy: { createdAt: 'desc' } });
+        return { ...shop, subscription: sub || null };
       })
     );
-
-    // Filter by subscription status if provided
-    let filteredShops = shopsWithSubscription;
-    if (subscriptionStatus) {
-      filteredShops = shopsWithSubscription.filter(
-        shop => shop.subscription?.status === subscriptionStatus
-      );
-    }
-
-    const total = await ShopkeeperProfile.countDocuments(shopFilter);
-
-    res.json({
-      success: true,
-      data: {
-        shops: filteredShops,
-        pagination: {
-          total,
-          page: parseInt(page),
-          limit: parseInt(limit),
-          pages: Math.ceil(total / parseInt(limit)),
-        },
-      },
-    });
+    const filtered = subscriptionStatus
+      ? shopsWithSubscription.filter((s) => s.subscription?.status === subscriptionStatus)
+      : shopsWithSubscription;
+    res.json({ success: true, data: { shops: filtered, pagination: { total, page: parseInt(page, 10), limit: parseInt(limit, 10), pages: Math.ceil(total / parseInt(limit, 10)) } } });
   } catch (err) {
-    console.error('[SUPER_ADMIN] getAllShops error:', err);
     next(err);
   }
 }
 
-/**
- * Activate/Deactivate user
- */
 async function toggleUserStatus(req, res, next) {
   try {
     const { userId } = req.params;
     const { isActive } = req.body;
-
-    if (typeof isActive !== 'boolean') {
-      return res.status(400).json({
-        success: false,
-        message: 'isActive must be a boolean value',
-      });
+    if (typeof isActive !== 'boolean') return res.status(400).json({ success: false, message: 'isActive must be a boolean value' });
+    const pgUserId = await resolvePgId('users', userId) || userId;
+    const user = await prisma.user.findUnique({ where: { id: pgUserId } });
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    if (String(user.id) === String(await resolvePgId('users', req.user.userId)) && !isActive) {
+      return res.status(400).json({ success: false, message: 'Cannot deactivate your own account' });
     }
-
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found',
-      });
-    }
-
-    // Prevent super admin from deactivating themselves
-    if (user._id.toString() === req.user.userId && !isActive) {
-      return res.status(400).json({
-        success: false,
-        message: 'Cannot deactivate your own account',
-      });
-    }
-
-    user.isActive = isActive;
-    await user.save();
-
-    // Log the action
-    await logAdminAction(
-      req.user.userId,
-      req.user.role,
-      isActive ? 'user_activated' : 'user_deactivated',
-      user._id,
-      user.role,
-      {
-        previousStatus: !isActive,
-        newStatus: isActive,
-      },
-      req.ip
-    );
-
-    res.json({
-      success: true,
-      message: `User ${isActive ? 'activated' : 'deactivated'} successfully`,
-      data: {
-        userId: user._id,
-        isActive: user.isActive,
-      },
-    });
+    const updated = await prisma.user.update({ where: { id: pgUserId }, data: { isActive } });
+    await logAdminAction(req.user.userId, req.user.role, isActive ? 'user_activated' : 'user_deactivated', userId, user.role, { previousStatus: !isActive, newStatus: isActive }, req.ip);
+    res.json({ success: true, message: `User ${isActive ? 'activated' : 'deactivated'} successfully`, data: { userId: updated.id, isActive: updated.isActive } });
   } catch (err) {
-    console.error('[SUPER_ADMIN] toggleUserStatus error:', err);
     next(err);
   }
 }
 
-/**
- * Update user approval status
- */
 async function updateApprovalStatus(req, res, next) {
   try {
     const { userId } = req.params;
     const { approvalStatus } = req.body;
-
-    if (!['pending', 'approved', 'rejected'].includes(approvalStatus)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid approval status',
-      });
-    }
-
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found',
-      });
-    }
-
+    if (!['pending', 'approved', 'rejected'].includes(approvalStatus)) return res.status(400).json({ success: false, message: 'Invalid approval status' });
+    const pgUserId = await resolvePgId('users', userId) || userId;
+    const user = await prisma.user.findUnique({ where: { id: pgUserId } });
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
     const previousStatus = user.approvalStatus;
-    user.approvalStatus = approvalStatus;
-    await user.save();
-
-    // Log the action
-    await logAdminAction(
-      req.user.userId,
-      req.user.role,
-      approvalStatus === 'approved' ? 'user_approved' : 'user_rejected',
-      user._id,
-      user.role,
-      {
-        previousStatus,
-        newStatus: approvalStatus,
-      },
-      req.ip
-    );
-
-    res.json({
-      success: true,
-      message: `User ${approvalStatus} successfully`,
-      data: {
-        userId: user._id,
-        approvalStatus: user.approvalStatus,
-      },
-    });
+    const updated = await prisma.user.update({ where: { id: pgUserId }, data: { approvalStatus } });
+    await logAdminAction(req.user.userId, req.user.role, approvalStatus === 'approved' ? 'user_approved' : 'user_rejected', userId, user.role, { previousStatus, newStatus: approvalStatus }, req.ip);
+    res.json({ success: true, message: `User ${approvalStatus} successfully`, data: { userId: updated.id, approvalStatus: updated.approvalStatus } });
   } catch (err) {
-    console.error('[SUPER_ADMIN] updateApprovalStatus error:', err);
     next(err);
   }
 }
 
-/**
- * Get audit logs
- */
 async function getAuditLogs(req, res, next) {
   try {
-    const {
-      action,
-      adminId,
-      targetUserId,
-      startDate,
-      endDate,
-      page = 1,
-      limit = 50,
-    } = req.query;
-
-    const filter = {};
-
-    if (action) filter.action = action;
-    if (adminId) filter.adminId = adminId;
-    if (targetUserId) filter.targetUserId = targetUserId;
+    const { action, adminId, targetUserId, startDate, endDate, page = 1, limit = 50 } = req.query;
+    const where = {};
+    if (action) where.action = action;
+    if (adminId) where.adminId = (await resolvePgId('users', adminId)) || adminId;
+    if (targetUserId) where.targetUserId = (await resolvePgId('users', targetUserId)) || targetUserId;
     if (startDate || endDate) {
-      filter.createdAt = {};
-      if (startDate) filter.createdAt.$gte = new Date(startDate);
-      if (endDate) filter.createdAt.$lte = new Date(endDate);
+      where.createdAt = {};
+      if (startDate) where.createdAt.gte = new Date(startDate);
+      if (endDate) where.createdAt.lte = new Date(endDate);
     }
-
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-
+    const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
     const [logs, total] = await Promise.all([
-      AuditLog.find(filter)
-        .populate('adminId', 'name phone role')
-        .populate('targetUserId', 'name phone role')
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(parseInt(limit))
-        .lean(),
-      AuditLog.countDocuments(filter),
-    ]);
-
-    res.json({
-      success: true,
-      data: {
-        logs,
-        pagination: {
-          total,
-          page: parseInt(page),
-          limit: parseInt(limit),
-          pages: Math.ceil(total / parseInt(limit)),
+      prisma.auditLog.findMany({
+        where,
+        include: {
+          admin: { select: { name: true, phone: true, role: true } },
+          targetUser: { select: { name: true, phone: true, role: true } },
         },
-      },
-    });
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: parseInt(limit, 10),
+      }),
+      prisma.auditLog.count({ where }),
+    ]);
+    res.json({ success: true, data: { logs, pagination: { total, page: parseInt(page, 10), limit: parseInt(limit, 10), pages: Math.ceil(total / parseInt(limit, 10)) } } });
   } catch (err) {
-    console.error('[SUPER_ADMIN] getAuditLogs error:', err);
     next(err);
   }
 }
 
-/**
- * Get user details
- */
 async function getUserDetails(req, res, next) {
   try {
-    const { userId } = req.params;
-
-    const user = await User.findById(userId).select('-__v').lean();
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found',
-      });
-    }
-
+    const pgUserId = await resolvePgId('users', req.params.userId) || req.params.userId;
+    const user = await prisma.user.findUnique({ where: { id: pgUserId } });
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
     let additionalData = {};
-
-    // If shopkeeper, get profile and subscription
     if (user.role === 'shopkeeper') {
       const [profile, subscription] = await Promise.all([
-        ShopkeeperProfile.findOne({ userId: user._id }).lean(),
-        Subscription.findOne({ shopkeeperId: user._id })
-          .sort({ createdAt: -1 })
-          .lean(),
+        prisma.shopkeeperProfile.findUnique({ where: { userId: user.id } }),
+        prisma.subscription.findFirst({ where: { shopkeeperId: user.id }, orderBy: { createdAt: 'desc' } }),
       ]);
-
-      additionalData = {
-        profile,
-        subscription,
-      };
+      additionalData = { profile, subscription };
     }
-
-    // Get recent audit logs for this user
-    const recentLogs = await AuditLog.find({ targetUserId: user._id })
-      .populate('adminId', 'name phone role')
-      .sort({ createdAt: -1 })
-      .limit(10)
-      .lean();
-
-    res.json({
-      success: true,
-      data: {
-        user,
-        ...additionalData,
-        recentLogs,
-      },
+    const recentLogs = await prisma.auditLog.findMany({
+      where: { targetUserId: user.id },
+      include: { admin: { select: { name: true, phone: true, role: true } } },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
     });
+    res.json({ success: true, data: { user, ...additionalData, recentLogs } });
   } catch (err) {
-    console.error('[SUPER_ADMIN] getUserDetails error:', err);
     next(err);
   }
 }

@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 const config = require('../config');
-const Otp = require('../models/Otp');
-const User = require('../models/User');
+const otpRepository = require('../repositories/otpRepository');
+const userRepository = require('../repositories/userRepository');
 const { resolveCityStateFromPincode } = require('./pincodeService');
 
 const PHONE_REGEX = /^\+?[1-9]\d{1,14}$|^\d{10}$/;
@@ -56,7 +56,7 @@ async function sendOtp(phone, role, signupData = {}) {
     throw err;
   }
 
-  const existingUser = await User.findOne({ phone });
+  const existingUser = await userRepository.findByPhone(phone);
 
   // Check if this is a signup (has name/pincode) or login (no signup data)
   const isSignup = Boolean(signupData.name || signupData.pincode);
@@ -92,8 +92,8 @@ async function sendOtp(phone, role, signupData = {}) {
     const otp = generateOtp(6);
     const expiresAt = new Date(Date.now() + config.otp.expiryMinutes * 60 * 1000);
 
-    await Otp.deleteMany({ phone });
-    await Otp.create({ phone, otp, expiresAt });
+    await otpRepository.deleteByPhone(phone);
+    await otpRepository.create({ phone, otp, expiresAt });
 
     await sendSmsIfEnabled(phone, otp);
 
@@ -137,8 +137,8 @@ async function sendOtp(phone, role, signupData = {}) {
   const otp = generateOtp(6);
   const expiresAt = new Date(Date.now() + config.otp.expiryMinutes * 60 * 1000);
 
-  await Otp.deleteMany({ phone });
-  await Otp.create({ phone, otp, expiresAt });
+  await otpRepository.deleteByPhone(phone);
+  await otpRepository.create({ phone, otp, expiresAt });
 
   await sendSmsIfEnabled(phone, otp);
 
@@ -167,7 +167,7 @@ async function sendOtp(phone, role, signupData = {}) {
     update.approvalStatus = 'approved';
   }
 
-  await User.create(update);
+  await userRepository.create(update);
 
   return { success: true };
 }
@@ -179,7 +179,7 @@ async function verifyOtp(phone, otp, role) {
     throw err;
   }
 
-  const user = await User.findOne({ phone });
+  const user = await userRepository.findByPhone(phone);
   if (!user) {
     const err = new Error('Account not found. Please signup first.');
     err.statusCode = 404;
@@ -211,14 +211,14 @@ async function verifyOtp(phone, otp, role) {
     return { user: { id: user._id, phone: user.phone, role: user.role } };
   }
 
-  const record = await Otp.findOne({ phone }).sort({ createdAt: -1 });
+  const record = await otpRepository.findLatestByPhone(phone);
   if (!record) {
     const err = new Error('Invalid or expired OTP');
     err.statusCode = 401;
     throw err;
   }
   if (new Date() > record.expiresAt) {
-    await Otp.deleteOne({ _id: record._id });
+    await otpRepository.deleteByPhone(phone);
     const err = new Error('Invalid or expired OTP');
     err.statusCode = 401;
     throw err;
@@ -229,13 +229,13 @@ async function verifyOtp(phone, otp, role) {
     throw err;
   }
 
-  await Otp.deleteOne({ _id: record._id });
+  await otpRepository.deleteByPhone(phone);
 
   return { user: { id: user._id, phone: user.phone, role: user.role } };
 }
 
 async function getLastOtpForDev(phone) {
-  const record = await Otp.findOne({ phone }).sort({ createdAt: -1 });
+  const record = await otpRepository.findLatestByPhone(phone);
   if (!record) return null;
   return { otp: record.otp, expiresAt: record.expiresAt };
 }

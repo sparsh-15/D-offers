@@ -1,43 +1,30 @@
-const Subscription = require('../models/Subscription');
-const User = require('../models/User');
+const { prisma } = require('../db/prisma');
+const { resolvePgId } = require('../repositories/idResolver');
 
-/**
- * Middleware to check if shopkeeper has valid subscription
- * Blocks access if subscription is expired or inactive
- */
 async function requireActiveSubscription(req, res, next) {
   try {
-    // Only check for shopkeepers
-    if (req.user.role !== 'shopkeeper') {
-      return next();
-    }
+    if (req.user.role !== 'shopkeeper') return next();
 
-    // Find active subscription for this shopkeeper
-    const subscription = await Subscription.findOne({
-      shopkeeperId: req.user.userId,
-      status: 'active',
-    }).lean();
+    const shopkeeperId = await resolvePgId('users', req.user.userId);
+    const subscription = await prisma.subscription.findFirst({
+      where: { shopkeeperId, status: 'active' },
+      orderBy: { createdAt: 'desc' },
+    });
 
-    // No active subscription found
     if (!subscription) {
       return res.status(403).json({
         success: false,
         message: 'Active subscription required',
         code: 'SUBSCRIPTION_REQUIRED',
-        details: {
-          reason: 'No active subscription found',
-          action: 'Please subscribe to a plan to continue',
-        },
+        details: { reason: 'No active subscription found', action: 'Please subscribe to a plan to continue' },
       });
     }
 
-    // Check if subscription is expired
     if (subscription.endDate && new Date() > new Date(subscription.endDate)) {
-      // Auto-expire the subscription
-      await Subscription.findByIdAndUpdate(subscription._id, {
-        status: 'expired',
+      await prisma.subscription.update({
+        where: { id: subscription.id },
+        data: { status: 'expired' },
       });
-
       return res.status(403).json({
         success: false,
         message: 'Subscription expired',
@@ -50,45 +37,32 @@ async function requireActiveSubscription(req, res, next) {
       });
     }
 
-    // Check if subscription is expiring soon (within 7 days)
-    const daysUntilExpiry = Math.ceil(
-      (new Date(subscription.endDate) - new Date()) / (1000 * 60 * 60 * 24)
-    );
-
-    if (daysUntilExpiry <= 7 && daysUntilExpiry > 0) {
-      // Add warning to response headers
-      res.setHeader('X-Subscription-Warning', 'expiring-soon');
-      res.setHeader('X-Days-Until-Expiry', daysUntilExpiry.toString());
+    if (subscription.endDate) {
+      const daysUntilExpiry = Math.ceil(
+        (new Date(subscription.endDate) - new Date()) / (1000 * 60 * 60 * 24)
+      );
+      if (daysUntilExpiry <= 7 && daysUntilExpiry > 0) {
+        res.setHeader('X-Subscription-Warning', 'expiring-soon');
+        res.setHeader('X-Days-Until-Expiry', daysUntilExpiry.toString());
+      }
     }
 
-    // Attach subscription info to request
     req.subscription = subscription;
     next();
   } catch (error) {
     console.error('[SUBSCRIPTION_CHECK] Error:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Failed to verify subscription',
-    });
+    res.status(500).json({ success: false, message: 'Failed to verify subscription' });
   }
 }
 
-/**
- * Middleware to check subscription and add info without blocking
- * Used for endpoints that should work regardless of subscription status
- */
 async function checkSubscriptionStatus(req, res, next) {
   try {
-    if (req.user.role !== 'shopkeeper') {
-      return next();
-    }
-
-    const subscription = await Subscription.findOne({
-      shopkeeperId: req.user.userId,
-    })
-      .sort({ createdAt: -1 })
-      .lean();
-
+    if (req.user.role !== 'shopkeeper') return next();
+    const shopkeeperId = await resolvePgId('users', req.user.userId);
+    const subscription = await prisma.subscription.findFirst({
+      where: { shopkeeperId },
+      orderBy: { createdAt: 'desc' },
+    });
     req.subscription = subscription || null;
     next();
   } catch (error) {
@@ -98,15 +72,9 @@ async function checkSubscriptionStatus(req, res, next) {
   }
 }
 
-/**
- * Check if shopkeeper can create more offers based on plan limits
- */
 async function checkOfferLimit(req, res, next) {
   try {
-    if (req.user.role !== 'shopkeeper') {
-      return next();
-    }
-
+    if (req.user.role !== 'shopkeeper') return next();
     if (!req.subscription) {
       return res.status(403).json({
         success: false,
@@ -114,21 +82,14 @@ async function checkOfferLimit(req, res, next) {
         code: 'SUBSCRIPTION_REQUIRED',
       });
     }
-
-    // Get plan details
     const planSnapshot = req.subscription.planSnapshot;
     if (!planSnapshot || !planSnapshot.maxOffers || planSnapshot.maxOffers === -1) {
-      // Unlimited offers
       return next();
     }
-
-    // Count current offers
-    const Offer = require('../models/Offer');
-    const offerCount = await Offer.countDocuments({
-      shopkeeperId: req.user.userId,
-      status: { $ne: 'deleted' },
+    const shopkeeperId = await resolvePgId('users', req.user.userId);
+    const offerCount = await prisma.offer.count({
+      where: { shopkeeperId, status: { not: 'inactive' } },
     });
-
     if (offerCount >= planSnapshot.maxOffers) {
       return res.status(403).json({
         success: false,
@@ -141,7 +102,6 @@ async function checkOfferLimit(req, res, next) {
         },
       });
     }
-
     next();
   } catch (error) {
     console.error('[OFFER_LIMIT_CHECK] Error:', error);
@@ -149,8 +109,4 @@ async function checkOfferLimit(req, res, next) {
   }
 }
 
-module.exports = {
-  requireActiveSubscription,
-  checkSubscriptionStatus,
-  checkOfferLimit,
-};
+module.exports = { requireActiveSubscription, checkSubscriptionStatus, checkOfferLimit };

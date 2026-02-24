@@ -1,67 +1,24 @@
-const Subscription = require('../models/Subscription');
-const SubscriptionPlan = require('../models/SubscriptionPlan');
-const User = require('../models/User');
-const ShopkeeperProfile = require('../models/ShopkeeperProfile');
+const { prisma } = require('../db/prisma');
 const { logAdminAction } = require('../middleware/roleAuth');
+const subscriptionRepository = require('../repositories/subscriptionRepository');
+const { resolvePgId } = require('../repositories/idResolver');
 
-/**
- * Create subscription for a shopkeeper
- */
 async function createSubscription(req, res, next) {
   try {
-    const {
-      shopkeeperId,
-      planId,
-      startDate,
-      durationMonths = 1,
-      autoRenew = false,
-      paymentMethod,
-      transactionId,
-      notes,
-    } = req.body;
-
-    // Validate required fields
-    if (!shopkeeperId || !planId) {
-      return res.status(400).json({
-        success: false,
-        message: 'Shopkeeper ID and Plan ID are required',
-      });
-    }
-
-    // Verify shopkeeper exists
-    const shopkeeper = await User.findById(shopkeeperId);
-    if (!shopkeeper || shopkeeper.role !== 'shopkeeper') {
-      return res.status(404).json({
-        success: false,
-        message: 'Shopkeeper not found',
-      });
-    }
-
-    // Verify plan exists and is active
-    const plan = await SubscriptionPlan.findById(planId);
-    if (!plan) {
-      return res.status(404).json({
-        success: false,
-        message: 'Subscription plan not found',
-      });
-    }
-
-    if (!plan.isActive) {
-      return res.status(400).json({
-        success: false,
-        message: 'This plan is no longer available',
-      });
-    }
-
-    // Calculate dates
+    const { shopkeeperId, planId, startDate, durationMonths = 1, autoRenew = false, paymentMethod, transactionId, notes } = req.body;
+    if (!shopkeeperId || !planId) return res.status(400).json({ success: false, message: 'Shopkeeper ID and Plan ID are required' });
+    const pgShopkeeperId = await resolvePgId('users', shopkeeperId) || shopkeeperId;
+    const shopkeeper = await prisma.user.findUnique({ where: { id: pgShopkeeperId } });
+    if (!shopkeeper || shopkeeper.role !== 'shopkeeper') return res.status(404).json({ success: false, message: 'Shopkeeper not found' });
+    const plan = await prisma.subscriptionPlan.findUnique({ where: { id: planId } });
+    if (!plan) return res.status(404).json({ success: false, message: 'Subscription plan not found' });
+    if (!plan.isActive) return res.status(400).json({ success: false, message: 'This plan is no longer available' });
     const start = startDate ? new Date(startDate) : new Date();
     const end = new Date(start);
     end.setMonth(end.getMonth() + durationMonths);
-
-    // Create subscription
-    const subscription = await Subscription.create({
-      shopkeeperId,
-      planId,
+    const subscription = await subscriptionRepository.createSubscription({
+      shopkeeperId: pgShopkeeperId,
+      planId: plan.id,
       planSnapshot: {
         name: plan.name,
         displayName: plan.displayName,
@@ -73,289 +30,143 @@ async function createSubscription(req, res, next) {
       status: 'active',
       startDate: start,
       endDate: end,
-      actualPrice: plan.monthlyPrice * durationMonths,
+      actualPrice: Number(plan.monthlyPrice) * Number(durationMonths),
       autoRenew,
       paymentStatus: 'paid',
       paymentMethod,
       transactionId,
       notes,
     });
-
-    // Log action
-    await logAdminAction(
-      req.user.userId,
-      req.user.role,
-      'subscription_created',
-      shopkeeperId,
-      'shopkeeper',
-      {
-        subscriptionId: subscription._id,
-        planName: plan.name,
-        duration: durationMonths,
-      },
-      req.ip
-    );
-
-    res.status(201).json({
-      success: true,
-      message: 'Subscription created successfully',
-      data: subscription,
-    });
+    await logAdminAction(req.user.userId, req.user.role, 'subscription_created', shopkeeperId, 'shopkeeper', { subscriptionId: subscription.id, planName: plan.name, duration: durationMonths }, req.ip);
+    res.status(201).json({ success: true, message: 'Subscription created successfully', data: subscription });
   } catch (err) {
-    console.error('[SUBSCRIPTION] createSubscription error:', err);
     next(err);
   }
 }
 
-/**
- * Get subscription monitoring dashboard
- */
 async function getMonitoringDashboard(req, res, next) {
   try {
     const now = new Date();
     const sevenDaysFromNow = new Date(now);
     sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
-
-    // Get subscription counts by status
-    const statusCounts = await Subscription.aggregate([
-      {
-        $group: {
-          _id: '$status',
-          count: { $sum: 1 },
-          totalRevenue: { $sum: '$actualPrice' },
-        },
-      },
-    ]);
-
-    // Get subscriptions expiring soon
-    const expiringSoon = await Subscription.find({
-      status: 'active',
-      endDate: {
-        $gte: now,
-        $lte: sevenDaysFromNow,
-      },
-    })
-      .populate('shopkeeperId', 'name phone')
-      .populate('planId', 'displayName monthlyPrice')
-      .sort({ endDate: 1 })
-      .lean();
-
-    // Get recently expired subscriptions (last 7 days)
     const sevenDaysAgo = new Date(now);
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    const recentlyExpired = await Subscription.find({
-      status: 'expired',
-      endDate: {
-        $gte: sevenDaysAgo,
-        $lte: now,
-      },
-    })
-      .populate('shopkeeperId', 'name phone')
-      .populate('planId', 'displayName monthlyPrice')
-      .sort({ endDate: -1 })
-      .lean();
+    const statusGroups = await prisma.subscription.groupBy({
+      by: ['status'],
+      _count: { _all: true },
+      _sum: { actualPrice: true },
+    });
+    const statusCounts = statusGroups.reduce((acc, g) => {
+      acc[g.status] = { count: g._count._all, revenue: Number(g._sum.actualPrice || 0) };
+      return acc;
+    }, {});
 
-    // Get pending subscriptions
-    const pending = await Subscription.find({
-      status: 'pending',
-    })
-      .populate('shopkeeperId', 'name phone')
-      .populate('planId', 'displayName monthlyPrice')
-      .sort({ createdAt: -1 })
-      .lean();
+    const [expiringSoon, recentlyExpired, pending, activeSubscriptions] = await Promise.all([
+      prisma.subscription.findMany({
+        where: { status: 'active', endDate: { gte: now, lte: sevenDaysFromNow } },
+        orderBy: { endDate: 'asc' },
+        include: { shopkeeper: { select: { name: true, phone: true } }, plan: { select: { displayName: true, monthlyPrice: true } } },
+      }),
+      prisma.subscription.findMany({
+        where: { status: 'expired', endDate: { gte: sevenDaysAgo, lte: now } },
+        orderBy: { endDate: 'desc' },
+        include: { shopkeeper: { select: { name: true, phone: true } }, plan: { select: { displayName: true, monthlyPrice: true } } },
+      }),
+      prisma.subscription.findMany({
+        where: { status: 'pending' },
+        orderBy: { createdAt: 'desc' },
+        include: { shopkeeper: { select: { name: true, phone: true } }, plan: { select: { displayName: true, monthlyPrice: true } } },
+      }),
+      prisma.subscription.findMany({ where: { status: 'active' } }),
+    ]);
 
-    // Calculate MRR (Monthly Recurring Revenue)
-    const activeSubscriptions = await Subscription.find({
-      status: 'active',
-    })
-      .populate('planId', 'monthlyPrice')
-      .lean();
-
-    const mrr = activeSubscriptions.reduce((sum, sub) => {
-      return sum + (sub.planSnapshot?.monthlyPrice || 0);
-    }, 0);
+    const mrr = activeSubscriptions.reduce((sum, sub) => sum + Number(sub.planSnapshot?.monthlyPrice || 0), 0);
 
     res.json({
       success: true,
       data: {
-        statusCounts: statusCounts.reduce((acc, item) => {
-          acc[item._id] = {
-            count: item.count,
-            revenue: item.totalRevenue,
-          };
-          return acc;
-        }, {}),
-        expiringSoon: {
-          count: expiringSoon.length,
-          subscriptions: expiringSoon,
-        },
-        recentlyExpired: {
-          count: recentlyExpired.length,
-          subscriptions: recentlyExpired,
-        },
-        pending: {
-          count: pending.length,
-          subscriptions: pending,
-        },
+        statusCounts,
+        expiringSoon: { count: expiringSoon.length, subscriptions: expiringSoon },
+        recentlyExpired: { count: recentlyExpired.length, subscriptions: recentlyExpired },
+        pending: { count: pending.length, subscriptions: pending },
         mrr,
       },
     });
   } catch (err) {
-    console.error('[SUBSCRIPTION] getMonitoringDashboard error:', err);
     next(err);
   }
 }
 
-/**
- * Get revenue intelligence and analytics
- */
 async function getRevenueIntelligence(req, res, next) {
   try {
     const now = new Date();
-
-    // Get current month MRR
-    const currentMRR = await Subscription.aggregate([
-      {
-        $match: {
-          status: 'active',
-        },
-      },
-      {
-        $lookup: {
-          from: 'subscriptionplans',
-          localField: 'planId',
-          foreignField: '_id',
-          as: 'plan',
-        },
-      },
-      {
-        $unwind: '$plan',
-      },
-      {
-        $group: {
-          _id: null,
-          totalMRR: { $sum: '$plan.monthlyPrice' },
-          count: { $sum: 1 },
-        },
-      },
-    ]);
-
-    // Get subscription growth trend (last 6 months)
     const sixMonthsAgo = new Date(now);
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-
-    const growthTrend = await Subscription.aggregate([
-      {
-        $match: {
-          createdAt: { $gte: sixMonthsAgo },
-        },
-      },
-      {
-        $group: {
-          _id: {
-            year: { $year: '$createdAt' },
-            month: { $month: '$createdAt' },
-          },
-          newSubscriptions: { $sum: 1 },
-          revenue: { $sum: '$actualPrice' },
-        },
-      },
-      {
-        $sort: { '_id.year': 1, '_id.month': 1 },
-      },
-    ]);
-
-    // Get churn analysis (last 3 months)
     const threeMonthsAgo = new Date(now);
     threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
 
-    const churnData = await Subscription.aggregate([
-      {
-        $match: {
-          status: { $in: ['expired', 'cancelled'] },
-          updatedAt: { $gte: threeMonthsAgo },
-        },
-      },
-      {
-        $group: {
-          _id: {
-            year: { $year: '$updatedAt' },
-            month: { $month: '$updatedAt' },
-            status: '$status',
-          },
-          count: { $sum: 1 },
-        },
-      },
-      {
-        $sort: { '_id.year': 1, '_id.month': 1 },
-      },
-    ]);
+    const activeSubscriptions = await prisma.subscription.findMany({ where: { status: 'active' } });
+    const currentMRR = activeSubscriptions.reduce((sum, s) => sum + Number(s.planSnapshot?.monthlyPrice || 0), 0);
 
-    // Calculate projected MRR (next month)
+    const growthSubs = await prisma.subscription.findMany({
+      where: { createdAt: { gte: sixMonthsAgo } },
+      select: { createdAt: true, actualPrice: true },
+    });
+    const growthMap = {};
+    growthSubs.forEach((s) => {
+      const d = new Date(s.createdAt);
+      const k = `${d.getUTCFullYear()}-${d.getUTCMonth() + 1}`;
+      if (!growthMap[k]) growthMap[k] = { newSubscriptions: 0, revenue: 0, _id: { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1 } };
+      growthMap[k].newSubscriptions += 1;
+      growthMap[k].revenue += Number(s.actualPrice || 0);
+    });
+    const growthTrend = Object.values(growthMap).sort((a, b) => (a._id.year - b._id.year) || (a._id.month - b._id.month));
+
+    const churnSubs = await prisma.subscription.findMany({
+      where: { status: { in: ['expired', 'cancelled'] }, updatedAt: { gte: threeMonthsAgo } },
+      select: { status: true, updatedAt: true },
+    });
+    const churnMap = {};
+    churnSubs.forEach((s) => {
+      const d = new Date(s.updatedAt);
+      const k = `${d.getUTCFullYear()}-${d.getUTCMonth() + 1}-${s.status}`;
+      if (!churnMap[k]) churnMap[k] = { _id: { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1, status: s.status }, count: 0 };
+      churnMap[k].count += 1;
+    });
+    const churnData = Object.values(churnMap).sort((a, b) => (a._id.year - b._id.year) || (a._id.month - b._id.month));
+
     const nextMonthStart = new Date(now);
     nextMonthStart.setMonth(nextMonthStart.getMonth() + 1);
     nextMonthStart.setDate(1);
-
     const nextMonthEnd = new Date(nextMonthStart);
     nextMonthEnd.setMonth(nextMonthEnd.getMonth() + 1);
 
-    const expiringNextMonth = await Subscription.countDocuments({
-      status: 'active',
-      endDate: {
-        $gte: nextMonthStart,
-        $lt: nextMonthEnd,
-      },
-      autoRenew: false,
+    const expiringNextMonth = await prisma.subscription.count({
+      where: { status: 'active', endDate: { gte: nextMonthStart, lt: nextMonthEnd }, autoRenew: false },
     });
-
     const projectedMRR =
-      (currentMRR[0]?.totalMRR || 0) -
-      expiringNextMonth * (currentMRR[0]?.totalMRR || 0) / (currentMRR[0]?.count || 1);
+      currentMRR - expiringNextMonth * (currentMRR / (activeSubscriptions.length || 1));
 
-    // Detect unusual drops (more than 20% drop in new subscriptions)
     const lastMonthSubs = growthTrend[growthTrend.length - 1]?.newSubscriptions || 0;
     const prevMonthSubs = growthTrend[growthTrend.length - 2]?.newSubscriptions || 0;
-    const dropPercentage =
-      prevMonthSubs > 0 ? ((prevMonthSubs - lastMonthSubs) / prevMonthSubs) * 100 : 0;
-
+    const dropPercentage = prevMonthSubs > 0 ? ((prevMonthSubs - lastMonthSubs) / prevMonthSubs) * 100 : 0;
     const unusualDrop = dropPercentage > 20;
 
-    // Get plan distribution
-    const planDistribution = await Subscription.aggregate([
-      {
-        $match: {
-          status: 'active',
-        },
-      },
-      {
-        $lookup: {
-          from: 'subscriptionplans',
-          localField: 'planId',
-          foreignField: '_id',
-          as: 'plan',
-        },
-      },
-      {
-        $unwind: '$plan',
-      },
-      {
-        $group: {
-          _id: '$plan.displayName',
-          count: { $sum: 1 },
-          revenue: { $sum: '$plan.monthlyPrice' },
-        },
-      },
-      {
-        $sort: { count: -1 },
-      },
-    ]);
+    const planDistributionMap = {};
+    activeSubscriptions.forEach((s) => {
+      const name = s.planSnapshot?.displayName || s.planSnapshot?.name || 'Unknown';
+      if (!planDistributionMap[name]) planDistributionMap[name] = { _id: name, count: 0, revenue: 0 };
+      planDistributionMap[name].count += 1;
+      planDistributionMap[name].revenue += Number(s.planSnapshot?.monthlyPrice || 0);
+    });
+    const planDistribution = Object.values(planDistributionMap).sort((a, b) => b.count - a.count);
 
     res.json({
       success: true,
       data: {
-        currentMRR: currentMRR[0]?.totalMRR || 0,
-        activeSubscriptions: currentMRR[0]?.count || 0,
+        currentMRR,
+        activeSubscriptions: activeSubscriptions.length,
         projectedMRR: Math.max(0, projectedMRR),
         growthTrend,
         churnData,
@@ -368,237 +179,114 @@ async function getRevenueIntelligence(req, res, next) {
       },
     });
   } catch (err) {
-    console.error('[SUBSCRIPTION] getRevenueIntelligence error:', err);
     next(err);
   }
 }
 
-/**
- * Get all subscriptions with filters
- */
 async function getAllSubscriptions(req, res, next) {
   try {
-    const {
-      status,
-      planId,
-      shopkeeperId,
-      expiringSoon,
-      page = 1,
-      limit = 20,
-    } = req.query;
-
-    const filter = {};
-    if (status) filter.status = status;
-    if (planId) filter.planId = planId;
-    if (shopkeeperId) filter.shopkeeperId = shopkeeperId;
-
+    const { status, planId, shopkeeperId, expiringSoon, page = 1, limit = 20 } = req.query;
+    const where = {};
+    if (status) where.status = status;
+    if (planId) where.planId = planId;
+    if (shopkeeperId) where.shopkeeperId = (await resolvePgId('users', shopkeeperId)) || shopkeeperId;
     if (expiringSoon === 'true') {
       const now = new Date();
       const sevenDaysFromNow = new Date(now);
       sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
-      filter.status = 'active';
-      filter.endDate = { $gte: now, $lte: sevenDaysFromNow };
+      where.status = 'active';
+      where.endDate = { gte: now, lte: sevenDaysFromNow };
     }
-
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-
+    const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
     const [subscriptions, total] = await Promise.all([
-      Subscription.find(filter)
-        .populate('shopkeeperId', 'name phone')
-        .populate('planId', 'displayName monthlyPrice')
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(parseInt(limit))
-        .lean(),
-      Subscription.countDocuments(filter),
+      prisma.subscription.findMany({
+        where,
+        include: { shopkeeper: { select: { name: true, phone: true } }, plan: { select: { displayName: true, monthlyPrice: true } } },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: parseInt(limit, 10),
+      }),
+      prisma.subscription.count({ where }),
     ]);
-
     res.json({
       success: true,
       data: {
         subscriptions,
-        pagination: {
-          total,
-          page: parseInt(page),
-          limit: parseInt(limit),
-          pages: Math.ceil(total / parseInt(limit)),
-        },
+        pagination: { total, page: parseInt(page, 10), limit: parseInt(limit, 10), pages: Math.ceil(total / parseInt(limit, 10)) },
       },
     });
   } catch (err) {
-    console.error('[SUBSCRIPTION] getAllSubscriptions error:', err);
     next(err);
   }
 }
 
-/**
- * Update subscription
- */
 async function updateSubscription(req, res, next) {
   try {
     const { subscriptionId } = req.params;
     const { status, endDate, autoRenew, notes } = req.body;
-
-    const subscription = await Subscription.findById(subscriptionId);
-    if (!subscription) {
-      return res.status(404).json({
-        success: false,
-        message: 'Subscription not found',
-      });
-    }
-
-    // Update fields
-    if (status !== undefined) subscription.status = status;
-    if (endDate !== undefined) subscription.endDate = new Date(endDate);
-    if (autoRenew !== undefined) subscription.autoRenew = autoRenew;
-    if (notes !== undefined) subscription.notes = notes;
-
-    await subscription.save();
-
-    // Log action
-    await logAdminAction(
-      req.user.userId,
-      req.user.role,
-      'subscription_updated',
-      subscription.shopkeeperId,
-      'shopkeeper',
-      {
-        subscriptionId: subscription._id,
-        changes: { status, endDate, autoRenew },
-      },
-      req.ip
-    );
-
-    res.json({
-      success: true,
-      message: 'Subscription updated successfully',
-      data: subscription,
+    const existing = await prisma.subscription.findUnique({ where: { id: subscriptionId } });
+    if (!existing) return res.status(404).json({ success: false, message: 'Subscription not found' });
+    const updated = await subscriptionRepository.updateSubscription(subscriptionId, {
+      ...(status !== undefined ? { status } : {}),
+      ...(endDate !== undefined ? { endDate: new Date(endDate) } : {}),
+      ...(autoRenew !== undefined ? { autoRenew } : {}),
+      ...(notes !== undefined ? { notes } : {}),
     });
+    await logAdminAction(req.user.userId, req.user.role, 'subscription_updated', existing.shopkeeperId, 'shopkeeper', { subscriptionId: existing.id, changes: { status, endDate, autoRenew } }, req.ip);
+    res.json({ success: true, message: 'Subscription updated successfully', data: updated });
   } catch (err) {
-    console.error('[SUBSCRIPTION] updateSubscription error:', err);
     next(err);
   }
 }
 
-/**
- * Cancel subscription
- */
 async function cancelSubscription(req, res, next) {
   try {
     const { subscriptionId } = req.params;
     const { reason } = req.body;
-
-    const subscription = await Subscription.findById(subscriptionId);
-    if (!subscription) {
-      return res.status(404).json({
-        success: false,
-        message: 'Subscription not found',
-      });
-    }
-
-    subscription.status = 'cancelled';
-    subscription.cancelledAt = new Date();
-    subscription.cancelledBy = req.user.userId;
-    subscription.cancellationReason = reason || '';
-    await subscription.save();
-
-    // Log action
-    await logAdminAction(
-      req.user.userId,
-      req.user.role,
-      'subscription_cancelled',
-      subscription.shopkeeperId,
-      'shopkeeper',
-      {
-        subscriptionId: subscription._id,
-        reason,
-      },
-      req.ip
-    );
-
-    res.json({
-      success: true,
-      message: 'Subscription cancelled successfully',
-      data: subscription,
+    const existing = await prisma.subscription.findUnique({ where: { id: subscriptionId } });
+    if (!existing) return res.status(404).json({ success: false, message: 'Subscription not found' });
+    const updated = await subscriptionRepository.updateSubscription(subscriptionId, {
+      status: 'cancelled',
+      cancelledAt: new Date(),
+      cancelledBy: req.user.userId,
+      cancellationReason: reason || '',
     });
+    await logAdminAction(req.user.userId, req.user.role, 'subscription_cancelled', existing.shopkeeperId, 'shopkeeper', { subscriptionId: existing.id, reason }, req.ip);
+    res.json({ success: true, message: 'Subscription cancelled successfully', data: updated });
   } catch (err) {
-    console.error('[SUBSCRIPTION] cancelSubscription error:', err);
     next(err);
   }
 }
 
-/**
- * Renew subscription
- */
 async function renewSubscription(req, res, next) {
   try {
     const { subscriptionId } = req.params;
     const { durationMonths = 1, paymentMethod, transactionId } = req.body;
-
-    const subscription = await Subscription.findById(subscriptionId).populate('planId');
-    if (!subscription) {
-      return res.status(404).json({
-        success: false,
-        message: 'Subscription not found',
-      });
-    }
-
-    // Calculate new end date
-    const newEndDate = new Date(subscription.endDate || new Date());
+    const existing = await prisma.subscription.findUnique({ where: { id: subscriptionId } });
+    if (!existing) return res.status(404).json({ success: false, message: 'Subscription not found' });
+    const newEndDate = new Date(existing.endDate || new Date());
     newEndDate.setMonth(newEndDate.getMonth() + durationMonths);
-
-    subscription.status = 'active';
-    subscription.endDate = newEndDate;
-    subscription.renewalCount += 1;
-    subscription.lastRenewalDate = new Date();
-    subscription.paymentStatus = 'paid';
-    subscription.paymentMethod = paymentMethod;
-    subscription.transactionId = transactionId;
-
-    await subscription.save();
-
-    // Log action
-    await logAdminAction(
-      req.user.userId,
-      req.user.role,
-      'subscription_renewed',
-      subscription.shopkeeperId,
-      'shopkeeper',
-      {
-        subscriptionId: subscription._id,
-        duration: durationMonths,
-        newEndDate,
-      },
-      req.ip
-    );
-
-    res.json({
-      success: true,
-      message: 'Subscription renewed successfully',
-      data: subscription,
+    const updated = await subscriptionRepository.updateSubscription(subscriptionId, {
+      status: 'active',
+      endDate: newEndDate,
+      renewalCount: (existing.renewalCount || 0) + 1,
+      lastRenewalDate: new Date(),
+      paymentStatus: 'paid',
+      paymentMethod,
+      transactionId,
     });
+    await logAdminAction(req.user.userId, req.user.role, 'subscription_renewed', existing.shopkeeperId, 'shopkeeper', { subscriptionId: existing.id, duration: durationMonths, newEndDate }, req.ip);
+    res.json({ success: true, message: 'Subscription renewed successfully', data: updated });
   } catch (err) {
-    console.error('[SUBSCRIPTION] renewSubscription error:', err);
     next(err);
   }
 }
 
-/**
- * Run subscription expiry check (cron job endpoint)
- */
 async function runExpiryCheck(req, res, next) {
   try {
-    const result = await Subscription.expireOldSubscriptions();
-
-    res.json({
-      success: true,
-      message: 'Expiry check completed',
-      data: {
-        modifiedCount: result.modifiedCount,
-      },
-    });
+    const result = await subscriptionRepository.expireOldSubscriptions();
+    res.json({ success: true, message: 'Expiry check completed', data: { modifiedCount: result.modifiedCount } });
   } catch (err) {
-    console.error('[SUBSCRIPTION] runExpiryCheck error:', err);
     next(err);
   }
 }

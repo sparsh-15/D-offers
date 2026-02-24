@@ -1,265 +1,196 @@
-const Subscription = require('../models/Subscription');
-const OnboardingStatus = require('../models/OnboardingStatus');
+const { prisma } = require('../db/prisma');
+const { resolvePgId } = require('../repositories/idResolver');
+const subscriptionRepository = require('../repositories/subscriptionRepository');
 
-/**
- * Get current subscription status
- */
+function serializeSubscription(subscription) {
+  if (!subscription) {
+    return {
+      planType: null,
+      status: 'inactive',
+      startDate: null,
+      endDate: null,
+      autoRenew: false,
+      isActive: false,
+      isExpired: false,
+    };
+  }
+  const now = new Date();
+  const isActive =
+    subscription.status === 'active' &&
+    !!subscription.endDate &&
+    new Date(subscription.endDate) > now;
+  return {
+    planType: subscription.planSnapshot?.name || null,
+    status: subscription.status,
+    startDate: subscription.startDate,
+    endDate: subscription.endDate,
+    autoRenew: subscription.autoRenew,
+    isActive,
+    isExpired: !!subscription.endDate && new Date(subscription.endDate) <= now,
+  };
+}
+
 async function getSubscription(req, res, next) {
   try {
-    let subscription = await Subscription.findOne({ userId: req.user.userId });
-
-    if (!subscription) {
-      // Create default subscription (inactive)
-      subscription = await Subscription.create({
-        userId: req.user.userId,
-        status: 'inactive',
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      subscription: {
-        planType: subscription.planType,
-        status: subscription.status,
-        startDate: subscription.startDate,
-        endDate: subscription.endDate,
-        autoRenew: subscription.autoRenew,
-        isActive: subscription.isActive(),
-        isExpired: subscription.isExpired(),
-      },
+    const shopkeeperId = await resolvePgId('users', req.user.userId);
+    const subscription = await prisma.subscription.findFirst({
+      where: { shopkeeperId },
+      orderBy: { createdAt: 'desc' },
     });
+    res.status(200).json({ success: true, subscription: serializeSubscription(subscription) });
   } catch (err) {
     next(err);
   }
 }
 
-/**
- * Activate trial subscription (7 days free)
- */
 async function activateTrial(req, res, next) {
   try {
-    let subscription = await Subscription.findOne({ userId: req.user.userId });
-
-    if (!subscription) {
-      subscription = await Subscription.create({
-        userId: req.user.userId,
-      });
-    }
-
-    // Check if trial already used
-    if (subscription.paymentHistory && subscription.paymentHistory.length > 0) {
+    const shopkeeperId = await resolvePgId('users', req.user.userId);
+    const hasAny = await prisma.subscription.findFirst({ where: { shopkeeperId } });
+    if (hasAny) return res.status(400).json({ success: false, message: 'Trial already used' });
+    const trialPlan =
+      (await prisma.subscriptionPlan.findFirst({ where: { isActive: true, monthlyPrice: 0 } })) ||
+      (await prisma.subscriptionPlan.findFirst({
+        where: { isActive: true },
+        orderBy: [{ sortOrder: 'asc' }, { monthlyPrice: 'asc' }],
+      }));
+    if (!trialPlan) {
       return res.status(400).json({
         success: false,
-        message: 'Trial already used',
+        message: 'No active plan available for trial activation',
       });
     }
-
     const startDate = new Date();
     const endDate = new Date();
-    endDate.setDate(endDate.getDate() + 7); // 7 days trial
-
-    subscription.planType = 'trial';
-    subscription.status = 'active';
-    subscription.startDate = startDate;
-    subscription.endDate = endDate;
-    subscription.autoRenew = false;
-
-    await subscription.save();
-
-    // Update onboarding status
-    const onboarding = await OnboardingStatus.findOne({ userId: req.user.userId });
-    if (onboarding) {
-      onboarding.subscriptionActivated = true;
-      if (onboarding.businessProfileCompleted && onboarding.termsAccepted) {
-        onboarding.onboardingCompleted = true;
-      }
-      await onboarding.save();
-    }
-
-    res.status(200).json({
-      success: true,
-      message: 'Trial subscription activated',
-      subscription: {
-        planType: subscription.planType,
-        status: subscription.status,
-        startDate: subscription.startDate,
-        endDate: subscription.endDate,
-        isActive: subscription.isActive(),
+    endDate.setDate(endDate.getDate() + 7);
+    const subscription = await subscriptionRepository.createSubscription({
+      shopkeeperId,
+      planId: trialPlan.id,
+      planSnapshot: {
+        name: trialPlan.name,
+        displayName: trialPlan.displayName,
+        monthlyPrice: 0,
+        features: trialPlan.features || [],
+        maxOffers: trialPlan.maxOffers,
+        maxPhotosPerOffer: trialPlan.maxPhotosPerOffer,
+      },
+      status: 'active',
+      startDate,
+      endDate,
+      actualPrice: 0,
+      autoRenew: false,
+      paymentStatus: 'paid',
+      notes: 'trial',
+    });
+    await prisma.onboardingStatus.upsert({
+      where: { userId: shopkeeperId },
+      create: {
+        userId: shopkeeperId,
+        subscriptionActivated: true,
+      },
+      update: {
+        subscriptionActivated: true,
       },
     });
+    res.status(200).json({ success: true, message: 'Trial subscription activated', subscription: serializeSubscription(subscription) });
   } catch (err) {
     next(err);
   }
 }
 
-/**
- * Create/update subscription (for payment integration)
- */
 async function createSubscription(req, res, next) {
   try {
-    const { planType, durationMonths, transactionId, amount } = req.body;
-
-    if (!planType || !durationMonths) {
+    const { planType, planId, durationMonths, transactionId } = req.body;
+    if ((!planType && !planId) || !durationMonths) {
       return res.status(400).json({
         success: false,
         message: 'Plan type and duration are required',
       });
     }
-
-    let subscription = await Subscription.findOne({ userId: req.user.userId });
-
-    if (!subscription) {
-      subscription = await Subscription.create({
-        userId: req.user.userId,
-      });
+    const shopkeeperId = await resolvePgId('users', req.user.userId);
+    const plan = planId
+      ? await prisma.subscriptionPlan.findUnique({ where: { id: planId } })
+      : await prisma.subscriptionPlan.findFirst({ where: { name: planType } });
+    if (!plan || !plan.isActive) {
+      return res.status(400).json({ success: false, message: 'Selected plan is not available' });
     }
-
     const startDate = new Date();
     const endDate = new Date();
-    endDate.setMonth(endDate.getMonth() + parseInt(durationMonths));
-
-    subscription.planType = planType;
-    subscription.status = 'active';
-    subscription.startDate = startDate;
-    subscription.endDate = endDate;
-    subscription.autoRenew = req.body.autoRenew || false;
-
-    // Add payment record
-    if (transactionId && amount) {
-      subscription.paymentHistory.push({
-        amount: parseFloat(amount),
-        currency: 'INR',
-        paymentDate: new Date(),
-        transactionId,
-        status: 'success',
-      });
-    }
-
-    await subscription.save();
-
-    // Update onboarding status
-    const onboarding = await OnboardingStatus.findOne({ userId: req.user.userId });
-    if (onboarding) {
-      onboarding.subscriptionActivated = true;
-      if (onboarding.businessProfileCompleted && onboarding.termsAccepted) {
-        onboarding.onboardingCompleted = true;
-      }
-      await onboarding.save();
-    }
-
-    res.status(200).json({
-      success: true,
-      message: 'Subscription activated',
-      subscription: {
-        planType: subscription.planType,
-        status: subscription.status,
-        startDate: subscription.startDate,
-        endDate: subscription.endDate,
-        autoRenew: subscription.autoRenew,
-        isActive: subscription.isActive(),
+    endDate.setMonth(endDate.getMonth() + parseInt(durationMonths, 10));
+    const subscription = await subscriptionRepository.createSubscription({
+      shopkeeperId,
+      planId: plan.id,
+      planSnapshot: {
+        name: plan.name,
+        displayName: plan.displayName,
+        monthlyPrice: plan.monthlyPrice,
+        features: plan.features || [],
+        maxOffers: plan.maxOffers,
+        maxPhotosPerOffer: plan.maxPhotosPerOffer,
       },
+      status: 'active',
+      startDate,
+      endDate,
+      actualPrice: Number(plan.monthlyPrice) * parseInt(durationMonths, 10),
+      autoRenew: req.body.autoRenew || false,
+      paymentStatus: 'paid',
+      paymentMethod: req.body.paymentMethod,
+      transactionId: transactionId || null,
+      notes: req.body.notes || '',
     });
+    await prisma.onboardingStatus.upsert({
+      where: { userId: shopkeeperId },
+      create: { userId: shopkeeperId, subscriptionActivated: true },
+      update: { subscriptionActivated: true },
+    });
+    res.status(200).json({ success: true, message: 'Subscription activated', subscription: serializeSubscription(subscription) });
   } catch (err) {
     next(err);
   }
 }
 
-/**
- * Cancel subscription
- */
 async function cancelSubscription(req, res, next) {
   try {
-    const subscription = await Subscription.findOne({ userId: req.user.userId });
-
-    if (!subscription) {
-      return res.status(404).json({
-        success: false,
-        message: 'No subscription found',
-      });
-    }
-
-    subscription.status = 'cancelled';
-    subscription.autoRenew = false;
-
-    await subscription.save();
-
-    res.status(200).json({
-      success: true,
-      message: 'Subscription cancelled',
-      subscription: {
-        planType: subscription.planType,
-        status: subscription.status,
-        endDate: subscription.endDate,
-      },
+    const shopkeeperId = await resolvePgId('users', req.user.userId);
+    const subscription = await prisma.subscription.findFirst({
+      where: { shopkeeperId },
+      orderBy: { createdAt: 'desc' },
     });
+    if (!subscription) return res.status(404).json({ success: false, message: 'No subscription found' });
+    const updated = await subscriptionRepository.updateSubscription(subscription.id, {
+      status: 'cancelled',
+      autoRenew: false,
+    });
+    res.status(200).json({ success: true, message: 'Subscription cancelled', subscription: serializeSubscription(updated) });
   } catch (err) {
     next(err);
   }
 }
 
-/**
- * Get subscription plans (for display)
- */
 async function getPlans(req, res, next) {
   try {
-    const plans = [
-      {
-        id: 'trial',
-        name: 'Trial',
-        price: 0,
-        duration: 7,
-        durationUnit: 'days',
-        features: ['Create up to 5 offers', 'Basic analytics', '7 days access'],
-      },
-      {
-        id: 'basic',
-        name: 'Basic',
-        price: 499,
-        duration: 1,
-        durationUnit: 'month',
-        features: ['Unlimited offers', 'Basic analytics', 'Email support'],
-      },
-      {
-        id: 'premium',
-        name: 'Premium',
-        price: 999,
-        duration: 1,
-        durationUnit: 'month',
-        features: [
-          'Unlimited offers',
-          'Advanced analytics',
-          'Priority support',
-          'Featured listings',
-        ],
-      },
-      {
-        id: 'enterprise',
-        name: 'Enterprise',
-        price: 2499,
-        duration: 1,
-        durationUnit: 'month',
-        features: [
-          'Everything in Premium',
-          'Dedicated account manager',
-          'Custom integrations',
-          'API access',
-        ],
-      },
-    ];
-
+    const plans = await prisma.subscriptionPlan.findMany({
+      where: { isActive: true },
+      orderBy: [{ sortOrder: 'asc' }, { monthlyPrice: 'asc' }],
+    });
     res.status(200).json({
       success: true,
-      plans,
+      plans: plans.map((plan) => ({
+        id: plan.id,
+        name: plan.displayName || plan.name,
+        planType: plan.name,
+        price: plan.monthlyPrice,
+        duration: Math.max(1, Math.round((plan.durationDays || 30) / 30)),
+        durationUnit: 'month',
+        features: plan.features || [],
+        maxOffers: plan.maxOffers,
+        maxPhotosPerOffer: plan.maxPhotosPerOffer,
+        category: plan.category,
+      })),
     });
   } catch (err) {
     next(err);
   }
 }
 
-module.exports = {
-  getSubscription,
-  activateTrial,
-  createSubscription,
-  cancelSubscription,
-  getPlans,
-};
+module.exports = { getSubscription, activateTrial, createSubscription, cancelSubscription, getPlans };

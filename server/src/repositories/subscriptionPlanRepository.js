@@ -1,0 +1,32 @@
+const { prisma } = require('../db/prisma');
+const { resolvePgId } = require('./idResolver');
+
+async function createPlan(payload) {
+  return prisma.subscriptionPlan.create({
+    data: {
+      name: payload.name,
+      displayName: payload.displayName,
+      description: payload.description || '',
+      monthlyPrice: payload.monthlyPrice,
+      durationDays: payload.durationDays || 30,
+      category: payload.category,
+      features: payload.features || [],
+      maxOffers: payload.maxOffers !== undefined ? payload.maxOffers : -1,
+      maxPhotosPerOffer: payload.maxPhotosPerOffer || 5,
+      analyticsEnabled: !!payload.analyticsEnabled,
+      prioritySupport: !!payload.prioritySupport,
+      isActive: payload.isActive !== false,
+      sortOrder: payload.sortOrder || 0,
+    },
+  });
+}
+
+async function updatePlan(planId, data) {
+  const pgPlanId = await resolvePgId('subscription_plans', planId) || planId;
+  return prisma.subscriptionPlan.update({
+    where: { id: pgPlanId },
+    data,
+  });
+}
+
+module.exports = { createPlan, updatePlan };

@@ -1,4 +1,4 @@
-const AuditLog = require('../models/AuditLog');
+const auditLogRepository = require('../repositories/auditLogRepository');
 
 /**
  * Middleware to check if user has required role
@@ -50,7 +50,7 @@ function requireSuperAdmin(req, res, next) {
  */
 async function logAdminAction(adminId, adminRole, action, targetUserId, targetUserRole, details, ipAddress) {
   try {
-    await AuditLog.create({
+    await auditLogRepository.create({
       adminId,
       adminRole,
       action,

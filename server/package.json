@@ -6,9 +6,13 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
+    "seed:admin": "node scripts/create-super-admin.js",
     "create:superadmin": "node scripts/create-super-admin.js",
-    "test:superadmin": "node scripts/test-super-admin.js",
     "seed:plans": "node scripts/seed-subscription-plans.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate deploy",
+    "prisma:migrate:dev": "prisma migrate dev",
+    "otp:cleanup": "node scripts/cleanup-expired-otps.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -22,8 +26,9 @@
     "express": "^5.2.1",
     "express-rate-limit": "^8.2.1",
     "jsonwebtoken": "^9.0.3",
-    "mongoose": "^9.2.0",
     "multer": "^1.4.5-lts.1",
-    "nodemon": "^3.1.11"
+    "nodemon": "^3.1.11",
+    "@prisma/client": "^6.5.0",
+    "prisma": "^6.5.0"
   }
 }
