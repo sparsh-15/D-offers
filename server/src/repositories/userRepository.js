@@ -65,8 +65,10 @@ async function create(data) {
         data.maxCouponDiscountPercent !== undefined
           ? data.maxCouponDiscountPercent
           : 50,
-      approvalStatus:
-        data.approvalStatus || (data.role === 'shopkeeper' ? 'pending' : 'approved'),
+      // Default all users (including shopkeepers) to approved unless an explicit
+      // approvalStatus is provided. Shop activation is now driven by onboarding
+      // and subscription status instead of a separate manual approval step.
+      approvalStatus: data.approvalStatus || 'approved',
       permissions: data.permissions || [],
       isActive: data.isActive !== undefined ? data.isActive : true,
     },

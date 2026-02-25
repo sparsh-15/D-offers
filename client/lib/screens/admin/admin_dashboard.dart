@@ -471,12 +471,15 @@ class _UsersManagementTabState extends State<UsersManagementTab> {
 
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
-      case 'approved':
+      case 'subscribed':
+      case 'active':
         return AppColors.success;
-      case 'pending':
-        return AppColors.warning;
-      case 'rejected':
+      case 'inactive':
         return AppColors.error;
+      case 'setup_pending':
+      case 'pending':
+      case 'expired':
+        return AppColors.warning;
       default:
         return AppColors.textSecondary;
     }
@@ -735,17 +738,19 @@ class _UsersManagementTabState extends State<UsersManagementTab> {
                                                 ),
                                                 decoration: BoxDecoration(
                                                   color: _getStatusColor(
-                                                          user.approvalStatus)
+                                                          user.statusLabel)
                                                       .withOpacity(0.2),
                                                   borderRadius:
                                                       BorderRadius.circular(8),
                                                 ),
                                                 child: Text(
-                                                  user.approvalStatus
+                                                  (user.statusLabel.isEmpty
+                                                          ? user.approvalStatus
+                                                          : user.statusLabel)
                                                       .toUpperCase(),
                                                   style: TextStyle(
                                                     color: _getStatusColor(
-                                                        user.approvalStatus),
+                                                        user.statusLabel),
                                                     fontSize: 10,
                                                     fontWeight: FontWeight.bold,
                                                   ),

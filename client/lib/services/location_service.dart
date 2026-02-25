@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 
@@ -47,13 +48,23 @@ class LocationService {
             'Location permissions are permanently denied. Please enable them in settings.');
       }
 
-      // Get current position
-      Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 10),
-      );
-
-      return position;
+      // Get current position with a sane timeout, falling back to last known
+      try {
+        final position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high,
+          timeLimit: const Duration(seconds: 10),
+        );
+        return position;
+      } on TimeoutException {
+        // Try last known position before failing hard
+        final lastKnown = await Geolocator.getLastKnownPosition();
+        if (lastKnown != null) {
+          return lastKnown;
+        }
+        throw Exception(
+          'Location request timed out. Please check GPS / network and try again.',
+        );
+      }
     } catch (e) {
       print('[LOCATION] Error getting current position: $e');
       rethrow;

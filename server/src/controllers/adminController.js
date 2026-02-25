@@ -29,7 +29,7 @@ async function listUsers(req, res, next) {
     const skipNum = Math.max(parseInt(skip, 10) || 0, 0);
     const where = role ? { role } : {};
 
-    const users = await prisma.user.findMany({
+    const usersRaw = await prisma.user.findMany({
       where,
       select: {
         id: true,
@@ -39,12 +39,62 @@ async function listUsers(req, res, next) {
         pincode: true,
         city: true,
         state: true,
+        address: true,
         approvalStatus: true,
+        isActive: true,
         createdAt: true,
+        onboardingStatus: {
+          select: {
+            businessProfileCompleted: true,
+            subscriptionActivated: true,
+            onboardingCompleted: true,
+          },
+        },
+        subscriptions: {
+          where: { status: 'active' },
+          select: { id: true, status: true },
+          take: 1,
+          orderBy: { createdAt: 'desc' },
+        },
       },
       orderBy: { createdAt: 'desc' },
       skip: skipNum,
       take: limitNum,
+    });
+
+    const users = usersRaw.map((user) => {
+      const hasActiveSubscription = (user.subscriptions || []).length > 0;
+      const onboarding = user.onboardingStatus;
+
+      let statusLabel = 'active';
+
+      if (user.role === 'shopkeeper') {
+        if (hasActiveSubscription || onboarding?.subscriptionActivated) {
+          statusLabel = 'subscribed';
+        } else if (
+          onboarding?.businessProfileCompleted ||
+          onboarding?.onboardingCompleted
+        ) {
+          statusLabel = 'active';
+        } else {
+          statusLabel = 'setup_pending';
+        }
+      } else {
+        statusLabel = user.isActive ? 'active' : 'inactive';
+      }
+
+      return {
+        id: user.id,
+        name: user.name,
+        phone: user.phone,
+        role: user.role,
+        pincode: user.pincode,
+        city: user.city,
+        state: user.state,
+        approvalStatus: user.approvalStatus,
+        createdAt: user.createdAt,
+        statusLabel,
+      };
     });
 
     res.status(200).json({ success: true, users });

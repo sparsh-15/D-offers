@@ -43,7 +43,8 @@ class UserModel {
   final String city;
   final String state;
   final String address;
-  final String approvalStatus; // pending | approved | rejected
+  final String approvalStatus; // legacy: pending | approved | rejected
+  final String statusLabel; // derived: subscribed | active | inactive | setup_pending
 
   const UserModel({
     required this.id,
@@ -55,6 +56,7 @@ class UserModel {
     required this.state,
     required this.address,
     required this.approvalStatus,
+    required this.statusLabel,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -68,6 +70,10 @@ class UserModel {
       state: json['state']?.toString() ?? '',
       address: json['address']?.toString() ?? '',
       approvalStatus: json['approvalStatus']?.toString() ?? '',
+      statusLabel: (json['statusLabel']?.toString() ??
+              json['approvalStatus']?.toString() ??
+              '')
+          .toLowerCase(),
     );
   }
 

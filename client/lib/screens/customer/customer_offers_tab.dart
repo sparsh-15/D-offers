@@ -47,6 +47,7 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
   bool _useCurrentLocation = false;
   bool _isLoadingLocation = false;
   String? _currentLocationText;
+  bool _locationFromCurrent = false;
   final _cityController = TextEditingController();
   final _pincodeController = TextEditingController();
   final _searchController = TextEditingController();
@@ -115,6 +116,7 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
         ].join(', ');
         _useCurrentLocation = true;
         _isLoadingLocation = false;
+        _locationFromCurrent = true;
       });
 
       // Update controllers
@@ -154,7 +156,16 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
       setState(() {
         _useCurrentLocation = false;
         _currentLocationText = null;
+        if (_locationFromCurrent) {
+          _stateFilter = null;
+          _cityFilter = null;
+          _pincodeFilter = null;
+          _cityController.clear();
+          _pincodeController.clear();
+          _locationFromCurrent = false;
+        }
       });
+      _refresh();
     } else {
       // Get current location
       _getCurrentLocation();
@@ -302,10 +313,11 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
   }
 
   bool get _hasActiveFilters {
+    final hasLocationFilters =
+        _stateFilter != null || _cityFilter != null || _pincodeFilter != null;
+
     return _searchQuery.isNotEmpty ||
-        _stateFilter != null ||
-        _cityFilter != null ||
-        _pincodeFilter != null ||
+        (!_useCurrentLocation && hasLocationFilters) ||
         _categoryFilter != _allKey ||
         _genderFilter != _allKey ||
         _ageGroupFilter != _allKey ||
@@ -650,7 +662,9 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
                 });
               },
             ),
-          if (_stateFilter != null && _stateFilter!.isNotEmpty)
+          if (!_useCurrentLocation &&
+              _stateFilter != null &&
+              _stateFilter!.isNotEmpty)
             Chip(
               avatar: const Icon(Icons.map_rounded, size: 16),
               label: Text('State: $_stateFilter'),
@@ -661,7 +675,9 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
                 });
               },
             ),
-          if (_cityFilter != null && _cityFilter!.isNotEmpty)
+          if (!_useCurrentLocation &&
+              _cityFilter != null &&
+              _cityFilter!.isNotEmpty)
             Chip(
               avatar: const Icon(Icons.location_city_rounded, size: 16),
               label: Text('City: $_cityFilter'),
@@ -673,7 +689,9 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
                 });
               },
             ),
-          if (_pincodeFilter != null && _pincodeFilter!.isNotEmpty)
+          if (!_useCurrentLocation &&
+              _pincodeFilter != null &&
+              _pincodeFilter!.isNotEmpty)
             Chip(
               avatar: const Icon(Icons.pin_drop_rounded, size: 16),
               label: Text('Pincode: $_pincodeFilter'),

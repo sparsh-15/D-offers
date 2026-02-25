@@ -1,6 +1,7 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const offerTools = require('./tools/offerTools');
 const couponTools = require('./tools/couponTools');
+const shopTools = require('./tools/shopTools');
 
 // Keep this list in sync with the intents described in the prompt.
 const INTENTS = {
@@ -9,6 +10,7 @@ const INTENTS = {
   BEST_COUPONS_FOR_PLAN: 'best_coupons_for_plan',
   LIKE_OFFER: 'like_offer',
   UNLIKE_OFFER: 'unlike_offer',
+  SEARCH_SHOPS_NEARBY: 'search_shops_nearby',
 };
 
 let classifierModel;
@@ -50,6 +52,7 @@ async function classifyIntent(message) {
     `- ${INTENTS.BEST_COUPONS_FOR_PLAN}: user asks for best coupon for a subscription or plan.`,
     `- ${INTENTS.LIKE_OFFER}: user wants to like/favorite a specific offer.`,
     `- ${INTENTS.UNLIKE_OFFER}: user wants to remove like from a specific offer.`,
+    `- ${INTENTS.SEARCH_SHOPS_NEARBY}: user wants to find shops near them (by pincode/city/state) that are on D'Offer.`,
     '',
     'Schema (JSON):',
     '{',
@@ -63,9 +66,11 @@ async function classifyIntent(message) {
     '- Always choose the most specific intent.',
     '- If location is mentioned (pincode, city, state), put it in params.',
     '- For SEARCH_OFFERS, useful params: query, category, pincode, city, state, minDiscount.',
+    '- For SEARCH_SHOPS_NEARBY, useful params: pincode, city, state, limit.',
     '- For LIST_USER_COUPONS, params can be empty.',
     '- For BEST_COUPONS_FOR_PLAN, params: planId (if mentioned), planName (if textual), limit.',
     '- For LIKE_OFFER / UNLIKE_OFFER, include offerId if it is clearly specified in the message.',
+    '- If the user clearly asks for shops or stores near them, prefer SEARCH_SHOPS_NEARBY.',
     '- If you are unsure between SEARCH_OFFERS and LIST_USER_COUPONS, prefer SEARCH_OFFERS.',
     '',
     'User message:',
@@ -96,6 +101,22 @@ async function classifyIntent(message) {
 
 async function handleIntent({ user, intent, params }) {
   switch (intent) {
+    case INTENTS.SEARCH_SHOPS_NEARBY: {
+      const toolResult = await shopTools.searchShopsNearby({ params });
+      const actions = [
+        {
+          label: 'Browse nearby offers',
+          type: 'open_offers_tab',
+        },
+      ];
+      return {
+        intent,
+        params,
+        toolResult,
+        actions,
+        items: { shops: toolResult.shops || [] },
+      };
+    }
     case INTENTS.SEARCH_OFFERS: {
       const toolResult = await offerTools.searchOffers({ user, params });
       const actions =

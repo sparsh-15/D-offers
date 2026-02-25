@@ -15,16 +15,25 @@ async function listOffers(req, res, next) {
     const where = {};
     if (status) where.status = status;
 
-    const userFilter = { role: 'shopkeeper', approvalStatus: 'approved' };
+    const userFilter = {
+      role: 'shopkeeper',
+      isActive: true,
+      approvalStatus: { not: 'rejected' },
+      onboardingStatus: {
+        businessProfileCompleted: true,
+      },
+    };
     if (ci(pincode)) userFilter.pincode = ci(pincode);
-    if (ci(city)) userFilter.city = { equals: ci(city), mode: 'insensitive' };
-    if (ci(state)) userFilter.state = { equals: ci(state), mode: 'insensitive' };
+    if (ci(city))
+      userFilter.city = { equals: ci(city), mode: 'insensitive' };
+    if (ci(state))
+      userFilter.state = { equals: ci(state), mode: 'insensitive' };
 
-    const approvedShopkeepers = await prisma.user.findMany({
+    const visibleShopkeepers = await prisma.user.findMany({
       where: userFilter,
       select: { id: true },
     });
-    const shopkeeperIds = approvedShopkeepers.map((u) => u.id);
+    const shopkeeperIds = visibleShopkeepers.map((u) => u.id);
     if (!shopkeeperIds.length) return res.status(200).json({ success: true, offers: [] });
     where.shopkeeperId = { in: shopkeeperIds };
 

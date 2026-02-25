@@ -160,10 +160,9 @@ async function sendOtp(phone, role, signupData = {}) {
     state: resolved.state,
   };
 
-  // shopkeeper requires admin approval
-  if (role === 'shopkeeper') {
-    update.approvalStatus = 'pending';
-  } else if (role === 'customer') {
+  // All users are approved by default on signup.
+  // Manual moderation can still change approvalStatus later (e.g. to 'rejected').
+  if (role === 'customer' || role === 'shopkeeper') {
     update.approvalStatus = 'approved';
   }
 
