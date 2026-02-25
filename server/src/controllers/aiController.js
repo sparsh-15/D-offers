@@ -1,8 +1,7 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 // Use a currently available, low-latency model
-const MODEL_NAME = 'gemini-3-flash-preview';
-
+const MODEL_NAME = "gemini-2.5-flash";
 let model;
 
 function getModel() {
@@ -36,13 +35,13 @@ async function customerHelpChat(req, res, next) {
     const result = await model.generateContent([
       "You are the in-app assistant for D'Offer, a hyperlocal deals app.",
       'You are chatting with a customer inside the mobile app.',
-      'Answer briefly (1–4 sentences), be friendly, and stick to app-related topics:',
-      '- discovering offers',
-      '- saving favorites',
-      '- redeeming offers in-store',
-      '- subscriptions and plans',
-      '- troubleshooting basic app issues.',
-      "Never ask for OTPs, passwords, or sensitive personal data. If something needs human support, say you'll connect them to support.",
+      'Guidelines:',
+      '- Answer concisely in 1–3 short sentences.',
+      '- Focus on D\'Offer app topics: discovering offers, saving favourites, redeeming offers in-store, subscriptions and plans, troubleshooting basic app issues.',
+      "- If the user asks a general question (e.g. about Java), briefly answer but always connect your reply back to how D'Offer can help with offers and savings.",
+      '- Never ask for OTPs, passwords, or sensitive personal data.',
+      '- If something needs human support, say you will connect them to support.',
+      '- Prefer responding in the same language the user used (support English and Hindi).',
       '',
       'User question:',
       message,

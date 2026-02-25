@@ -183,8 +183,12 @@ class _CustomerChatBotScreenState extends State<CustomerChatBotScreen> {
                 controller: _scrollController,
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                itemCount: _messages.length,
+                itemCount: _messages.length + (_isSending ? 1 : 0),
                 itemBuilder: (context, index) {
+                  final isTypingRow = _isSending && index == _messages.length;
+                  if (isTypingRow) {
+                    return _TypingBubble(isDark: isDark);
+                  }
                   final msg = _messages[index];
                   return _ChatBubble(
                     text: msg.text,
@@ -273,6 +277,67 @@ class ChatMessage {
   final bool isUser;
 
   ChatMessage({required this.text, required this.isUser});
+}
+
+class _TypingBubble extends StatelessWidget {
+  final bool isDark;
+
+  const _TypingBubble({required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: ThemeHelper.getSurfaceColor(context),
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(18),
+            topRight: Radius.circular(18),
+            bottomLeft: Radius.circular(4),
+            bottomRight: Radius.circular(18),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.black.withOpacity(0.05),
+              blurRadius: 4,
+              offset: const Offset(0, 1),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _Dot(isDark: isDark),
+            const SizedBox(width: 4),
+            _Dot(isDark: isDark),
+            const SizedBox(width: 4),
+            _Dot(isDark: isDark),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Dot extends StatelessWidget {
+  final bool isDark;
+
+  const _Dot({required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 6,
+      height: 6,
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.grey400 : AppColors.grey600,
+        shape: BoxShape.circle,
+      ),
+    );
+  }
 }
 
 class _ChatBubble extends StatelessWidget {
