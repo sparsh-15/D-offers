@@ -72,14 +72,17 @@ class _CustomerChatBotScreenState extends State<CustomerChatBotScreen> {
 
   void _addUserMessage(String text) {
     setState(() {
-      _messages.add(ChatMessage(text: text, isUser: true));
+      _messages.add(ChatMessage(text: text, isUser: true, actions: const []));
     });
     _scrollToEnd();
   }
 
-  void _addBotMessage(String text) {
+  void _addBotMessage(
+    String text, {
+    List<ChatAssistantAction> actions = const [],
+  }) {
     setState(() {
-      _messages.add(ChatMessage(text: text, isUser: false));
+      _messages.add(ChatMessage(text: text, isUser: false, actions: actions));
     });
     _scrollToEnd();
   }
@@ -121,10 +124,10 @@ class _CustomerChatBotScreenState extends State<CustomerChatBotScreen> {
     });
 
     try {
-      final reply =
+      final result =
           await ChatAssistantService.instance.sendMessage(trimmed);
       if (!mounted) return;
-      _addBotMessage(reply);
+      _addBotMessage(result.reply, actions: result.actions);
     } catch (e) {
       if (!mounted) return;
       // Fallback to local dummy response on error
@@ -144,6 +147,24 @@ class _CustomerChatBotScreenState extends State<CustomerChatBotScreen> {
 
   void _onSuggestedTap(String question) {
     _onSend(question);
+  }
+
+  void _handleActionTap(ChatAssistantAction action) {
+    switch (action.type) {
+      case 'open_offer':
+        // In this first version we just take the user back to the main dashboard,
+        // where they can browse offers. Deep linking to a specific offer by ID
+        // can be added once the routing is centralized.
+        Navigator.of(context).popUntil((route) => route.isFirst);
+        break;
+      case 'open_coupons_tab':
+      case 'open_offers_tab':
+      case 'open_favorites':
+        Navigator.of(context).popUntil((route) => route.isFirst);
+        break;
+      default:
+        break;
+    }
   }
 
   @override
@@ -190,10 +211,35 @@ class _CustomerChatBotScreenState extends State<CustomerChatBotScreen> {
                     return _TypingBubble(isDark: isDark);
                   }
                   final msg = _messages[index];
-                  return _ChatBubble(
-                    text: msg.text,
-                    isUser: msg.isUser,
-                    isDark: isDark,
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _ChatBubble(
+                        text: msg.text,
+                        isUser: msg.isUser,
+                        isDark: isDark,
+                      ),
+                      if (!msg.isUser && msg.actions.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(
+                            left: 8,
+                            right: 8,
+                            bottom: 8,
+                          ),
+                          child: Wrap(
+                            spacing: 8,
+                            runSpacing: 4,
+                            children: msg.actions
+                                .map(
+                                  (a) => ActionChip(
+                                    label: Text(a.label),
+                                    onPressed: () => _handleActionTap(a),
+                                  ),
+                                )
+                                .toList(),
+                          ),
+                        ),
+                    ],
                   );
                 },
               ),
@@ -275,8 +321,13 @@ class _CustomerChatBotScreenState extends State<CustomerChatBotScreen> {
 class ChatMessage {
   final String text;
   final bool isUser;
+  final List<ChatAssistantAction> actions;
 
-  ChatMessage({required this.text, required this.isUser});
+  ChatMessage({
+    required this.text,
+    required this.isUser,
+    required this.actions,
+  });
 }
 
 class _TypingBubble extends StatelessWidget {

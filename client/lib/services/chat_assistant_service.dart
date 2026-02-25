@@ -5,12 +5,46 @@ import 'package:http/http.dart' as http;
 import 'api_config.dart';
 import 'auth_store.dart';
 
+class ChatAssistantAction {
+  final String label;
+  final String type;
+  final Map<String, dynamic> payload;
+
+  ChatAssistantAction({
+    required this.label,
+    required this.type,
+    required this.payload,
+  });
+
+  factory ChatAssistantAction.fromJson(Map<String, dynamic> json) {
+    return ChatAssistantAction(
+      label: json['label']?.toString() ?? '',
+      type: json['type']?.toString() ?? '',
+      payload: Map<String, dynamic>.from(json)..removeWhere(
+          (key, _) => key == 'label' || key == 'type',
+        ),
+    );
+  }
+}
+
+class ChatAssistantResult {
+  final String reply;
+  final List<ChatAssistantAction> actions;
+  final Map<String, dynamic> items;
+
+  ChatAssistantResult({
+    required this.reply,
+    required this.actions,
+    required this.items,
+  });
+}
+
 class ChatAssistantService {
   ChatAssistantService._();
 
   static final ChatAssistantService instance = ChatAssistantService._();
 
-  Future<String> sendMessage(String message) async {
+  Future<ChatAssistantResult> sendMessage(String message) async {
     final token = AuthStore.token;
     if (token == null) {
       throw Exception('Not authenticated');
@@ -34,7 +68,26 @@ class ChatAssistantService {
       if (reply == null || reply.trim().isEmpty) {
         throw Exception('Empty reply from assistant');
       }
-      return reply;
+
+      final rawActions = data?['actions'];
+      final actions = <ChatAssistantAction>[];
+      if (rawActions is List) {
+        for (final a in rawActions) {
+          if (a is Map<String, dynamic>) {
+            actions.add(ChatAssistantAction.fromJson(a));
+          }
+        }
+      }
+
+      final items = (data?['items'] is Map<String, dynamic>)
+          ? Map<String, dynamic>.from(data!['items'] as Map)
+          : <String, dynamic>{};
+
+      return ChatAssistantResult(
+        reply: reply,
+        actions: actions,
+        items: items,
+      );
     }
 
     Map<String, dynamic>? errorBody;
