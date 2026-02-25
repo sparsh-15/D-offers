@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/theme_helper.dart';
+import '../../core/utils/dialog_helper.dart';
+import '../../services/chat_assistant_service.dart';
 
 /// Simple chat screen with dummy Q&A. Opened from customer dashboard FAB.
 class CustomerChatBotScreen extends StatefulWidget {
@@ -14,6 +16,7 @@ class _CustomerChatBotScreenState extends State<CustomerChatBotScreen> {
   final List<ChatMessage> _messages = [];
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  bool _isSending = false;
 
   /// Dummy Q&A: keyword(s) in query (lowercase) -> response.
   static final Map<String, String> _dummyQna = {
@@ -106,18 +109,37 @@ class _CustomerChatBotScreenState extends State<CustomerChatBotScreen> {
     return 'I\'m not sure about that. Try asking: "How do I redeem an offer?" or "Where are my favorites?" You can also use the suggested questions below.';
   }
 
-  void _onSend(String text) {
+  Future<void> _onSend(String text) async {
     final trimmed = text.trim();
-    if (trimmed.isEmpty) return;
+    if (trimmed.isEmpty || _isSending) return;
 
     _controller.clear();
     _addUserMessage(trimmed);
 
-    // Simulate short delay before bot reply
-    Future.delayed(const Duration(milliseconds: 400), () {
-      if (!mounted) return;
-      _addBotMessage(_getDummyResponse(trimmed));
+    setState(() {
+      _isSending = true;
     });
+
+    try {
+      final reply =
+          await ChatAssistantService.instance.sendMessage(trimmed);
+      if (!mounted) return;
+      _addBotMessage(reply);
+    } catch (e) {
+      if (!mounted) return;
+      // Fallback to local dummy response on error
+      _addBotMessage(_getDummyResponse(trimmed));
+      DialogHelper.showErrorSnackBar(
+        context,
+        'Assistant is temporarily unavailable. Showing basic help instead.',
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSending = false;
+        });
+      }
+    }
   }
 
   void _onSuggestedTap(String question) {
@@ -222,10 +244,11 @@ class _CustomerChatBotScreenState extends State<CustomerChatBotScreen> {
                     ),
                     const SizedBox(width: 8),
                     Material(
-                      color: AppColors.primary,
+                      color:
+                          _isSending ? AppColors.primary.withOpacity(0.5) : AppColors.primary,
                       borderRadius: BorderRadius.circular(24),
                       child: InkWell(
-                        onTap: () => _onSend(_controller.text),
+                        onTap: _isSending ? null : () => _onSend(_controller.text),
                         borderRadius: BorderRadius.circular(24),
                         child: const Padding(
                           padding: EdgeInsets.all(12),
