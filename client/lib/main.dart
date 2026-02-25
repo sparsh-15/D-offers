@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'core/theme/app_theme.dart';
 import 'core/constants/app_strings.dart';
 import 'core/constants/app_colors.dart';
@@ -7,6 +8,17 @@ import 'screens/splash/splash_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+
+  debugPrint = (String? message, {int? wrapWidth}) {
+    if (message != null && message.startsWith('animate:')) {
+      return;
+    }
+    if (wrapWidth != null) {
+      debugPrintSynchronously(message, wrapWidth: wrapWidth);
+    } else {
+      debugPrintSynchronously(message);
+    }
+  };
 
   // Set system UI overlay style
   SystemChrome.setSystemUIOverlayStyle(

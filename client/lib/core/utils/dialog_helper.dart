@@ -84,10 +84,7 @@ class DialogHelper {
           ],
         ),
         backgroundColor: AppColors.success,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
+        behavior: SnackBarBehavior.fixed,
         duration: const Duration(seconds: 2),
       ),
     );
@@ -104,10 +101,7 @@ class DialogHelper {
           ],
         ),
         backgroundColor: AppColors.error,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
+        behavior: SnackBarBehavior.fixed,
         duration: const Duration(seconds: 3),
       ),
     );
@@ -124,10 +118,7 @@ class DialogHelper {
           ],
         ),
         backgroundColor: AppColors.info,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
+        behavior: SnackBarBehavior.fixed,
         duration: const Duration(seconds: 2),
       ),
     );

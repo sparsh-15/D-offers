@@ -242,25 +242,7 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
                             },
                           ),
                         ),
-                        FadeInUp(
-                          delay: const Duration(milliseconds: 100),
-                          child: _buildQuickAction(
-                            context,
-                            AppStrings.approveShopkeepers,
-                            'Review pending shopkeeper requests',
-                            Icons.approval_rounded,
-                            AppColors.accent,
-                            onTap: () {
-                              // Navigate to Approvals tab (index 2)
-                              final adminDashboardState =
-                                  context.findAncestorStateOfType<
-                                      _AdminDashboardState>();
-                              adminDashboardState?.setState(() {
-                                adminDashboardState._selectedIndex = 2;
-                              });
-                            },
-                          ),
-                        ),
+                        
                         FadeInUp(
                           delay: const Duration(milliseconds: 200),
                           child: _buildQuickAction(

@@ -51,7 +51,6 @@ class AppStrings {
 
   // Admin
   static const String manageUsers = "Manage Users";
-  static const String approveShopkeepers = "Approve Shopkeepers";
   static const String platformAnalytics = "Platform Analytics";
   static const String reports = "Reports";
 

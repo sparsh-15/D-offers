@@ -911,6 +911,16 @@ class _CouponsTabState extends State<CouponsTab> {
   DateTime? _startDate;
   DateTime? _endDate;
 
+  num _parseNum(dynamic value) {
+    if (value == null) return 0;
+    if (value is num) return value;
+    if (value is String) {
+      final parsed = num.tryParse(value);
+      if (parsed != null) return parsed;
+    }
+    return 0;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -940,10 +950,9 @@ class _CouponsTabState extends State<CouponsTab> {
         final pagination = result['pagination'] as Map<String, dynamic>?;
         _totalPages = pagination?['pages'] as int? ?? 1;
         // Calculate total discount from coupons
-        _totalDiscounts = _coupons.fold<num>(
-          0,
-          (sum, coupon) => sum + ((coupon['discountValue'] as num?) ?? 0),
-        );
+        _totalDiscounts = _coupons.fold<num>(0, (sum, coupon) {
+          return sum + _parseNum(coupon['discountValue']);
+        });
         _loading = false;
       });
     } catch (e) {
@@ -1163,16 +1172,18 @@ class _CouponsTabState extends State<CouponsTab> {
   Widget _buildCouponCard(Map<String, dynamic> coupon) {
     final code = coupon['code'] as String? ?? 'N/A';
     final discountType = coupon['discountType'] as String? ?? 'percentage';
-    final discountValue = coupon['discountValue'] as num? ?? 0;
+    final discountValue = _parseNum(coupon['discountValue']);
     final isActive = coupon['isActive'] == true;
     final currentUses = coupon['currentUses'] as int? ?? 0;
     final maxUses = coupon['maxUses'] as int?;
     final expiryDate = coupon['expiryDate'] as String?;
 
-    final remainingIncentivePercent =
-        (coupon['remainingIncentivePercent'] as num?)?.toInt();
-    final agentMaxDiscountPercent =
-        (coupon['agentMaxDiscountPercent'] as num?)?.toInt();
+    final remainingIncentivePercent = coupon['remainingIncentivePercent'] == null
+        ? null
+        : _parseNum(coupon['remainingIncentivePercent']).toInt();
+    final agentMaxDiscountPercent = coupon['agentMaxDiscountPercent'] == null
+        ? null
+        : _parseNum(coupon['agentMaxDiscountPercent']).toInt();
 
     // Get agent info
     final agentData = coupon['agent'] ?? coupon['agentId'];
