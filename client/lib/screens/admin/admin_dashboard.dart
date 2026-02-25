@@ -21,6 +21,7 @@ import 'subscription_governance_screen.dart';
 import 'agent_coupon_governance_screen.dart';
 import 'platform_analytics_screen.dart';
 import 'reports_screen.dart';
+import 'user_details_screen.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -890,8 +891,25 @@ class _UsersManagementTabState extends State<UsersManagementTab> {
                                             ),
                                           ),
                                       ],
-                                      onSelected: (value) {
-                                        // TODO: Handle actions
+                                      onSelected: (value) async {
+                                        switch (value) {
+                                          case 'view':
+                                            await Navigator.of(context).push(
+                                              MaterialPageRoute(
+                                                builder: (_) =>
+                                                    AdminUserDetailsScreen(
+                                                  user: user,
+                                                ),
+                                              ),
+                                            );
+                                            break;
+                                          case 'suspend':
+                                            // Suspend / delete actions can be wired later
+                                            break;
+                                          case 'delete':
+                                            // Delete action can be wired later
+                                            break;
+                                        }
                                       },
                                     ),
                                   ],

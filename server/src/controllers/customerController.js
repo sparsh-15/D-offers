@@ -19,9 +19,6 @@ async function listOffers(req, res, next) {
       role: 'shopkeeper',
       isActive: true,
       approvalStatus: { not: 'rejected' },
-      onboardingStatus: {
-        businessProfileCompleted: true,
-      },
     };
     if (ci(pincode)) userFilter.pincode = ci(pincode);
     if (ci(city))
