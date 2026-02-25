@@ -89,31 +89,38 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
     });
   }
 
-  Future<List<OfferModel>> _fetchOffers() {
+  Future<List<OfferModel>> _fetchOffers() async {
+    // 1) Prefer location-based offers
     if (_useCurrentLocation && _currentPincode != null) {
-      // Use detected current location
-      return AuthService.instance.getCustomerOffers(
+      final offers = await AuthService.instance.getCustomerOffers(
         pincode: _currentPincode,
         city: _currentCity,
         state: _currentState,
       );
-    }
-
-    // Use profile location
-    final user = AuthStore.currentUser;
-    if (user == null) {
+      if (offers.isNotEmpty) return offers;
+      // Fallback: show global offers if nothing nearby
       return AuthService.instance.getCustomerOffers();
     }
 
-    final pincode = user.pincode.trim();
-    final city = user.city.trim();
-    final state = user.state.trim();
+    // 2) Use profile location when available
+    final user = AuthStore.currentUser;
+    if (user != null) {
+      final pincode = user.pincode.trim();
+      final city = user.city.trim();
+      final state = user.state.trim();
 
-    return AuthService.instance.getCustomerOffers(
-      pincode: pincode.isEmpty ? null : pincode,
-      city: city.isEmpty ? null : city,
-      state: state.isEmpty ? null : state,
-    );
+      if (pincode.isNotEmpty || city.isNotEmpty || state.isNotEmpty) {
+        final offers = await AuthService.instance.getCustomerOffers(
+          pincode: pincode.isEmpty ? null : pincode,
+          city: city.isEmpty ? null : city,
+          state: state.isEmpty ? null : state,
+        );
+        if (offers.isNotEmpty) return offers;
+      }
+    }
+
+    // 3) Final fallback: fetch all visible offers
+    return AuthService.instance.getCustomerOffers();
   }
 
   Future<void> _getCurrentLocation() async {
@@ -760,7 +767,7 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                           return Column(
                             children: [
                               SizedBox(
-                                height: 240,
+                                height: 280,
                                 child: ListView.builder(
                                   scrollDirection: Axis.horizontal,
                                   itemCount: featuredOffers.length,

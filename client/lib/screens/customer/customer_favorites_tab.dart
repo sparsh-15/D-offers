@@ -27,6 +27,10 @@ class _CustomerFavoritesTabState extends State<CustomerFavoritesTab> {
     _favoritesFuture = AuthService.instance.getLikedOffers();
   }
 
+  /// Allow parent widgets (e.g. dashboard) to force a refresh
+  /// when the Favorites tab becomes visible.
+  Future<void> reloadFavorites() => _refresh();
+
   Future<void> _refresh() async {
     setState(() {
       _favoritesFuture = AuthService.instance.getLikedOffers();
