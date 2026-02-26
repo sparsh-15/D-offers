@@ -6,10 +6,10 @@ import 'app_palette.dart';
 import 'app_text_styles.dart';
 
 class AppTheme {
-  // Default app theme (Teal Mint light)
-  static ThemeData get appTheme => lightTheme;
+  // D'Offers is dark-only
+  static ThemeData get appTheme => darkTheme;
   static ThemeData get darkTheme => _buildTheme(AppPalette.dark());
-  static ThemeData get lightTheme => _buildTheme(AppPalette.light());
+  static ThemeData get lightTheme => _buildTheme(AppPalette.dark());
 
   static ThemeData _buildTheme(AppPalette palette) {
     return ThemeData(
@@ -42,6 +42,7 @@ class AppTheme {
       ),
       navigationBarTheme: AppComponentThemes.navigationBarTheme(palette),
       dividerTheme: AppComponentThemes.dividerTheme(palette),
+      tabBarTheme: AppComponentThemes.tabBarTheme(),
     );
   }
 }

@@ -36,13 +36,8 @@ class _SubscriptionGovernanceScreenState
     return Scaffold(
       appBar: AppBar(
         title: const Text('Subscription Governance'),
-        backgroundColor: AppColors.primary,
-        foregroundColor: AppColors.white,
         bottom: TabBar(
           controller: _tabController,
-          labelColor: AppColors.white,
-          unselectedLabelColor: AppColors.white70,
-          indicatorColor: AppColors.white,
           tabs: const [
             Tab(text: 'Plans', icon: Icon(Icons.list_alt_rounded)),
             Tab(text: 'Subscriptions', icon: Icon(Icons.subscriptions_rounded)),
@@ -673,27 +668,29 @@ class _SubscriptionsManagementTabState
                 children: [
                   Expanded(
                     child: GradientCard(
-                      gradient: AppColors.primaryGradient,
+                      gradient: const LinearGradient(
+                        colors: [AppColors.cardBackground, AppColors.highlight],
+                      ),
                       padding: const EdgeInsets.all(16),
                       child: Column(
                         children: [
                           const Icon(
                             Icons.check_circle_rounded,
-                            color: AppColors.white,
+                            color: AppColors.textSecondary,
                             size: 32,
                           ),
                           const SizedBox(height: 8),
                           Text(
                             '$activeCount',
                             style: const TextStyle(
-                              color: AppColors.white,
+                              color: AppColors.textPrimary,
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           const Text(
                             'Active',
-                            style: TextStyle(color: AppColors.white),
+                            style: TextStyle(color: AppColors.textSecondary),
                           ),
                         ],
                       ),
@@ -703,28 +700,28 @@ class _SubscriptionsManagementTabState
                   Expanded(
                     child: GradientCard(
                       gradient: const LinearGradient(
-                        colors: [AppColors.orange, AppColors.deepOrange],
+                        colors: [AppColors.cardBackground, AppColors.highlight],
                       ),
                       padding: const EdgeInsets.all(16),
                       child: Column(
                         children: [
                           const Icon(
                             Icons.cancel_rounded,
-                            color: AppColors.white,
+                            color: AppColors.textSecondary,
                             size: 32,
                           ),
                           const SizedBox(height: 8),
                           Text(
                             '$expiredCount',
                             style: const TextStyle(
-                              color: AppColors.white,
+                              color: AppColors.textPrimary,
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           const Text(
                             'Expired',
-                            style: TextStyle(color: AppColors.white),
+                            style: TextStyle(color: AppColors.textSecondary),
                           ),
                         ],
                       ),
@@ -988,16 +985,18 @@ class _SubscriptionAnalyticsTabState extends State<SubscriptionAnalyticsTab> {
             children: [
               Expanded(
                 child: GradientCard(
-                  gradient: AppColors.primaryGradient,
+                  gradient: const LinearGradient(
+                    colors: [AppColors.cardBackground, AppColors.highlight],
+                  ),
                   child: Column(
                     children: [
                       const Icon(Icons.currency_rupee_rounded,
-                          color: AppColors.white, size: 32),
+                          color: AppColors.textSecondary, size: 32),
                       const SizedBox(height: 8),
                       Text(
                         '₹${activeRevenue.toStringAsFixed(0)}',
                         style: const TextStyle(
-                          color: AppColors.white,
+                          color: AppColors.textPrimary,
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
                         ),
@@ -1013,16 +1012,18 @@ class _SubscriptionAnalyticsTabState extends State<SubscriptionAnalyticsTab> {
               const SizedBox(width: 12),
               Expanded(
                 child: GradientCard(
-                  gradient: AppColors.accentGradient,
+                  gradient: const LinearGradient(
+                    colors: [AppColors.cardBackground, AppColors.highlight],
+                  ),
                   child: Column(
                     children: [
                       const Icon(Icons.trending_up_rounded,
-                          color: AppColors.white, size: 32),
+                          color: AppColors.textSecondary, size: 32),
                       const SizedBox(height: 8),
                       Text(
                         '₹${mrr.toStringAsFixed(0)}',
                         style: const TextStyle(
-                          color: AppColors.white,
+                          color: AppColors.textPrimary,
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
                         ),

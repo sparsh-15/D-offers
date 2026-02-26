@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
-import '../../core/utils/theme_helper.dart';
+import '../../core/constants/app_design_tokens.dart';
 import '../../core/utils/dialog_helper.dart';
 import '../../services/chat_assistant_service.dart';
 
-/// Simple chat screen with dummy Q&A. Opened from customer dashboard FAB.
+/// AI chat assistant screen — premium dark design.
 class CustomerChatBotScreen extends StatefulWidget {
   const CustomerChatBotScreen({super.key});
 
@@ -13,78 +13,44 @@ class CustomerChatBotScreen extends StatefulWidget {
 }
 
 class _CustomerChatBotScreenState extends State<CustomerChatBotScreen> {
-  final List<ChatMessage> _messages = [];
-  final TextEditingController _controller = TextEditingController();
+  final List<_ChatMessage> _messages = [];
+  final TextEditingController _inputController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   bool _isSending = false;
-
-  /// Dummy Q&A: keyword(s) in query (lowercase) -> response.
-  static final Map<String, String> _dummyQna = {
-    'what is doffer':
-        'D\'Offer is a hyperlocal deals app. Discover offers from shops near you, save favorites, and get the best deals in your area.',
-    'what is this app':
-        'D\'Offer helps you discover amazing deals near you. Browse offers by location, like your favorites, and redeem them at the store.',
-    'how do i redeem':
-        'To redeem an offer, open the offer details and show it to the shopkeeper at the store. They will verify and apply the discount for you.',
-    'redeem offer':
-        'Show the offer to the shopkeeper when you visit the store. They\'ll confirm and give you the discount.',
-    'save offer':
-        'Tap the heart icon on any offer to save it. Saved offers appear in the Favorites tab for easy access.',
-    'favorites':
-        'Your liked offers are in the Favorites tab—tap the heart icon in the bottom navigation to view them.',
-    'where are my favorites':
-        'Go to the Favorites tab (heart icon) in the bottom bar to see all offers you\'ve liked.',
-    'how do i like':
-        'Tap the heart icon on an offer card to like it. Liked offers are saved in your Favorites tab.',
-    'filter':
-        'Use the filter icon on the Offers tab to filter by state, city, or pincode. You can also use the search bar to find specific offers.',
-    'search':
-        'On the Offers tab, use the search bar at the top to search by offer title or description. Use filters for location.',
-    'help':
-        'I can help with: redeeming offers, saving favorites, searching and filtering. Try asking "How do I redeem an offer?" or "Where are my favorites?"',
-    'hello':
-        'Hi! I\'m the D\'Offer assistant. Ask me about offers, favorites, or how to redeem deals.',
-    'hi':
-        'Hello! How can I help you today? You can ask about redeeming offers, saving favorites, or using the app.',
-  };
+  bool _askExpanded = false;
 
   static const List<String> _suggestedQuestions = [
-    'What is D\'Offer?',
-    'How do I redeem an offer?',
-    'Where are my favorites?',
-    'How do I save offers?',
+    "What deals are near me?",
+    "How do I redeem an offer?",
+    "Where are my saved offers?",
+    "What is D'Offers?",
   ];
+
+  static final Map<String, String> _localFallback = {
+    'hello': "Hi! I'm your D'Offers assistant. What can I help you with today?",
+    'hi': "Hello! Ask me about deals, favorites, or how to use the app.",
+    'redeem': 'Show the offer to the shopkeeper at their store — they\'ll verify and apply the discount.',
+    'favorites': 'Tap the heart icon on any offer to save it. Find saved offers in the Favorites tab.',
+    'how': 'Try: "What deals are near me?" or "How do I redeem an offer?"',
+  };
 
   @override
   void initState() {
     super.initState();
-    _addBotMessage(
-      'Hi! I\'m your D\'Offer assistant. Ask me anything about offers, favorites, or how to use the app.',
+    _messages.add(
+      _ChatMessage(
+        text: "Hi! I'm your D'Offers assistant. Ask me about deals near you, how to redeem offers, or anything else.",
+        isUser: false,
+        actions: const [],
+      ),
     );
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _inputController.dispose();
     _scrollController.dispose();
     super.dispose();
-  }
-
-  void _addUserMessage(String text) {
-    setState(() {
-      _messages.add(ChatMessage(text: text, isUser: true, actions: const []));
-    });
-    _scrollToEnd();
-  }
-
-  void _addBotMessage(
-    String text, {
-    List<ChatAssistantAction> actions = const [],
-  }) {
-    setState(() {
-      _messages.add(ChatMessage(text: text, isUser: false, actions: actions));
-    });
-    _scrollToEnd();
   }
 
   void _scrollToEnd() {
@@ -92,75 +58,68 @@ class _CustomerChatBotScreenState extends State<CustomerChatBotScreen> {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
           _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOut,
+          duration: AppTokens.durationNormal,
+          curve: AppTokens.curveDefault,
         );
       }
     });
   }
 
-  String _getDummyResponse(String query) {
-    final lower = query.trim().toLowerCase();
-    if (lower.isEmpty) return 'Please type a question.';
-
-    for (final entry in _dummyQna.entries) {
-      if (lower.contains(entry.key)) {
-        return entry.value;
-      }
+  String _localResponse(String query) {
+    final lower = query.toLowerCase();
+    for (final entry in _localFallback.entries) {
+      if (lower.contains(entry.key)) return entry.value;
     }
-
-    return 'I\'m not sure about that. Try asking: "How do I redeem an offer?" or "Where are my favorites?" You can also use the suggested questions below.';
+    return "I'm not sure about that. Try asking about deals near you or how to redeem an offer.";
   }
 
-  Future<void> _onSend(String text) async {
+  Future<void> _send(String text) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty || _isSending) return;
 
-    _controller.clear();
-    _addUserMessage(trimmed);
-
+    _inputController.clear();
     setState(() {
+      _messages.add(_ChatMessage(text: trimmed, isUser: true, actions: const []));
       _isSending = true;
     });
+    _scrollToEnd();
 
     try {
-      final result =
-          await ChatAssistantService.instance.sendMessage(trimmed);
+      final result = await ChatAssistantService.instance.sendMessage(trimmed);
       if (!mounted) return;
-      _addBotMessage(result.reply, actions: result.actions);
-    } catch (e) {
+      setState(() {
+        _messages.add(_ChatMessage(
+          text: result.reply,
+          isUser: false,
+          actions: result.actions,
+        ));
+        _isSending = false;
+      });
+    } catch (_) {
       if (!mounted) return;
-      // Fallback to local dummy response on error
-      _addBotMessage(_getDummyResponse(trimmed));
+      setState(() {
+        _messages.add(_ChatMessage(
+          text: _localResponse(trimmed),
+          isUser: false,
+          actions: const [],
+        ));
+        _isSending = false;
+      });
       DialogHelper.showErrorSnackBar(
         context,
-        'Assistant is temporarily unavailable. Showing basic help instead.',
+        'Assistant is temporarily unavailable.',
       );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isSending = false;
-        });
-      }
     }
+    _scrollToEnd();
   }
 
-  void _onSuggestedTap(String question) {
-    _onSend(question);
-  }
-
-  void _handleActionTap(ChatAssistantAction action) {
+  void _handleAction(ChatAssistantAction action) {
     switch (action.type) {
       case 'open_offer':
-        // In this first version we just take the user back to the main dashboard,
-        // where they can browse offers. Deep linking to a specific offer by ID
-        // can be added once the routing is centralized.
-        Navigator.of(context).popUntil((route) => route.isFirst);
-        break;
-      case 'open_coupons_tab':
       case 'open_offers_tab':
+      case 'open_coupons_tab':
       case 'open_favorites':
-        Navigator.of(context).popUntil((route) => route.isFirst);
+        Navigator.of(context).popUntil((r) => r.isFirst);
         break;
       default:
         break;
@@ -169,203 +128,290 @@ class _CustomerChatBotScreenState extends State<CustomerChatBotScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = ThemeHelper.isDarkMode(context);
+    final theme = Theme.of(context);
 
-    return Container(
-      decoration: BoxDecoration(
-        gradient: ThemeHelper.getBackgroundGradient(context),
-      ),
-      child: Scaffold(
-        backgroundColor: AppColors.transparent,
-        appBar: AppBar(
-          backgroundColor: AppColors.transparent,
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back_rounded),
-            onPressed: () => Navigator.of(context).pop(),
-          ),
-          title: Row(
-            children: [
-              CircleAvatar(
-                radius: 18,
-                backgroundColor: AppColors.primary.withOpacity(0.3),
-                child: const Icon(Icons.smart_toy_rounded,
-                    color: AppColors.primary, size: 22),
-              ),
-              const SizedBox(width: 10),
-              const Text('Help'),
-            ],
-          ),
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.background,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textSecondary),
+          onPressed: () => Navigator.of(context).pop(),
         ),
-        body: Column(
+        title: Row(
           children: [
-            Expanded(
-              child: ListView.builder(
-                controller: _scrollController,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                itemCount: _messages.length + (_isSending ? 1 : 0),
-                itemBuilder: (context, index) {
-                  final isTypingRow = _isSending && index == _messages.length;
-                  if (isTypingRow) {
-                    return _TypingBubble(isDark: isDark);
-                  }
-                  final msg = _messages[index];
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _ChatBubble(
-                        text: msg.text,
-                        isUser: msg.isUser,
-                        isDark: isDark,
-                      ),
-                      if (!msg.isUser && msg.actions.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(
-                            left: 8,
-                            right: 8,
-                            bottom: 8,
-                          ),
-                          child: Wrap(
-                            spacing: 8,
-                            runSpacing: 4,
-                            children: msg.actions
-                                .map(
-                                  (a) => ActionChip(
-                                    label: Text(a.label),
-                                    onPressed: () => _handleActionTap(a),
-                                  ),
-                                )
-                                .toList(),
-                          ),
-                        ),
-                    ],
-                  );
-                },
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: AppColors.accentDim.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.auto_awesome_rounded,
+                color: AppColors.accent,
+                size: 18,
               ),
             ),
-            if (_messages.length == 1)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: _suggestedQuestions.map((q) {
-                    return ActionChip(
-                      label: Text(q, style: const TextStyle(fontSize: 13)),
-                      onPressed: () => _onSuggestedTap(q),
-                      backgroundColor: ThemeHelper.getSurfaceColor(context),
-                    );
-                  }).toList(),
+            const SizedBox(width: AppTokens.spaceSM),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'AI Assistant',
+                  style: theme.textTheme.titleMedium,
                 ),
-              ),
-            Container(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-              decoration: BoxDecoration(
-                color: isDark
-                    ? AppColors.surface.withOpacity(0.5)
-                    : AppColors.lightSurface.withOpacity(0.9),
-              ),
-              child: SafeArea(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _controller,
-                        decoration: InputDecoration(
-                          hintText: 'Ask about offers, favorites...',
-                          filled: true,
-                          fillColor: isDark
-                              ? AppColors.cardBackground
-                              : AppColors.grey100,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(24),
-                            borderSide: BorderSide.none,
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 20, vertical: 12),
-                        ),
-                        maxLines: 3,
-                        minLines: 1,
-                        textInputAction: TextInputAction.send,
-                        onSubmitted: _onSend,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Material(
-                      color:
-                          _isSending ? AppColors.primary.withOpacity(0.5) : AppColors.primary,
-                      borderRadius: BorderRadius.circular(24),
-                      child: InkWell(
-                        onTap: _isSending ? null : () => _onSend(_controller.text),
-                        borderRadius: BorderRadius.circular(24),
-                        child: const Padding(
-                          padding: EdgeInsets.all(12),
-                          child: Icon(Icons.send_rounded,
-                              color: AppColors.white, size: 24),
-                        ),
-                      ),
-                    ),
-                  ],
+                Text(
+                  'D\'Offers',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppColors.textMuted,
+                    letterSpacing: 0.3,
+                    fontWeight: FontWeight.w400,
+                  ),
                 ),
-              ),
+              ],
             ),
           ],
         ),
+      ),
+      body: Column(
+        children: [
+          // ── Messages ────────────────────────────────────────────────────────
+          Expanded(
+            child: ListView.builder(
+              controller: _scrollController,
+              padding: const EdgeInsets.fromLTRB(
+                AppTokens.spaceMD, AppTokens.spaceSM,
+                AppTokens.spaceMD, AppTokens.spaceMD,
+              ),
+              itemCount: _messages.length + (_isSending ? 1 : 0),
+              itemBuilder: (ctx, i) {
+                if (_isSending && i == _messages.length) {
+                  return const _TypingIndicator();
+                }
+                final msg = _messages[i];
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _Bubble(
+                      text: msg.text,
+                      isUser: msg.isUser,
+                    ),
+                    if (!msg.isUser && msg.actions.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(
+                          left: AppTokens.spaceXS,
+                          bottom: AppTokens.spaceSM,
+                        ),
+                        child: Wrap(
+                          spacing: AppTokens.spaceSM,
+                          runSpacing: AppTokens.spaceXS,
+                          children: msg.actions
+                              .map(
+                                (a) => GestureDetector(
+                                  onTap: () => _handleAction(a),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: AppTokens.spaceMD,
+                                      vertical: AppTokens.spaceXS + 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.elevated,
+                                      borderRadius: BorderRadius.circular(AppTokens.radiusFull),
+                                      border: Border.all(
+                                        color: AppColors.borderMid,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      a.label,
+                                      style: theme.textTheme.bodySmall?.copyWith(
+                                        color: AppColors.accent,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
+          ),
+
+          // ── Suggested questions (expandable) ────────────────────────────────
+          _SuggestedSection(
+            expanded: _askExpanded,
+            questions: _suggestedQuestions,
+            onToggle: () => setState(() => _askExpanded = !_askExpanded),
+            onTap: (q) => _send(q),
+          ),
+
+          // ── Input bar ───────────────────────────────────────────────────────
+          Container(
+            color: AppColors.surface,
+            padding: EdgeInsets.fromLTRB(
+              AppTokens.spaceMD,
+              AppTokens.spaceSM,
+              AppTokens.spaceSM,
+              MediaQuery.of(context).padding.bottom + AppTokens.spaceSM,
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Expanded(
+                  child: Container(
+                    constraints: const BoxConstraints(maxHeight: 120),
+                    decoration: BoxDecoration(
+                      color: AppColors.elevated,
+                      borderRadius: BorderRadius.circular(AppTokens.radiusMD),
+                      border: Border.all(color: AppColors.borderSubtle),
+                    ),
+                    child: TextField(
+                      controller: _inputController,
+                      maxLines: null,
+                      minLines: 1,
+                      textInputAction: TextInputAction.send,
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        color: AppColors.textPrimary,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: 'Ask anything…',
+                        hintStyle: theme.textTheme.bodyLarge?.copyWith(
+                          color: AppColors.textMuted,
+                        ),
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: AppTokens.spaceMD,
+                          vertical: AppTokens.spaceSM + 2,
+                        ),
+                        filled: false,
+                      ),
+                      onSubmitted: _send,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AppTokens.spaceSM),
+                GestureDetector(
+                  onTap: _isSending
+                      ? null
+                      : () => _send(_inputController.text),
+                  child: AnimatedContainer(
+                    duration: AppTokens.durationFast,
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: _isSending
+                          ? AppColors.accentDim.withValues(alpha: 0.4)
+                          : AppColors.accent,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.arrow_upward_rounded,
+                      color: _isSending ? AppColors.textMuted : AppColors.black,
+                      size: 20,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class ChatMessage {
+// ── Sub-widgets ──────────────────────────────────────────────────────────────
+
+class _ChatMessage {
   final String text;
   final bool isUser;
   final List<ChatAssistantAction> actions;
 
-  ChatMessage({
+  const _ChatMessage({
     required this.text,
     required this.isUser,
     required this.actions,
   });
 }
 
-class _TypingBubble extends StatelessWidget {
-  final bool isDark;
+class _Bubble extends StatelessWidget {
+  final String text;
+  final bool isUser;
 
-  const _TypingBubble({required this.isDark});
+  const _Bubble({required this.text, required this.isUser});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Align(
+      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: AppTokens.spaceSM),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppTokens.spaceMD,
+          vertical: AppTokens.spaceSM + 2,
+        ),
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.of(context).size.width * 0.78,
+        ),
+        decoration: BoxDecoration(
+          color: isUser ? AppColors.accentDim : AppColors.cardBackground,
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(AppTokens.radiusMD),
+            topRight: const Radius.circular(AppTokens.radiusMD),
+            bottomLeft: Radius.circular(isUser ? AppTokens.radiusMD : 4),
+            bottomRight: Radius.circular(isUser ? 4 : AppTokens.radiusMD),
+          ),
+        ),
+        child: Text(
+          text,
+          style: theme.textTheme.bodyLarge?.copyWith(
+            color: isUser ? AppColors.white : AppColors.textPrimary,
+            height: 1.5,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TypingIndicator extends StatelessWidget {
+  const _TypingIndicator();
 
   @override
   Widget build(BuildContext context) {
     return Align(
       alignment: Alignment.centerLeft,
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        margin: const EdgeInsets.only(bottom: AppTokens.spaceSM),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppTokens.spaceMD,
+          vertical: AppTokens.spaceSM + 2,
+        ),
         decoration: BoxDecoration(
-          color: ThemeHelper.getSurfaceColor(context),
+          color: AppColors.cardBackground,
           borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(18),
-            topRight: Radius.circular(18),
+            topLeft: Radius.circular(AppTokens.radiusMD),
+            topRight: Radius.circular(AppTokens.radiusMD),
             bottomLeft: Radius.circular(4),
-            bottomRight: Radius.circular(18),
+            bottomRight: Radius.circular(AppTokens.radiusMD),
           ),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.black.withOpacity(0.05),
-              blurRadius: 4,
-              offset: const Offset(0, 1),
-            ),
-          ],
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _Dot(isDark: isDark),
+            _AnimatedDot(delay: Duration.zero),
             const SizedBox(width: 4),
-            _Dot(isDark: isDark),
+            _AnimatedDot(delay: const Duration(milliseconds: 160)),
             const SizedBox(width: 4),
-            _Dot(isDark: isDark),
+            _AnimatedDot(delay: const Duration(milliseconds: 320)),
           ],
         ),
       ),
@@ -373,72 +419,140 @@ class _TypingBubble extends StatelessWidget {
   }
 }
 
-class _Dot extends StatelessWidget {
-  final bool isDark;
+class _AnimatedDot extends StatefulWidget {
+  final Duration delay;
+  const _AnimatedDot({required this.delay});
 
-  const _Dot({required this.isDark});
+  @override
+  State<_AnimatedDot> createState() => _AnimatedDotState();
+}
+
+class _AnimatedDotState extends State<_AnimatedDot>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  late Animation<double> _anim;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
+    Future.delayed(widget.delay, () {
+      if (mounted) _ctrl.repeat(reverse: true);
+    });
+    _anim = Tween(begin: 0.4, end: 1.0).animate(
+      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 6,
-      height: 6,
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.grey400 : AppColors.grey600,
-        shape: BoxShape.circle,
+    return FadeTransition(
+      opacity: _anim,
+      child: Container(
+        width: 6,
+        height: 6,
+        decoration: const BoxDecoration(
+          color: AppColors.textMuted,
+          shape: BoxShape.circle,
+        ),
       ),
     );
   }
 }
 
-class _ChatBubble extends StatelessWidget {
-  final String text;
-  final bool isUser;
-  final bool isDark;
+class _SuggestedSection extends StatelessWidget {
+  final bool expanded;
+  final List<String> questions;
+  final VoidCallback onToggle;
+  final ValueChanged<String> onTap;
 
-  const _ChatBubble({
-    required this.text,
-    required this.isUser,
-    required this.isDark,
+  const _SuggestedSection({
+    required this.expanded,
+    required this.questions,
+    required this.onToggle,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Align(
-      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        constraints:
-            BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.8),
-        decoration: BoxDecoration(
-          color: isUser
-              ? AppColors.primary
-              : (ThemeHelper.getSurfaceColor(context)),
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(18),
-            topRight: const Radius.circular(18),
-            bottomLeft: Radius.circular(isUser ? 18 : 4),
-            bottomRight: Radius.circular(isUser ? 4 : 18),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.black.withOpacity(0.08),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
+    final theme = Theme.of(context);
+    return Column(
+      children: [
+        const Divider(color: AppColors.borderSubtle, height: 1),
+        GestureDetector(
+          onTap: onToggle,
+          behavior: HitTestBehavior.opaque,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppTokens.spaceMD,
+              vertical: AppTokens.spaceXS + 2,
             ),
-          ],
-        ),
-        child: Text(
-          text,
-          style: TextStyle(
-            color:
-                isUser ? AppColors.white : (ThemeHelper.getTextColor(context)),
-            fontSize: 15,
-            height: 1.4,
+            child: Row(
+              children: [
+                Text(
+                  'Ask me about…',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppColors.textMuted,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const Spacer(),
+                Icon(
+                  expanded
+                      ? Icons.keyboard_arrow_down_rounded
+                      : Icons.keyboard_arrow_up_rounded,
+                  color: AppColors.textMuted,
+                  size: AppTokens.iconMD,
+                ),
+              ],
+            ),
           ),
         ),
-      ),
+        if (expanded)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppTokens.spaceMD, 0, AppTokens.spaceMD, AppTokens.spaceSM,
+            ),
+            child: Wrap(
+              spacing: AppTokens.spaceSM,
+              runSpacing: AppTokens.spaceXS,
+              children: questions
+                  .map(
+                    (q) => GestureDetector(
+                      onTap: () => onTap(q),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppTokens.spaceMD,
+                          vertical: AppTokens.spaceXS + 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.elevated,
+                          borderRadius: BorderRadius.circular(AppTokens.radiusFull),
+                          border: Border.all(color: AppColors.borderSubtle),
+                        ),
+                        child: Text(
+                          q,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+                  .toList(),
+            ),
+          ),
+      ],
     );
   }
 }

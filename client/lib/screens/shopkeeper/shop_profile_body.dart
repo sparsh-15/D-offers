@@ -400,7 +400,7 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
                             'Previous category "${widget.profile!.category}" is no longer valid. Please select a new category.',
                             style: TextStyle(
                               fontSize: 12,
-                              color: AppColors.orange700,
+                              color: AppColors.warning,
                             ),
                           ),
                         ),

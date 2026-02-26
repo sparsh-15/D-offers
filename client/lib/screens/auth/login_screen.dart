@@ -1,12 +1,11 @@
-import 'package:animate_do/animate_do.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../core/constants/app_colors.dart';
+import '../../core/constants/app_design_tokens.dart';
 import '../../core/constants/app_strings.dart';
 import '../../core/utils/dialog_helper.dart';
-import '../../core/utils/theme_helper.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_text_field.dart';
@@ -33,149 +32,115 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: ThemeHelper.getBackgroundGradient(context),
-        ),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const SizedBox(height: 20),
-                  FadeInDown(
-                    child: Center(
-                      child: Container(
-                        padding: const EdgeInsets.all(24),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              AppColors.primary.withValues(alpha: 0.2),
-                              AppColors.accent.withValues(alpha: 0.1),
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.primary.withValues(alpha: 0.3),
-                              blurRadius: 20,
-                              spreadRadius: 2,
-                            ),
-                          ],
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: AppTokens.spaceLG),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SizedBox(height: AppTokens.space3XL),
+
+                // ── Icon ──────────────────────────────────────────────────────
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Container(
+                    width: 64,
+                    height: 64,
+                    decoration: BoxDecoration(
+                      color: AppColors.cardBackground,
+                      borderRadius: BorderRadius.circular(AppTokens.radiusMD),
+                    ),
+                    child: const Icon(
+                      Iconsax.mobile,
+                      size: 32,
+                      color: AppColors.accent,
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: AppTokens.spaceLG),
+
+                // ── Headline ──────────────────────────────────────────────────
+                Text(
+                  'Welcome back.',
+                  style: theme.textTheme.displayMedium,
+                ),
+                const SizedBox(height: AppTokens.spaceSM),
+                Text(
+                  AppStrings.loginToContinue,
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+
+                const SizedBox(height: AppTokens.space2XL),
+
+                // ── Phone input ───────────────────────────────────────────────
+                CustomTextField(
+                  controller: _phoneController,
+                  label: AppStrings.enterMobile,
+                  hint: AppStrings.mobileHint,
+                  prefixIcon: Iconsax.mobile,
+                  keyboardType: TextInputType.phone,
+                  maxLength: 10,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter mobile number';
+                    }
+                    if (value.length != 10) {
+                      return 'Enter a valid 10-digit number';
+                    }
+                    return null;
+                  },
+                ),
+
+                const SizedBox(height: AppTokens.spaceLG),
+
+                // ── CTA ───────────────────────────────────────────────────────
+                CustomButton(
+                  text: AppStrings.sendOtp,
+                  onPressed: _handleLogin,
+                  isLoading: _isLoading,
+                  icon: Iconsax.arrow_right_1,
+                ),
+
+                const SizedBox(height: AppTokens.spaceMD),
+
+                // ── Register link ─────────────────────────────────────────────
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'New here?',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const RoleSelectionScreen(),
                         ),
-                        child: const Icon(
-                          Iconsax.login,
-                          size: 64,
-                          color: AppColors.primary,
+                      ),
+                      child: Text(
+                        'Register',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: AppColors.accent,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 32),
-                  FadeInDown(
-                    delay: const Duration(milliseconds: 200),
-                    child: Text(
-                      'Login',
-                      style: Theme.of(context).textTheme.displaySmall,
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  FadeInDown(
-                    delay: const Duration(milliseconds: 300),
-                    child: Text(
-                      AppStrings.loginToContinue,
-                      style: Theme.of(context).textTheme.bodyMedium,
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                  FadeInDown(
-                    delay: const Duration(milliseconds: 350),
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 16),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
-                       
-                      
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 30),
-                  FadeInUp(
-                    delay: const Duration(milliseconds: 400),
-                    child: CustomTextField(
-                      controller: _phoneController,
-                      label: AppStrings.enterMobile,
-                      hint: AppStrings.mobileHint,
-                      prefixIcon: Iconsax.mobile,
-                      keyboardType: TextInputType.phone,
-                      maxLength: 10,
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter mobile number';
-                        }
-                        if (value.length != 10) {
-                          return 'Please enter valid 10-digit mobile number';
-                        }
-                        return null;
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 40),
-                  FadeInUp(
-                    delay: const Duration(milliseconds: 500),
-                    child: CustomButton(
-                      text: AppStrings.sendOtp,
-                      onPressed: _handleLogin,
-                      isLoading: _isLoading,
-                      icon: Iconsax.arrow_right_1,
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  FadeInUp(
-                    delay: const Duration(milliseconds: 560),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          'New here?',
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                        TextButton(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const RoleSelectionScreen(),
-                              ),
-                            );
-                          },
-                          child: Text(
-                            'Register',
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodyMedium
-                                ?.copyWith(
-                                  color: AppColors.primary,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
+              ],
             ),
           ),
         ),
@@ -188,9 +153,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     setState(() => _isLoading = true);
     try {
-      await AuthService.instance.sendOtp(
-        phone: _phoneController.text,
-      );
+      await AuthService.instance.sendOtp(phone: _phoneController.text);
       if (!mounted) return;
       DialogHelper.showSuccessSnackBar(context, 'OTP sent successfully');
       Navigator.push(
@@ -204,30 +167,27 @@ class _LoginScreenState extends State<LoginScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      final errorMessage = e.toString().toLowerCase();
-
-      if (errorMessage.contains('too many') ||
-          errorMessage.contains('429') ||
-          errorMessage.contains('rate limit')) {
+      final err = e.toString().toLowerCase();
+      if (err.contains('too many') || err.contains('429')) {
         DialogHelper.showErrorSnackBar(
           context,
-          'Too many login attempts. Please wait 15 minutes before trying again.',
+          'Too many attempts. Please wait 15 minutes.',
         );
-      } else if (errorMessage.contains('not found') ||
-          errorMessage.contains('account not found') ||
-          errorMessage.contains('please signup')) {
+      } else if (err.contains('not found') ||
+          err.contains('account not found') ||
+          err.contains('please signup')) {
         DialogHelper.showErrorSnackBar(
           context,
-          'User not found. Register as a new user.',
+          'Account not found. Please register.',
         );
       } else {
-        final cleanMessage = errorMessage.replaceFirst('exception: ', '');
-        DialogHelper.showErrorSnackBar(context, cleanMessage);
+        DialogHelper.showErrorSnackBar(
+          context,
+          err.replaceFirst('exception: ', ''),
+        );
       }
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/constants/app_colors.dart';
+import '../core/constants/app_design_tokens.dart';
 import '../models/offer_model.dart';
 import '../screens/common/offer_detail_screen.dart';
 import '../screens/customer/customer_chat_bot_screen.dart';
@@ -14,7 +15,6 @@ class OfferCard extends StatefulWidget {
   final Widget? trailing;
   final bool showLikes;
   final VoidCallback? onLikeChanged;
-  /// When true, tapping the card opens the offer detail screen (customer flow).
   final bool openDetailOnTap;
 
   const OfferCard({
@@ -31,12 +31,13 @@ class OfferCard extends StatefulWidget {
   State<OfferCard> createState() => _OfferCardState();
 }
 
-class _OfferCardState extends State<OfferCard> with SingleTickerProviderStateMixin {
+class _OfferCardState extends State<OfferCard>
+    with SingleTickerProviderStateMixin {
   late bool _isLiked;
   late int _likesCount;
   bool _isToggling = false;
-  late AnimationController _animationController;
-  late Animation<double> _scaleAnimation;
+  late AnimationController _heartController;
+  late Animation<double> _heartScale;
 
   @override
   void initState() {
@@ -44,12 +45,15 @@ class _OfferCardState extends State<OfferCard> with SingleTickerProviderStateMix
     _isLiked = widget.offer.isLiked;
     _likesCount = widget.offer.likesCount;
 
-    _animationController = AnimationController(
+    _heartController = AnimationController(
       duration: const Duration(milliseconds: 200),
       vsync: this,
     );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.3).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
+    _heartScale = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.25), weight: 50),
+      TweenSequenceItem(tween: Tween(begin: 1.25, end: 1.0), weight: 50),
+    ]).animate(
+      CurvedAnimation(parent: _heartController, curve: Curves.easeInOut),
     );
   }
 
@@ -66,23 +70,18 @@ class _OfferCardState extends State<OfferCard> with SingleTickerProviderStateMix
 
   @override
   void dispose() {
-    _animationController.dispose();
+    _heartController.dispose();
     super.dispose();
   }
 
   Future<void> _toggleLike() async {
     if (_isToggling) return;
-
     setState(() {
       _isToggling = true;
       _isLiked = !_isLiked;
       _likesCount += _isLiked ? 1 : -1;
     });
-
-    _animationController.forward().then((_) {
-      _animationController.reverse();
-    });
-
+    _heartController.forward(from: 0);
     try {
       final result = await AuthService.instance.toggleOfferLike(widget.offer.id);
       setState(() {
@@ -98,7 +97,7 @@ class _OfferCardState extends State<OfferCard> with SingleTickerProviderStateMix
         _isToggling = false;
       });
       if (mounted) {
-        DialogHelper.showErrorSnackBar(context, 'Failed to update like: $e');
+        DialogHelper.showErrorSnackBar(context, 'Failed to update like');
       }
     }
   }
@@ -130,45 +129,37 @@ class _OfferCardState extends State<OfferCard> with SingleTickerProviderStateMix
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final isExpired = widget.offer.status == 'expired';
+
+    final shopDisplayName =
+        widget.offer.shopName?.trim().isNotEmpty == true
+            ? widget.offer.shopName!
+            : 'Shop';
 
     String discountLabel;
-    if (widget.offer.discountType == 'percentage' && widget.offer.discountValue != null) {
-      discountLabel = '${widget.offer.discountValue}% OFF';
-    } else if (widget.offer.discountType == 'fixed' && widget.offer.discountValue != null) {
-      discountLabel = '₹${widget.offer.discountValue} OFF';
+    if (widget.offer.discountType == 'percentage' &&
+        widget.offer.discountValue != null) {
+      discountLabel = '${widget.offer.discountValue!.toStringAsFixed(widget.offer.discountValue! % 1 == 0 ? 0 : 1)}%';
+    } else if (widget.offer.discountType == 'fixed' &&
+        widget.offer.discountValue != null) {
+      discountLabel = '₹${widget.offer.discountValue!.toStringAsFixed(widget.offer.discountValue! % 1 == 0 ? 0 : 1)}';
     } else {
       discountLabel = 'Offer';
     }
 
-    Color statusColor;
-    switch (widget.offer.status) {
-      case 'inactive':
-        statusColor = AppColors.info;
-        break;
-      case 'expired':
-        statusColor = AppColors.error;
-        break;
-      default:
-        statusColor = AppColors.success;
-    }
-
-    final shopDisplayName = widget.offer.shopName?.trim().isNotEmpty == true
-        ? widget.offer.shopName!
-        : 'Shop';
-
-    return Card(
-      elevation: 2,
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+    return Material(
+      color: AppColors.cardBackground,
+      borderRadius: BorderRadius.circular(AppTokens.radiusLG),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: _handleTap,
+        splashColor: AppColors.highlight.withValues(alpha: 0.4),
+        highlightColor: AppColors.highlight.withValues(alpha: 0.2),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
           children: [
+            // ── Banner / image ──────────────────────────────────────────────
             OfferBannerPreview(
               title: widget.offer.title,
               discountType: widget.offer.discountType,
@@ -176,90 +167,112 @@ class _OfferCardState extends State<OfferCard> with SingleTickerProviderStateMix
               width: double.infinity,
               height: 140,
             ),
+
+            // ── Info strip ─────────────────────────────────────────────────
             Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              padding: const EdgeInsets.fromLTRB(
+                AppTokens.spaceMD,
+                AppTokens.spaceSM + 2,
+                AppTokens.spaceSM,
+                AppTokens.spaceSM + 2,
+              ),
+              child: Row(
                 children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.store_rounded,
-                        size: 18,
-                        color: AppColors.primary,
-                      ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
+                  // Shop name + discount badge
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
                           shopDisplayName,
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: theme.textTheme.bodyMedium?.color,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            color: AppColors.textPrimary,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                      if (widget.trailing != null)
-                        widget.trailing!
-                      else if (widget.showLikes)
+                        const SizedBox(height: 2),
                         Row(
-                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            ScaleTransition(
-                              scale: _scaleAnimation,
-                              child: IconButton(
-                                icon: Icon(
-                                  _isLiked ? Icons.favorite : Icons.favorite_border,
-                                  color: _isLiked ? Colors.red : (isDark ? Colors.grey : Colors.grey[600]),
-                                  size: 22,
-                                ),
-                                onPressed: _toggleLike,
-                                tooltip: _isLiked ? 'Unlike' : 'Like',
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(
-                                  minWidth: 36,
-                                  minHeight: 36,
-                                ),
+                            Text(
+                              discountLabel,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: AppColors.accent,
+                                letterSpacing: 0.5,
+                                fontWeight: FontWeight.w700,
                               ),
                             ),
-                            Text(
-                              '$_likesCount',
-                              style: theme.textTheme.bodySmall,
-                            ),
+                            if (widget.offer.discountType == 'percentage')
+                              Text(
+                                ' OFF',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: AppColors.accent,
+                                  letterSpacing: 0.5,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            if (isExpired) ...[
+                              const SizedBox(width: AppTokens.spaceSM),
+                              Text(
+                                'EXPIRED',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: AppColors.error,
+                                  letterSpacing: 0.6,
+                                ),
+                              ),
+                            ],
                           ],
                         ),
-                    ],
+                        if (widget.offer.validTo != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text(
+                              _formatValidity(widget.offer.validTo!),
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: AppColors.textMuted,
+                                letterSpacing: 0.2,
+                                fontWeight: FontWeight.w400,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 4,
-                    children: [
-                      Chip(
-                        label: Text(
-                          discountLabel,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
+
+                  // Like button
+                  if (widget.trailing != null)
+                    widget.trailing!
+                  else if (widget.showLikes)
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ScaleTransition(
+                          scale: _heartScale,
+                          child: GestureDetector(
+                            onTap: _toggleLike,
+                            child: Padding(
+                              padding: const EdgeInsets.all(AppTokens.spaceSM),
+                              child: Icon(
+                                _isLiked
+                                    ? Icons.favorite_rounded
+                                    : Icons.favorite_outline_rounded,
+                                color: _isLiked
+                                    ? AppColors.error
+                                    : AppColors.textMuted,
+                                size: AppTokens.iconMD,
+                              ),
+                            ),
                           ),
                         ),
-                        backgroundColor: AppColors.primary,
-                        visualDensity: VisualDensity.compact,
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-                      ),
-                      Chip(
-                        label: Text(
-                          widget.offer.status.toUpperCase(),
-                          style: const TextStyle(color: Colors.white, fontSize: 10),
+                        Text(
+                          '$_likesCount',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: AppColors.textMuted,
+                            fontWeight: FontWeight.w400,
+                          ),
                         ),
-                        backgroundColor: statusColor,
-                        visualDensity: VisualDensity.compact,
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 0),
-                      ),
-                    ],
-                  ),
+                      ],
+                    ),
                 ],
               ),
             ),
@@ -267,5 +280,15 @@ class _OfferCardState extends State<OfferCard> with SingleTickerProviderStateMix
         ),
       ),
     );
+  }
+
+  String _formatValidity(DateTime date) {
+    final now = DateTime.now();
+    final diff = date.difference(now);
+    if (diff.isNegative) return 'Expired';
+    if (diff.inDays == 0) return 'Ends today';
+    if (diff.inDays == 1) return 'Ends tomorrow';
+    if (diff.inDays < 7) return 'Ends in ${diff.inDays}d';
+    return 'Until ${date.day}/${date.month}/${date.year}';
   }
 }

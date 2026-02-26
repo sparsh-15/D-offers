@@ -41,13 +41,8 @@ class _AgentCouponGovernanceScreenState
     return Scaffold(
       appBar: AppBar(
         title: const Text('Agent & Coupon Governance'),
-        backgroundColor: AppColors.primary,
-        foregroundColor: AppColors.white,
         bottom: TabBar(
           controller: _tabController,
-          labelColor: AppColors.white,
-          unselectedLabelColor: AppColors.white70,
-          indicatorColor: AppColors.white,
           tabs: const [
             Tab(text: 'SSA', icon: Icon(Icons.support_agent_rounded)),
             Tab(
@@ -196,56 +191,29 @@ class _SSAListTabState extends State<SSAListTab> {
                 children: [
                   Expanded(
                     child: GradientCard(
-                      gradient: AppColors.primaryGradient,
+                      gradient: const LinearGradient(
+                        colors: [AppColors.cardBackground, AppColors.highlight],
+                      ),
                       padding: const EdgeInsets.all(16),
                       child: Column(
                         children: [
                           const Icon(
                             Icons.people_rounded,
-                            color: AppColors.white,
+                            color: AppColors.textSecondary,
                             size: 32,
                           ),
                           const SizedBox(height: 8),
                           Text(
                             '${_ssaList.length}',
                             style: const TextStyle(
-                              color: AppColors.white,
+                              color: AppColors.textPrimary,
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           const Text(
                             'Total SSAs',
-                            style: TextStyle(color: AppColors.white),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: GradientCard(
-                      gradient: AppColors.accentGradient,
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        children: [
-                          const Icon(
-                            Icons.person_add_rounded,
-                            color: AppColors.white,
-                            size: 32,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            '$totalOnboarding',
-                            style: const TextStyle(
-                              color: AppColors.white,
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const Text(
-                            'Onboardings',
-                            style: TextStyle(color: AppColors.white),
+                            style: TextStyle(color: AppColors.textSecondary),
                           ),
                         ],
                       ),
@@ -255,28 +223,59 @@ class _SSAListTabState extends State<SSAListTab> {
                   Expanded(
                     child: GradientCard(
                       gradient: const LinearGradient(
-                        colors: [AppColors.orange, AppColors.deepOrange],
+                        colors: [AppColors.cardBackground, AppColors.highlight],
+                      ),
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        children: [
+                          const Icon(
+                            Icons.person_add_rounded,
+                            color: AppColors.textSecondary,
+                            size: 32,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '$totalOnboarding',
+                            style: const TextStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const Text(
+                            'Onboardings',
+                            style: TextStyle(color: AppColors.textSecondary),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: GradientCard(
+                      gradient: const LinearGradient(
+                        colors: [AppColors.cardBackground, AppColors.highlight],
                       ),
                       padding: const EdgeInsets.all(16),
                       child: Column(
                         children: [
                           const Icon(
                             Icons.discount_rounded,
-                            color: AppColors.white,
+                            color: AppColors.textSecondary,
                             size: 32,
                           ),
                           const SizedBox(height: 8),
                           Text(
                             '₹${totalDiscounts.toStringAsFixed(0)}',
                             style: const TextStyle(
-                              color: AppColors.white,
+                              color: AppColors.textPrimary,
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           const Text(
                             'Discounts',
-                            style: TextStyle(color: AppColors.white),
+                            style: TextStyle(color: AppColors.textSecondary),
                           ),
                         ],
                       ),

@@ -54,10 +54,10 @@ class DialogHelper {
   static Future<bool> showLogoutDialog(BuildContext context) async {
     return await showConfirmDialog(
       context: context,
-      title: 'Logout',
-      message: 'Are you sure you want to logout?',
-      confirmText: 'Logout',
-      cancelText: 'Cancel',
+      title: "Log out from D'Offers?",
+      message: 'You can sign back in anytime with your mobile number.',
+      confirmText: 'Log out',
+      cancelText: 'Stay signed in',
       isDestructive: true,
     );
   }

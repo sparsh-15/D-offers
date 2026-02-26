@@ -1,9 +1,8 @@
-import 'package:animate_do/animate_do.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/constants/app_colors.dart';
+import '../../core/constants/app_design_tokens.dart';
 import '../../core/constants/app_strings.dart';
-import '../../core/utils/theme_helper.dart';
 import '../../models/role_enum.dart';
 import '../auth/Register_screen.dart';
 
@@ -44,73 +43,56 @@ class RoleSelectionScreen extends StatelessWidget {
     ];
 
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: ThemeHelper.getBackgroundGradient(context),
-        ),
-        child: SafeArea(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                FadeInDown(
-                  child: Image.asset(
-                    'assets/Dofferlogo.png',
-                    width: 72,
-                    height: 72,
+                Image.asset(
+                  'assets/Dofferlogo.png',
+                  width: 56,
+                  height: 56,
+                  errorBuilder: (_, __, ___) => const Icon(
+                    Icons.local_offer_rounded,
+                    color: AppColors.accent,
+                    size: 36,
                   ),
                 ),
                 const SizedBox(height: 12),
-                FadeInDown(
-                  delay: const Duration(milliseconds: 120),
-                  child: Text(
-                    AppStrings.appName,
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.w700,
-                        ),
-                  ),
+                Text(
+                  'Join D\'Offers',
+                  style: Theme.of(context).textTheme.displayMedium,
                 ),
                 const SizedBox(height: 6),
-                FadeInDown(
-                  delay: const Duration(milliseconds: 180),
-                  child: Text(
-                    'Register as a new user by selecting your role.',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppColors.textHint,
-                        ),
-                  ),
-                ),
-                const SizedBox(height: 16),
                 Text(
-                  'Sign Up',
+                  'Select how you\'d like to use the app.',
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                ),
+                const SizedBox(height: AppTokens.spaceLG),
+                Text(
+                  'I am a…',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: ThemeHelper.getTextColor(context),
-                        fontWeight: FontWeight.w700,
+                        color: AppColors.textSecondary,
                       ),
                 ),
                 const SizedBox(height: 8),
                 Expanded(
                   child: ListView.separated(
                     itemCount: signupRoles.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 10),
-                    itemBuilder: (context, index) {
-                      final item = signupRoles[index];
-                      return FadeInUp(
-                        delay: Duration(milliseconds: 280 + (index * 70)),
-                        child: _buildSignupRoleCard(
-                          context,
-                          item: item,
-                        ),
-                      );
-                    },
+                    separatorBuilder: (_, __) => const SizedBox(height: AppTokens.spaceSM),
+                    itemBuilder: (ctx, i) => _buildSignupRoleCard(
+                      ctx,
+                      item: signupRoles[i],
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-        ),
       ),
     );
   }
@@ -131,9 +113,9 @@ class RoleSelectionScreen extends StatelessWidget {
           constraints: const BoxConstraints(minHeight: 82),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
-            color: ThemeHelper.getSurfaceColor(context).withValues(alpha: 0.94),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: item.tint.withValues(alpha: 0.24)),
+            color: AppColors.cardBackground,
+            borderRadius: BorderRadius.circular(AppTokens.radiusMD),
+            border: Border.all(color: item.tint.withValues(alpha: 0.20)),
           ),
           child: Row(
             children: [
@@ -154,18 +136,15 @@ class RoleSelectionScreen extends StatelessWidget {
                   children: [
                     Text(
                       item.title,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: ThemeHelper.getTextColor(context),
-                            fontWeight: FontWeight.w600,
-                          ),
+                      style: Theme.of(context).textTheme.titleMedium,
                     ),
                     const SizedBox(height: 2),
                     Text(
                       item.description,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppColors.textHint,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: AppColors.textSecondary,
                           ),
                     ),
                   ],

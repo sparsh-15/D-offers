@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../constants/app_colors.dart';
 
+/// Dark-only palette. D'Offers is a dark-first premium experience.
 class AppPalette {
   final bool isDark;
   final ColorScheme colorScheme;
@@ -30,52 +31,34 @@ class AppPalette {
   });
 
   factory AppPalette.dark() {
-    return AppPalette(
+    return const AppPalette(
       isDark: true,
-      colorScheme: const ColorScheme.dark(
-        primary: AppColors.primary,
-        secondary: AppColors.accent,
+      colorScheme: ColorScheme.dark(
+        primary: AppColors.accent,
+        secondary: AppColors.accentDim,
         surface: AppColors.surface,
         error: AppColors.error,
-        onPrimary: AppColors.white,
+        onPrimary: AppColors.black,
         onSecondary: AppColors.white,
         onSurface: AppColors.textPrimary,
         onError: AppColors.white,
+        surfaceContainerHighest: AppColors.elevated,
+        outline: AppColors.borderMid,
+        outlineVariant: AppColors.borderSubtle,
       ),
       textPrimary: AppColors.textPrimary,
       textSecondary: AppColors.textSecondary,
-      textHint: AppColors.textHint,
+      textHint: AppColors.textMuted,
       surface: AppColors.surface,
       cardBackground: AppColors.cardBackground,
       scaffoldBackground: AppColors.background,
-      cardShadow: AppColors.black.withValues(alpha: 0.28),
-      dividerColor: AppColors.white.withValues(alpha: 0.08),
-      borderColor: AppColors.white.withValues(alpha: 0.12),
+      cardShadow: AppColors.transparent,
+      dividerColor: AppColors.borderSubtle,
+      borderColor: AppColors.borderMid,
     );
   }
 
-  factory AppPalette.light() {
-    return AppPalette(
-      isDark: false,
-      colorScheme: const ColorScheme.light(
-        primary: AppColors.primary,
-        secondary: AppColors.accent,
-        surface: AppColors.lightSurface,
-        error: AppColors.error,
-        onPrimary: AppColors.white,
-        onSecondary: AppColors.white,
-        onSurface: AppColors.lightTextPrimary,
-        onError: AppColors.white,
-      ),
-      textPrimary: AppColors.lightTextPrimary,
-      textSecondary: AppColors.lightTextSecondary,
-      textHint: AppColors.lightTextHint,
-      surface: AppColors.lightSurface,
-      cardBackground: AppColors.lightCardBackground,
-      scaffoldBackground: AppColors.lightBackground,
-      cardShadow: AppColors.black.withValues(alpha: 0.08),
-      dividerColor: AppColors.black.withValues(alpha: 0.08),
-      borderColor: AppColors.black.withValues(alpha: 0.12),
-    );
-  }
+  /// Light factory removed — app is dark-only.
+  /// Alias kept so any stale call compiles; returns dark palette.
+  factory AppPalette.light() => AppPalette.dark();
 }
