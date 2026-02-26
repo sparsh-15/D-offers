@@ -763,19 +763,19 @@ class _SubscriptionsManagementTabState
   Widget _buildSubscriptionCard(Map<String, dynamic> sub) {
     final isActive = sub['status'] == 'active';
 
-    // Extract shopkeeper info
-    final shopkeeper = sub['shopkeeperId'];
-    final shopName = shopkeeper is Map
-        ? (shopkeeper['name'] ?? 'Unknown Shop')
+    // Extract shopkeeper info (prefer populated relation from API)
+    final dynamic shopkeeperData = sub['shopkeeper'] ?? sub['shopkeeperId'];
+    final shopName = shopkeeperData is Map
+        ? (shopkeeperData['name'] ?? 'Unknown Shop')
         : 'Unknown Shop';
 
-    // Extract plan info
-    final plan = sub['planId'];
-    final planName = plan is Map
-        ? (plan['displayName'] ?? plan['name'] ?? 'Unknown Plan')
+    // Extract plan info (prefer populated relation from API)
+    final dynamic planData = sub['plan'] ?? sub['planId'];
+    final planName = planData is Map
+        ? (planData['displayName'] ?? planData['name'] ?? 'Unknown Plan')
         : 'Unknown Plan';
-    final price = plan is Map
-        ? (plan['monthlyPrice'] ?? sub['actualPrice'] ?? 0)
+    final price = planData is Map
+        ? (planData['monthlyPrice'] ?? sub['actualPrice'] ?? 0)
         : (sub['actualPrice'] ?? 0);
 
     // Format dates

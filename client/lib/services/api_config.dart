@@ -7,7 +7,7 @@ class ApiConfig {
   /// Set to false for local development
   /// Set to true for production/deployed backend
   ///
-  static const bool useProduction = true;
+  static const bool useProduction = false;
 
   static String get baseUrl {
     if (useProduction) {
@@ -34,4 +34,5 @@ class ApiConfig {
   static String get shopkeeperUrl => '$baseUrl/shopkeeper';
   static String get adminUrl => '$baseUrl/admin';
   static String get metaUrl => '$baseUrl/meta';
+  static String get companySalesUrl => '$baseUrl/company-sales';
 }

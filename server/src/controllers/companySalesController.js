@@ -1,0 +1,325 @@
+const { prisma } = require('../db/prisma');
+const { resolvePgId } = require('../repositories/idResolver');
+
+function getMonthBounds(reference = new Date()) {
+  const start = new Date(reference);
+  start.setDate(1);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setMonth(end.getMonth() + 1);
+  return { start, end };
+}
+
+async function getStats(req, res, next) {
+  try {
+    const pgAgentId =
+      (await resolvePgId('users', req.user.userId)) || req.user.userId;
+
+    const { start: monthStart, end: monthEnd } = getMonthBounds();
+
+    const shopProfiles = await prisma.shopkeeperProfile.findMany({
+      where: { onboardedBy: pgAgentId },
+      select: { userId: true, createdAt: true },
+    });
+
+    const totalOnboardings = shopProfiles.length;
+    const monthOnboardings = shopProfiles.filter(
+      (p) => p.createdAt >= monthStart && p.createdAt < monthEnd,
+    ).length;
+
+    const shopkeeperIds = [
+      ...new Set(shopProfiles.map((p) => p.userId).filter(Boolean)),
+    ];
+
+    let subscriptions = [];
+    if (shopkeeperIds.length) {
+      subscriptions = await prisma.subscription.findMany({
+        where: { shopkeeperId: { in: shopkeeperIds } },
+        select: {
+          shopkeeperId: true,
+          status: true,
+          actualPrice: true,
+          discountAmount: true,
+          startDate: true,
+          endDate: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+    }
+
+    const latestByShop = {};
+    subscriptions.forEach((sub) => {
+      if (!latestByShop[sub.shopkeeperId]) {
+        latestByShop[sub.shopkeeperId] = sub;
+      }
+    });
+
+    let activeShops = 0;
+    let churnedShops = 0;
+    Object.values(latestByShop).forEach((sub) => {
+      if (sub.status === 'active') activeShops += 1;
+      if (sub.status === 'expired' || sub.status === 'cancelled')
+        churnedShops += 1;
+    });
+
+    let totalRevenue = 0;
+    let monthRevenue = 0;
+    let totalDiscount = 0;
+    let monthDiscount = 0;
+
+    subscriptions.forEach((sub) => {
+      const revenue = Number(sub.actualPrice || 0);
+      const discount = Number(sub.discountAmount || 0);
+      totalRevenue += revenue;
+      totalDiscount += discount;
+      if (sub.startDate && sub.startDate >= monthStart && sub.startDate < monthEnd) {
+        monthRevenue += revenue;
+        monthDiscount += discount;
+      }
+    });
+
+    // Simple base commission estimate (e.g. 5% of this month's revenue)
+    const estimatedCommission = monthRevenue * 0.05;
+
+    res.json({
+      success: true,
+      stats: {
+        onboardings: {
+          total: totalOnboardings,
+          thisMonth: monthOnboardings,
+        },
+        shops: {
+          total: shopkeeperIds.length,
+          active: activeShops,
+          churned: churnedShops,
+        },
+        revenue: {
+          total: totalRevenue,
+          thisMonth: monthRevenue,
+          totalDiscount,
+          monthDiscount,
+        },
+        incentives: {
+          estimated: estimatedCommission,
+        },
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function getShops(req, res, next) {
+  try {
+    const pgAgentId =
+      (await resolvePgId('users', req.user.userId)) || req.user.userId;
+    const { status, page = 1, limit = 20 } = req.query;
+
+    const shopProfiles = await prisma.shopkeeperProfile.findMany({
+      where: { onboardedBy: pgAgentId },
+      select: { userId: true },
+    });
+
+    const shopkeeperIds = [
+      ...new Set(shopProfiles.map((p) => p.userId).filter(Boolean)),
+    ];
+
+    if (!shopkeeperIds.length) {
+      return res.json({
+        success: true,
+        data: {
+          shops: [],
+          summary: { total: 0, active: 0, expired: 0, none: 0 },
+          pagination: { total: 0, page: 1, limit: Number(limit), pages: 0 },
+        },
+      });
+    }
+
+    const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
+
+    const [shopUsers, subscriptions] = await Promise.all([
+      prisma.user.findMany({
+        where: { id: { in: shopkeeperIds } },
+        select: {
+          id: true,
+          name: true,
+          phone: true,
+          city: true,
+          state: true,
+          isActive: true,
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: parseInt(limit, 10),
+      }),
+      prisma.subscription.findMany({
+        where: { shopkeeperId: { in: shopkeeperIds } },
+        include: {
+          plan: { select: { displayName: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
+
+    const latestSubByShop = {};
+    subscriptions.forEach((sub) => {
+      if (!latestSubByShop[sub.shopkeeperId]) {
+        latestSubByShop[sub.shopkeeperId] = sub;
+      }
+    });
+
+    const items = [];
+    let summaryActive = 0;
+    let summaryExpired = 0;
+    let summaryNone = 0;
+
+    shopUsers.forEach((shop) => {
+      const latest = latestSubByShop[shop.id] || null;
+      let subscriptionStatus = 'none';
+      if (latest) {
+        if (latest.status === 'active') subscriptionStatus = 'active';
+        else if (latest.status === 'expired' || latest.status === 'cancelled')
+          subscriptionStatus = 'expired';
+        else subscriptionStatus = latest.status || 'none';
+      }
+
+      if (!status || status === subscriptionStatus) {
+        items.push({
+          shopId: shop.id,
+          name: shop.name,
+          phone: shop.phone,
+          city: shop.city,
+          state: shop.state,
+          isActive: shop.isActive,
+          subscription: latest
+            ? {
+                status: subscriptionStatus,
+                planName: latest.plan?.displayName || null,
+                startDate: latest.startDate,
+                endDate: latest.endDate,
+              }
+            : null,
+        });
+      }
+
+      if (subscriptionStatus === 'active') summaryActive += 1;
+      else if (subscriptionStatus === 'expired') summaryExpired += 1;
+      else summaryNone += 1;
+    });
+
+    res.json({
+      success: true,
+      data: {
+        shops: items,
+        summary: {
+          total: shopkeeperIds.length,
+          active: summaryActive,
+          expired: summaryExpired,
+          none: summaryNone,
+        },
+        pagination: {
+          total: shopkeeperIds.length,
+          page: parseInt(page, 10),
+          limit: parseInt(limit, 10),
+          pages: Math.ceil(shopkeeperIds.length / parseInt(limit, 10)),
+        },
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function getReports(req, res, next) {
+  try {
+    const pgAgentId =
+      (await resolvePgId('users', req.user.userId)) || req.user.userId;
+    const { month } = req.query;
+
+    const reference = month ? new Date(`${month}-01T00:00:00Z`) : new Date();
+    const { start: monthStart, end: monthEnd } = getMonthBounds(reference);
+
+    const shopProfiles = await prisma.shopkeeperProfile.findMany({
+      where: { onboardedBy: pgAgentId },
+      select: { userId: true },
+    });
+    const shopkeeperIds = [
+      ...new Set(shopProfiles.map((p) => p.userId).filter(Boolean)),
+    ];
+
+    let onboardings = [];
+    let subs = [];
+
+    if (shopkeeperIds.length) {
+      onboardings = await prisma.shopkeeperProfile.findMany({
+        where: {
+          onboardedBy: pgAgentId,
+          createdAt: { gte: monthStart, lt: monthEnd },
+        },
+        select: { createdAt: true },
+      });
+
+      subs = await prisma.subscription.findMany({
+        where: {
+          shopkeeperId: { in: shopkeeperIds },
+          createdAt: { gte: monthStart, lt: monthEnd },
+        },
+        select: {
+          status: true,
+          actualPrice: true,
+        },
+      });
+    }
+
+    const timelineMap = {};
+    onboardings.forEach((o) => {
+      const d = new Date(o.createdAt);
+      const key = d.toISOString().slice(0, 10);
+      timelineMap[key] = (timelineMap[key] || 0) + 1;
+    });
+
+    const onboardingTimeline = Object.entries(timelineMap)
+      .sort(([a], [b]) => (a < b ? -1 : 1))
+      .map(([date, count]) => ({ date, count }));
+
+    let activeCount = 0;
+    let churnedCount = 0;
+    let earned = 0;
+
+    subs.forEach((s) => {
+      if (s.status === 'active') activeCount += 1;
+      if (s.status === 'expired' || s.status === 'cancelled')
+        churnedCount += 1;
+      earned += Number(s.actualPrice || 0);
+    });
+
+    res.json({
+      success: true,
+      data: {
+        month:
+          month ||
+          `${monthStart.getFullYear()}-${String(
+            monthStart.getMonth() + 1,
+          ).padStart(2, '0')}`,
+        onboardingTimeline,
+        shopStatus: {
+          active: activeCount,
+          churned: churnedCount,
+        },
+        commissions: {
+          earned,
+          // detailed paid/pending breakdown can be added when payment tracking is available
+        },
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = {
+  getStats,
+  getShops,
+  getReports,
+};
+

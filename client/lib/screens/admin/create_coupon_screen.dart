@@ -155,7 +155,7 @@ class _CreateCouponScreenState extends State<CreateCouponScreen> {
       appBar: AppBar(
         leading: ThemeHelper.buildBackButton(context),
         title: const Text('Create Coupon'),
-        backgroundColor: AppColors.primary,
+        backgroundColor: AppColors.background,
         foregroundColor: AppColors.white,
       ),
       body: Container(
@@ -422,7 +422,7 @@ class _CreateCouponScreenState extends State<CreateCouponScreen> {
                                   _isLoading ? 'Creating...' : 'Create Coupon',
                                 ),
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.primary,
+                                  backgroundColor: AppColors.highlight,
                                   foregroundColor: AppColors.white,
                                   padding:
                                       const EdgeInsets.symmetric(vertical: 16),

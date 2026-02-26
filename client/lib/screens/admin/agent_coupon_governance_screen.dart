@@ -88,7 +88,8 @@ class _AgentCouponGovernanceScreenState
           },
           icon: const Icon(Icons.add_rounded),
           label: const Text('Create Coupon'),
-          backgroundColor: AppColors.primary,
+          backgroundColor: AppColors.accentDim,
+          foregroundColor: AppColors.black,
         );
       default:
         return null;

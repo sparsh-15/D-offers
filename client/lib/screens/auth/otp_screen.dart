@@ -9,6 +9,7 @@ import '../../widgets/custom_button.dart';
 import '../customer/customer_dashboard.dart';
 import '../shopkeeper/shop_dashboard.dart';
 import '../admin/admin_dashboard.dart';
+import '../company_sales_agent/csa_dashboard.dart';
 import '../../services/auth_service.dart';
 import '../../services/auth_store.dart';
 import '../../core/utils/dialog_helper.dart';
@@ -374,9 +375,11 @@ class _OtpScreenState extends State<OtpScreen> {
         destination = const ShopDashboard();
         break;
       case UserRole.admin:
-      case UserRole.companySalesAgent:
       case UserRole.ssa:
         destination = const AdminDashboard();
+        break;
+      case UserRole.companySalesAgent:
+        destination = const CSADashboard();
         break;
     }
 
