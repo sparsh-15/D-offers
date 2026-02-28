@@ -152,8 +152,8 @@ class _PlansManagementTabState extends State<PlansManagementTab> {
                 icon: const Icon(Icons.add_rounded),
                 label: const Text('Add Plan'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: AppColors.white,
+                  backgroundColor: AppColors.accent,
+                  foregroundColor: AppColors.black,
                 ),
               ),
             ],

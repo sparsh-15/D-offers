@@ -648,7 +648,7 @@ class _SalesAgentsTabState extends State<SalesAgentsTab> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: GradientCard(
-                      gradient: AppColors.accentGradient,
+                      gradient: AppColors.primaryGradient,
                       padding: const EdgeInsets.all(16),
                       child: Column(
                         children: [
@@ -677,9 +677,7 @@ class _SalesAgentsTabState extends State<SalesAgentsTab> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: GradientCard(
-                      gradient: const LinearGradient(
-                        colors: [AppColors.orange, AppColors.deepOrange],
-                      ),
+                      gradient: AppColors.primaryGradient,
                       padding: const EdgeInsets.all(16),
                       child: Column(
                         children: [
@@ -765,41 +763,49 @@ class _SalesAgentsTabState extends State<SalesAgentsTab> {
 
   Widget _buildAgentCard(Map<String, dynamic> agent) {
     final isActive = agent['isActive'] == true;
-    final name = agent['name'] ?? 'Unknown';
-    final phone = agent['phone'] ?? 'N/A';
-    final region = agent['region'] ?? 'N/A';
+    final name = (agent['name'] as String? ?? 'Unknown').trim();
+    final phone = (agent['phone'] as String? ?? '').trim();
+    final region = (agent['region'] as String? ?? '').trim();
+    final hasRegion = region.isNotEmpty;
     final onboardingCount = agent['onboardingCount'] ?? 0;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: isActive ? AppColors.blue : AppColors.grey,
+          backgroundColor: isActive
+              ? AppColors.accent.withValues(alpha: 0.18)
+              : AppColors.cardBackground,
           child: Text(
-            name.substring(0, 1).toUpperCase(),
-            style: const TextStyle(color: AppColors.white),
+            name.isNotEmpty ? name.substring(0, 1).toUpperCase() : '?',
+            style: const TextStyle(color: AppColors.textPrimary),
           ),
         ),
         title: Row(
           children: [
             Expanded(child: Text(name)),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: AppColors.blue.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(12),
+            if (hasRegion)
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.accent.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  region,
+                  style: const TextStyle(
+                    color: AppColors.accent,
+                    fontSize: 12,
+                  ),
+                ),
               ),
-              child: Text(
-                region,
-                style: const TextStyle(color: AppColors.blue, fontSize: 12),
-              ),
-            ),
           ],
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(phone),
+            Text(phone.isEmpty ? '-' : phone),
             Text('Onboarded: $onboardingCount shopkeepers'),
           ],
         ),
@@ -844,17 +850,26 @@ class _SalesAgentsTabState extends State<SalesAgentsTab> {
   void _viewAgentDetails(Map<String, dynamic> agent) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(agent['name'] ?? 'Unknown'),
+      builder: (context) {
+        final theme = Theme.of(context);
+        final name = (agent['name'] as String? ?? 'Unknown').trim();
+        return AlertDialog(
+        title: Text(
+          name.isEmpty ? 'Sales agent' : name,
+          style: theme.textTheme.titleMedium?.copyWith(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildDetailRow('Phone', agent['phone'] ?? 'N/A'),
-            _buildDetailRow('Email', agent['email'] ?? 'N/A'),
-            _buildDetailRow('Region', agent['region'] ?? 'N/A'),
-            _buildDetailRow('Territory', agent['territory'] ?? 'N/A'),
-            _buildDetailRow('Pincode', agent['pincode'] ?? 'N/A'),
+            _buildDetailRow('Phone', _valueOrDash(agent['phone'])),
+            _buildDetailRow('Email', _valueOrDash(agent['email'])),
+            _buildDetailRow('Region', _valueOrDash(agent['region'])),
+            _buildDetailRow('Territory', _valueOrDash(agent['territory'])),
+            _buildDetailRow('Pincode', _valueOrDash(agent['pincode'])),
             _buildDetailRow(
                 'Status', agent['isActive'] == true ? 'Active' : 'Inactive'),
             _buildDetailRow(
@@ -867,7 +882,7 @@ class _SalesAgentsTabState extends State<SalesAgentsTab> {
             child: const Text('Close'),
           ),
         ],
-      ),
+      );},
     );
   }
 
@@ -890,6 +905,11 @@ class _SalesAgentsTabState extends State<SalesAgentsTab> {
         ],
       ),
     );
+  }
+
+  String _valueOrDash(dynamic raw) {
+    final s = (raw ?? '').toString().trim();
+    return s.isEmpty ? '-' : s;
   }
 }
 

@@ -45,6 +45,7 @@ class UserModel {
   final String address;
   final String approvalStatus; // legacy: pending | approved | rejected
   final String statusLabel; // derived: subscribed | active | inactive | setup_pending
+  final String category; // optional: from shopkeeperProfile.category for shopkeepers
 
   const UserModel({
     required this.id,
@@ -57,9 +58,13 @@ class UserModel {
     required this.address,
     required this.approvalStatus,
     required this.statusLabel,
+    this.category = '',
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
+    final profile = json['shopkeeperProfile'] as Map<String, dynamic>?;
+    final categoryFromProfile =
+        profile?['category']?.toString() ?? json['category']?.toString() ?? '';
     return UserModel(
       id: json['id']?.toString() ?? '',
       name: json['name']?.toString() ?? '',
@@ -74,6 +79,7 @@ class UserModel {
               json['approvalStatus']?.toString() ??
               '')
           .toLowerCase(),
+      category: categoryFromProfile,
     );
   }
 

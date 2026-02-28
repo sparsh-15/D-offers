@@ -9,6 +9,7 @@ import '../../widgets/theme_toggle.dart';
 import '../../widgets/profile_option_tile.dart';
 import '../../services/auth_service.dart';
 import '../../services/auth_store.dart';
+import '../../services/subscription_service.dart';
 import '../../models/user_model.dart';
 import '../../models/role_enum.dart';
 import '../auth/login_screen.dart';
@@ -171,7 +172,7 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
                                   'Shopkeepers',
                                   totalShopkeepers,
                                   Icons.store_rounded,
-                                  AppColors.accentGradient,
+                                  AppColors.primaryGradient,
                                 ),
                               ),
                             ],
@@ -187,14 +188,7 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
                                   'Active Offers',
                                   activeOffers,
                                   Icons.local_offer_rounded,
-                                  const LinearGradient(
-                                    colors: [
-                                      AppColors.gradientIndigo,
-                                      AppColors.gradientViolet
-                                    ],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ),
+                                  AppColors.primaryGradient,
                                 ),
                               ),
                               const SizedBox(width: 12),
@@ -204,14 +198,7 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
                                   'Pending',
                                   pendingShopkeepers,
                                   Icons.pending_rounded,
-                                  const LinearGradient(
-                                    colors: [
-                                      AppColors.gradientPink,
-                                      AppColors.gradientCoral
-                                    ],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ),
+                                  AppColors.primaryGradient,
                                 ),
                               ),
                             ],
@@ -231,7 +218,7 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
                             AppStrings.manageUsers,
                             'View and manage all users',
                             Icons.people_rounded,
-                            AppColors.primary,
+                            AppColors.accent,
                             onTap: () {
                               // Navigate to Users tab (index 1)
                               final adminDashboardState =
@@ -243,7 +230,6 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
                             },
                           ),
                         ),
-                        
                         FadeInUp(
                           delay: const Duration(milliseconds: 200),
                           child: _buildQuickAction(
@@ -251,7 +237,7 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
                             AppStrings.platformAnalytics,
                             'View detailed platform statistics',
                             Icons.analytics_rounded,
-                            AppColors.success,
+                            AppColors.accentDim,
                             onTap: () {
                               Navigator.of(context).push(
                                 MaterialPageRoute(
@@ -269,7 +255,7 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
                             AppStrings.reports,
                             'Generate and view reports',
                             Icons.assessment_rounded,
-                            AppColors.info,
+                            AppColors.accentDim,
                             onTap: () {
                               Navigator.of(context).push(
                                 MaterialPageRoute(
@@ -286,7 +272,7 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
                             'Subscription Governance',
                             'Manage plans, subscriptions & analytics',
                             Icons.subscriptions_rounded,
-                            AppColors.gradientIndigo,
+                            AppColors.accentDim,
                             onTap: () {
                               Navigator.of(context).push(
                                 MaterialPageRoute(
@@ -304,7 +290,7 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
                             'Agent & Coupon Governance',
                             'View SSA, sales agents & manage coupons',
                             Icons.support_agent_rounded,
-                            AppColors.gradientViolet,
+                            AppColors.accentDim,
                             onTap: () {
                               Navigator.of(context).push(
                                 MaterialPageRoute(
@@ -398,14 +384,19 @@ class UsersManagementTab extends StatefulWidget {
 
 class _UsersManagementTabState extends State<UsersManagementTab> {
   late Future<List<UserModel>> _future;
+  late Future<Map<String, dynamic>> _statsFuture;
+  late Future<Map<String, dynamic>> _locationOptionsFuture;
   final TextEditingController _searchController = TextEditingController();
   String _selectedRole = 'all';
   String _searchQuery = '';
+  String? _selectedState;
+  String? _selectedCity;
+  String? _selectedCategory;
 
   @override
   void initState() {
     super.initState();
-    _future = AuthService.instance.getUsers(limit: 50);
+    _loadData();
     _searchController.addListener(_onSearchChanged);
   }
 
@@ -421,9 +412,40 @@ class _UsersManagementTabState extends State<UsersManagementTab> {
     });
   }
 
-  Future<void> _refresh() async {
+  void _loadData() {
+    final roleParam = _selectedRole == 'all' || _selectedRole == 'admin'
+        ? null
+        : _selectedRole;
+    final categoryParam =
+        _selectedRole == 'shopkeeper' ? _selectedCategory : null;
     setState(() {
-      _future = AuthService.instance.getUsers(limit: 50);
+      _future = AuthService.instance.getUsers(
+        role: roleParam,
+        state: _selectedState,
+        city: _selectedCity,
+        category: categoryParam,
+        limit: 50,
+      );
+      _statsFuture = AuthService.instance.getUsersStats(
+        role: roleParam,
+        state: _selectedState,
+        city: _selectedCity,
+        category: categoryParam,
+      );
+      _locationOptionsFuture = AuthService.instance.getLocationOptions();
+    });
+  }
+
+  Future<void> _refresh() async {
+    _loadData();
+  }
+
+  void _clearFilters() {
+    setState(() {
+      _selectedState = null;
+      _selectedCity = null;
+      _selectedCategory = null;
+      _loadData();
     });
   }
 
@@ -445,13 +467,13 @@ class _UsersManagementTabState extends State<UsersManagementTab> {
       case UserRole.admin:
         return AppColors.error;
       case UserRole.companySalesAgent:
-        return AppColors.purple;
+        return AppColors.accentDim;
       case UserRole.ssa:
-        return AppColors.orange;
+        return AppColors.accentDim;
       case UserRole.shopkeeper:
         return AppColors.accent;
       case UserRole.customer:
-        return AppColors.primary;
+        return AppColors.accent;
     }
   }
 
@@ -524,6 +546,174 @@ class _UsersManagementTabState extends State<UsersManagementTab> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Column(
                 children: [
+                  // Dashboard Stats Row
+                  FutureBuilder<Map<String, dynamic>>(
+                    future: _statsFuture,
+                    builder: (context, statsSnapshot) {
+                      if (!statsSnapshot.hasData) {
+                        return SizedBox(
+                          height: 80,
+                          child: Center(
+                            child: SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          ),
+                        );
+                      }
+                      final stats = statsSnapshot.data ?? {};
+                      final total = stats['totalUsers'] as int? ?? 0;
+                      final subscribed = stats['subscribedUsers'] as int? ?? 0;
+                      final active = stats['activeUsers'] as int? ?? 0;
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: _buildStatChip(
+                                context,
+                                'Total',
+                                total.toString(),
+                                Icons.people_rounded,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _buildStatChip(
+                                context,
+                                'Subscribed',
+                                subscribed.toString(),
+                                Icons.subscriptions_rounded,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _buildStatChip(
+                                context,
+                                'Active',
+                                active.toString(),
+                                Icons.check_circle_rounded,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                  // Location & Category Filters
+                  FutureBuilder<Map<String, dynamic>>(
+                    future: _locationOptionsFuture,
+                    builder: (context, locSnapshot) {
+                      final states =
+                          (locSnapshot.data?['states'] as List<dynamic>?)
+                                  ?.cast<String>() ??
+                              [];
+                      final citiesByState = locSnapshot.data?['citiesByState']
+                              as Map<String, dynamic>? ??
+                          {};
+                      final allCities =
+                          (locSnapshot.data?['allCities'] as List<dynamic>?)
+                                  ?.cast<String>() ??
+                              [];
+                      final citiesForState = _selectedState != null
+                          ? (citiesByState[_selectedState] as List<dynamic>?)
+                                  ?.cast<String>() ??
+                              []
+                          : allCities;
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SizedBox(
+                                  width: 140,
+                                  child: DropdownButtonFormField<String>(
+                                    value: _selectedState,
+                                    decoration: InputDecoration(
+                                      labelText: 'State',
+                                      isDense: true,
+                                      filled: true,
+                                      fillColor:
+                                          ThemeHelper.getSurfaceColor(context),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                    items: [
+                                      const DropdownMenuItem(
+                                          value: null,
+                                          child: Text('All States')),
+                                      ...states.map((s) => DropdownMenuItem(
+                                          value: s, child: Text(s))),
+                                    ],
+                                    onChanged: (v) {
+                                      setState(() {
+                                        _selectedState = v;
+                                        _selectedCity = null;
+                                        _loadData();
+                                      });
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                SizedBox(
+                                  width: 140,
+                                  child: DropdownButtonFormField<String>(
+                                    value: _selectedCity,
+                                    decoration: InputDecoration(
+                                      labelText: 'City',
+                                      isDense: true,
+                                      filled: true,
+                                      fillColor:
+                                          ThemeHelper.getSurfaceColor(context),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                    items: [
+                                      const DropdownMenuItem(
+                                          value: null,
+                                          child: Text('All Cities')),
+                                      ...citiesForState.map((c) =>
+                                          DropdownMenuItem(
+                                              value: c, child: Text(c))),
+                                    ],
+                                    onChanged: (v) {
+                                      setState(() {
+                                        _selectedCity = v;
+                                        _loadData();
+                                      });
+                                    },
+                                  ),
+                                ),
+                                if (_selectedRole == 'shopkeeper') ...[
+                                  const SizedBox(width: 8),
+                                  SizedBox(
+                                    width: 140,
+                                    child: _buildCategoryDropdown(),
+                                  ),
+                                ],
+                                IconButton(
+                                  icon: const Icon(Icons.clear_all_rounded),
+                                  onPressed: (_selectedState != null ||
+                                          _selectedCity != null ||
+                                          _selectedCategory != null)
+                                      ? _clearFilters
+                                      : null,
+                                  tooltip: 'Clear filters',
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                        ],
+                      );
+                    },
+                  ),
                   // Search Bar
                   Container(
                     decoration: BoxDecoration(
@@ -805,6 +995,34 @@ class _UsersManagementTabState extends State<UsersManagementTab> {
                                               ],
                                             ),
                                           ],
+                                          if (user.role == UserRole.shopkeeper &&
+                                              user.category.isNotEmpty) ...[
+                                            const SizedBox(height: 4),
+                                            Row(
+                                              children: [
+                                                Icon(
+                                                  Icons.category_rounded,
+                                                  size: 14,
+                                                  color:
+                                                      ThemeHelper.getTextColor(
+                                                              context)
+                                                          .withOpacity(0.6),
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Expanded(
+                                                  child: Text(
+                                                    user.category,
+                                                    style: Theme.of(context)
+                                                        .textTheme
+                                                        .bodySmall,
+                                                    maxLines: 1,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
                                           const SizedBox(height: 8),
                                           // Role Badge
                                           Container(
@@ -930,6 +1148,85 @@ class _UsersManagementTabState extends State<UsersManagementTab> {
     );
   }
 
+  Widget _buildStatChip(
+    BuildContext context,
+    String label,
+    String value,
+    IconData icon,
+  ) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: ThemeHelper.getSurfaceColor(context),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.black.withOpacity(0.06),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 18, color: AppColors.accent),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCategoryDropdown() {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: SubscriptionService.instance.getCategories(),
+      builder: (context, catSnapshot) {
+        final categories = catSnapshot.data ?? [];
+        return DropdownButtonFormField<String>(
+          value: _selectedCategory,
+          decoration: InputDecoration(
+            labelText: 'Category',
+            isDense: true,
+            filled: true,
+            fillColor: ThemeHelper.getSurfaceColor(context),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          items: [
+            const DropdownMenuItem(value: null, child: Text('All Categories')),
+            ...categories.map((c) => DropdownMenuItem(
+                  value: c['value']?.toString(),
+                  child: Text(
+                      c['label']?.toString() ?? c['value']?.toString() ?? ''),
+                )),
+          ],
+          onChanged: (v) {
+            setState(() {
+              _selectedCategory = v;
+              _loadData();
+            });
+          },
+        );
+      },
+    );
+  }
+
   Widget _buildFilterChip(String value, String label, IconData icon) {
     final isSelected = _selectedRole == value;
     return FilterChip(
@@ -945,12 +1242,14 @@ class _UsersManagementTabState extends State<UsersManagementTab> {
       onSelected: (selected) {
         setState(() {
           _selectedRole = value;
+          if (_selectedRole != 'shopkeeper') _selectedCategory = null;
+          _loadData();
         });
       },
-      selectedColor: AppColors.primary.withOpacity(0.2),
-      checkmarkColor: AppColors.primary,
+      selectedColor: AppColors.accent.withValues(alpha: 0.2),
+      checkmarkColor: AppColors.accent,
       labelStyle: TextStyle(
-        color: isSelected ? AppColors.primary : null,
+        color: isSelected ? AppColors.accent : null,
         fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
       ),
     );
@@ -1050,8 +1349,8 @@ class _ShopkeepersApprovalBodyState extends State<_ShopkeepersApprovalBody>
         ),
         TabBar(
           controller: _tabController,
-          indicatorColor: AppColors.primary,
-          labelColor: AppColors.primary,
+          indicatorColor: AppColors.accent,
+          labelColor: AppColors.accent,
           unselectedLabelColor:
               ThemeHelper.getTextColor(context).withOpacity(0.6),
           tabs: [
@@ -1532,9 +1831,12 @@ class _AdminProfileTabState extends State<AdminProfileTab> {
                 const SizedBox(height: 20),
                 const CircleAvatar(
                   radius: 50,
-                  backgroundColor: AppColors.primary,
-                  child: Icon(Icons.admin_panel_settings_rounded,
-                      size: 50, color: AppColors.white),
+                  backgroundColor: AppColors.cardBackground,
+                  child: Icon(
+                    Icons.admin_panel_settings_rounded,
+                    size: 50,
+                    color: AppColors.accent,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 if (snapshot.connectionState == ConnectionState.waiting)

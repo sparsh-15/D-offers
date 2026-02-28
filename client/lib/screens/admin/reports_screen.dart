@@ -44,14 +44,14 @@ class _ReportsScreenState extends State<ReportsScreen> {
       'title': 'Subscription Report',
       'description': 'Subscription plans, revenue, and renewals',
       'icon': Icons.subscriptions_rounded,
-      'color': AppColors.gradientIndigo,
+      'color': AppColors.accentDim,
     },
     {
       'id': 'coupons',
       'title': 'Coupon Report',
       'description': 'Coupon usage and discount distribution',
       'icon': Icons.confirmation_number_rounded,
-      'color': AppColors.gradientViolet,
+      'color': AppColors.accentDim,
     },
     {
       'id': 'agents',
@@ -68,8 +68,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
       appBar: AppBar(
         leading: ThemeHelper.buildBackButton(context),
         title: const Text('Reports'),
-        backgroundColor: AppColors.primary,
-        foregroundColor: AppColors.white,
       ),
       body: Container(
         decoration:
@@ -105,8 +103,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   icon: const Icon(Icons.download_rounded),
                   label: const Text('Generate Report'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: AppColors.white,
                     padding: const EdgeInsets.all(16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -130,7 +126,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
           children: [
             Row(
               children: [
-                Icon(Icons.date_range_rounded, color: AppColors.primary),
+                const Icon(Icons.date_range_rounded,
+                    color: AppColors.textSecondary),
                 const SizedBox(width: 8),
                 const Text(
                   'Date Range',
@@ -210,8 +207,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
     return ActionChip(
       label: Text(label),
       onPressed: onTap,
-      backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-      labelStyle: TextStyle(color: AppColors.primary),
+      backgroundColor: AppColors.accent.withValues(alpha: 0.1),
+      labelStyle: const TextStyle(color: AppColors.accent),
     );
   }
 

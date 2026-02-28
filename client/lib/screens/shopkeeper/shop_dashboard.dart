@@ -257,7 +257,7 @@ class _ShopHomeTabState extends State<ShopHomeTab> {
                                   'Total Offers',
                                   offers.length.toString(),
                                   Icons.list_alt_rounded,
-                                  AppColors.accentGradient,
+                                  AppColors.primaryGradient,
                                 ),
                               ),
                             ],
@@ -274,11 +274,7 @@ class _ShopHomeTabState extends State<ShopHomeTab> {
                                   'Total Likes',
                                   totalLikes.toString(),
                                   Icons.favorite_rounded,
-                                  const LinearGradient(
-                                    colors: [AppColors.pink, AppColors.red],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ),
+                                  AppColors.primaryGradient,
                                 ),
                               ),
                               const SizedBox(width: 12),
@@ -291,14 +287,7 @@ class _ShopHomeTabState extends State<ShopHomeTab> {
                                       : (totalLikes / offers.length)
                                           .toStringAsFixed(1),
                                   Icons.trending_up_rounded,
-                                  const LinearGradient(
-                                    colors: [
-                                      AppColors.orange,
-                                      AppColors.deepOrange
-                                    ],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ),
+                                  AppColors.primaryGradient,
                                 ),
                               ),
                             ],

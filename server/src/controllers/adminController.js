@@ -22,12 +22,27 @@ async function getStats(req, res, next) {
   }
 }
 
+function buildUsersWhere(role, state, city, category) {
+  const where = {};
+  if (role) where.role = role;
+  if (state && state.trim()) {
+    where.state = { equals: state.trim(), mode: 'insensitive' };
+  }
+  if (city && city.trim()) {
+    where.city = { equals: city.trim(), mode: 'insensitive' };
+  }
+  if (role === 'shopkeeper' && category && category.trim()) {
+    where.shopkeeperProfile = { category: category.trim() };
+  }
+  return where;
+}
+
 async function listUsers(req, res, next) {
   try {
-    const { role, limit, skip } = req.query;
+    const { role, limit, skip, state, city, category } = req.query;
     const limitNum = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 100);
     const skipNum = Math.max(parseInt(skip, 10) || 0, 0);
-    const where = role ? { role } : {};
+    const where = buildUsersWhere(role, state, city, category);
 
     const usersRaw = await prisma.user.findMany({
       where,
@@ -49,6 +64,9 @@ async function listUsers(req, res, next) {
             subscriptionActivated: true,
             onboardingCompleted: true,
           },
+        },
+        shopkeeperProfile: {
+          select: { category: true },
         },
         subscriptions: {
           where: { status: 'active' },
@@ -83,6 +101,8 @@ async function listUsers(req, res, next) {
         statusLabel = user.isActive ? 'active' : 'inactive';
       }
 
+      const category =
+        user.shopkeeperProfile?.category ?? '';
       return {
         id: user.id,
         name: user.name,
@@ -94,6 +114,7 @@ async function listUsers(req, res, next) {
         approvalStatus: user.approvalStatus,
         createdAt: user.createdAt,
         statusLabel,
+        category,
       };
     });
 
@@ -164,4 +185,96 @@ async function rejectShopkeeper(req, res, next) {
   }
 }
 
-module.exports = { getStats, listUsers, listShopkeepers, approveShopkeeper, rejectShopkeeper };
+async function getUsersStats(req, res, next) {
+  try {
+    const { role, state, city, category } = req.query;
+    const where = buildUsersWhere(role, state, city, category);
+
+    // Subscribed: only count when role filter includes shopkeepers
+    const countSubscribed =
+      role === 'customer' || role === 'admin'
+        ? 0
+        : await prisma.user.count({
+            where: {
+              ...where,
+              role: 'shopkeeper',
+              subscriptions: { some: { status: 'active' } },
+            },
+          });
+
+    // Active (customers): only count when role filter includes customers
+    const countActive =
+      role === 'shopkeeper'
+        ? 0
+        : await prisma.user.count({
+            where: {
+              ...where,
+              role: 'customer',
+              isActive: true,
+            },
+          });
+
+    const totalUsers = await prisma.user.count({ where });
+
+    res.status(200).json({
+      success: true,
+      stats: {
+        totalUsers,
+        subscribedUsers: countSubscribed,
+        activeUsers: countActive,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function getLocationOptions(req, res, next) {
+  try {
+    const users = await prisma.user.findMany({
+      where: {
+        OR: [{ state: { not: '' } }, { city: { not: '' } }],
+      },
+      select: { state: true, city: true },
+    });
+
+    const statesSet = new Set();
+    const citiesByState = {};
+    const allCitiesSet = new Set();
+
+    for (const u of users) {
+      const stateVal = (u.state || '').trim();
+      const cityVal = (u.city || '').trim();
+      if (stateVal) {
+        statesSet.add(stateVal);
+        if (!citiesByState[stateVal]) citiesByState[stateVal] = new Set();
+        if (cityVal) citiesByState[stateVal].add(cityVal);
+      }
+      if (cityVal) allCitiesSet.add(cityVal);
+    }
+
+    const states = Array.from(statesSet).sort();
+    const citiesByStateObj = {};
+    for (const [s, cities] of Object.entries(citiesByState)) {
+      citiesByStateObj[s] = Array.from(cities).sort();
+    }
+    const allCities = Array.from(allCitiesSet).sort();
+
+    res.status(200).json({
+      success: true,
+      data: { states, citiesByState: citiesByStateObj, allCities },
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = {
+  getStats,
+  listUsers,
+  listShopkeepers,
+  approveShopkeeper,
+  rejectShopkeeper,
+  getUsersStats,
+  getLocationOptions,
+};

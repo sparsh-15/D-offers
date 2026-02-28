@@ -63,3 +63,19 @@ Coupon Creation Features:
   ✓ Optional max uses limit
   ✓ Description field
   ✓ API integration for coupon creation
+
+
+
+
+
+Subscription on app visit
+
+on single subscription plan there will be beneftis banner generation...or other features
+
+
+platinum , gold, silver....... lowest ai banner creating not available....
+
+diffrent module to buy banner option category wise...
+
+per banner pricing ,7d, 30d,  -> 
+shop category -> subcategory as a platinum, gold silver

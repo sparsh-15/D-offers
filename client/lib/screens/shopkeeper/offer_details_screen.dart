@@ -152,9 +152,9 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: 0.06),
+        color: AppColors.accent.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+        border: Border.all(color: AppColors.accent.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -560,11 +560,20 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
             ),
         ],
       ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
+      body: SafeArea(
+        child: Form(
+          key: _formKey,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minWidth: constraints.maxWidth,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
             _buildSubscriptionSummary(context),
             TextFormField(
               controller: _titleController,
@@ -852,6 +861,11 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
                 ),
               ),
           ],
+                  ),
+                ),
+              );
+            },
+          ),
         ),
       ),
     );

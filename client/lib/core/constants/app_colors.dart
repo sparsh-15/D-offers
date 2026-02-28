@@ -21,13 +21,13 @@ class AppColors {
   static const Color textMuted = Color(0xFF5D6273);
 
   // ── Accent ─────────────────────────────────────────────────────────────────
-  /// Neutral light accent — used only on interactive elements and active states
-  static const Color accent = Color(0xFFF3F4F7);
-  /// Dimmed accent for icon tints, inactive selected
-  static const Color accentDim = Color(0xFF8C909E);
+  /// Brand accent — #00FF84, used on key interactive elements and highlights
+  static const Color accent = Color(0xFF00FF84);
+  /// Dimmed accent for icon tints, inactive selected, and softer states
+  static const Color accentDim = Color(0xFF00CC68);
 
   // ── Semantic ───────────────────────────────────────────────────────────────
-  static const Color success = Color(0xFF3DDC84);
+  static const Color success = accent;
   static const Color warning = Color(0xFFE8A838);
   static const Color error = Color(0xFFFF5A5A);
   static const Color info = accentDim;
@@ -48,17 +48,17 @@ class AppColors {
   // Remove usages gradually; these map to the nearest premium token.
   static const Color primary = accent;
   static const Color primaryDark = accentDim;
-  static const Color primaryLight = Color(0xFFD8E2FF);
+  static const Color primaryLight = accent;
   static const Color accentDark = accentDim;
 
   // kept for status chip colours that haven't been migrated yet
   static const Color green = success;
   static const Color orange = warning;
   static const Color red = error;
-  static const Color blue = info;
-  static const Color purple = Color(0xFF9C7FFF);
-  static const Color pink = Color(0xFFFF6EB4);
-  static const Color deepOrange = Color(0xFFFF6B35);
+  static const Color blue = info; // neutral info, no saturated blue
+  static const Color purple = accentDim;
+  static const Color pink = accentDim;
+  static const Color deepOrange = accentDim;
 
   // Grey aliases (for remaining legacy usages — prefer textMuted / borderSubtle)
   static const Color grey = Color(0xFF9A9FB5);
@@ -83,8 +83,8 @@ class AppColors {
   // ── Gradient-style names kept as Color aliases for compile compat ────────────
   // (actual gradient objects removed — use flat colours)
   static const Color gradientIndigo = accentDim;
-  static const Color gradientViolet = Color(0xFF7B6FD0);
-  static const Color gradientPink = Color(0xFF9C7FFF);
+  static const Color gradientViolet = accentDim;
+  static const Color gradientPink = accentDim;
   static const Color gradientCoral = highlight;
 
   // ── Background gradient kept for ThemeHelper.getBackgroundGradient ──────────
@@ -97,12 +97,12 @@ class AppColors {
 
   // Legacy gradient aliases (barely visible, tonal only)
   static const LinearGradient primaryGradient = LinearGradient(
-    colors: [accentDim, highlight],
+    colors: [cardBackground, highlight],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
   static const LinearGradient accentGradient = LinearGradient(
-    colors: [accentDim, Color(0xFF3A3F60)],
+    colors: [cardBackground, highlight],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );

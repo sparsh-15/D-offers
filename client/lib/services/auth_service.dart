@@ -537,17 +537,27 @@ class AuthService {
     return data['stats'] as Map<String, dynamic>;
   }
 
-  Future<List<UserModel>> getUsers(
-      {String? role, int? limit, int? skip}) async {
+  Future<List<UserModel>> getUsers({
+    String? role,
+    String? state,
+    String? city,
+    String? category,
+    int? limit,
+    int? skip,
+  }) async {
     final token = AuthStore.token;
     if (token == null) throw Exception('Not authenticated');
     final queryParams = <String, String>{};
-    if (role != null) queryParams['role'] = role;
+    if (role != null && role.isNotEmpty) queryParams['role'] = role;
+    if (state != null && state.isNotEmpty) queryParams['state'] = state;
+    if (city != null && city.isNotEmpty) queryParams['city'] = city;
+    if (category != null && category.isNotEmpty)
+      queryParams['category'] = category;
     if (limit != null) queryParams['limit'] = limit.toString();
     if (skip != null) queryParams['skip'] = skip.toString();
     final query = queryParams.isEmpty
         ? ''
-        : '?${queryParams.entries.map((e) => '${e.key}=${e.value}').join('&')}';
+        : '?${queryParams.entries.map((e) => '${e.key}=${Uri.encodeComponent(e.value)}').join('&')}';
     final uri = Uri.parse('${ApiConfig.adminUrl}/users$query');
     final resp = await _client.get(
       uri,
@@ -560,6 +570,48 @@ class AuthService {
     return list
         .map((e) => UserModel.fromJson(e as Map<String, dynamic>))
         .toList();
+  }
+
+  Future<Map<String, dynamic>> getUsersStats({
+    String? role,
+    String? state,
+    String? city,
+    String? category,
+  }) async {
+    final token = AuthStore.token;
+    if (token == null) throw Exception('Not authenticated');
+    final queryParams = <String, String>{};
+    if (role != null && role.isNotEmpty) queryParams['role'] = role;
+    if (state != null && state.isNotEmpty) queryParams['state'] = state;
+    if (city != null && city.isNotEmpty) queryParams['city'] = city;
+    if (category != null && category.isNotEmpty)
+      queryParams['category'] = category;
+    final query = queryParams.isEmpty
+        ? ''
+        : '?${queryParams.entries.map((e) => '${e.key}=${Uri.encodeComponent(e.value)}').join('&')}';
+    final uri = Uri.parse('${ApiConfig.adminUrl}/users/stats$query');
+    final resp = await _client.get(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $token',
+      },
+    );
+    final data = _handleResponse(resp) as Map<String, dynamic>;
+    return data['stats'] as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> getLocationOptions() async {
+    final token = AuthStore.token;
+    if (token == null) throw Exception('Not authenticated');
+    final uri = Uri.parse('${ApiConfig.adminUrl}/meta/locations');
+    final resp = await _client.get(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $token',
+      },
+    );
+    final data = _handleResponse(resp) as Map<String, dynamic>;
+    return data['data'] as Map<String, dynamic>;
   }
 
   Future<List<UserModel>> getShopkeepers({String? status}) async {
