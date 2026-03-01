@@ -124,14 +124,12 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
     final displayName = plan['displayName'] ?? plan['name'] ?? 'Unnamed Plan';
     final description = plan['description'] ?? '';
     final monthlyPrice = plan['monthlyPrice'] ?? 0;
-    final durationDays = plan['durationDays'] ?? 30;
     final maxOffers = plan['maxOffers'] ?? 0;
     final maxPhotos = plan['maxPhotosPerOffer'] ?? 5;
     final analyticsEnabled = plan['analyticsEnabled'] ?? false;
     final prioritySupport = plan['prioritySupport'] ?? false;
     final monthlyAiLimit = plan['monthlyAiLimit'];
     final rankingTier = plan['rankingTier'] ?? 'normal';
-    final boostCredits = plan['boostCredits'];
     final aiCreditTier = plan['aiCreditTier'] ?? 'silver';
     final features = List<String>.from(plan['features'] ?? []);
 
@@ -202,9 +200,9 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                           ),
                         ],
                       ),
-                      Text(
-                        '/$durationDays days',
-                        style: const TextStyle(
+                      const Text(
+                        '/month',
+                        style: TextStyle(
                           color: AppColors.white,
                           fontSize: 12,
                         ),
@@ -259,14 +257,6 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                       : 'Standard',
               color: rankingTier != 'normal' ? AppColors.success : null,
             ),
-            if (boostCredits != null && boostCredits != 0) ...[
-              const SizedBox(height: 12),
-              _buildDetailRow(
-                icon: Icons.rocket_launch_rounded,
-                label: 'Boost credits',
-                value: boostCredits == -1 ? 'Unlimited' : '$boostCredits per cycle',
-              ),
-            ],
             if (aiCreditTier != 'silver') ...[
               const SizedBox(height: 12),
               _buildDetailRow(

@@ -2,7 +2,7 @@ const { prisma } = require('../db/prisma');
 const { logAdminAction } = require('../middleware/roleAuth');
 const subscriptionRepository = require('../repositories/subscriptionRepository');
 const { resolvePgId } = require('../repositories/idResolver');
-const { buildPlanSnapshot, upsertWalletForSubscription, upsertBoostCreditForSubscription } = require('../services/aiWalletService');
+const { buildPlanSnapshot, upsertWalletForSubscription } = require('../services/aiWalletService');
 
 async function createSubscription(req, res, next) {
   try {
@@ -33,7 +33,6 @@ async function createSubscription(req, res, next) {
       notes,
     });
     await upsertWalletForSubscription(subscription);
-    await upsertBoostCreditForSubscription(subscription);
     await logAdminAction(req.user.userId, req.user.role, 'subscription_created', shopkeeperId, 'shopkeeper', { subscriptionId: subscription.id, planName: plan.name, duration: durationMonths }, req.ip);
     res.status(201).json({ success: true, message: 'Subscription created successfully', data: subscription });
   } catch (err) {
@@ -275,7 +274,6 @@ async function renewSubscription(req, res, next) {
       transactionId,
     });
     await upsertWalletForSubscription(updated);
-    await upsertBoostCreditForSubscription(updated);
     await logAdminAction(req.user.userId, req.user.role, 'subscription_renewed', existing.shopkeeperId, 'shopkeeper', { subscriptionId: existing.id, duration: durationMonths, newEndDate }, req.ip);
     res.json({ success: true, message: 'Subscription renewed successfully', data: updated });
   } catch (err) {

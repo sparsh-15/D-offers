@@ -123,7 +123,6 @@ model User {
   planPriceChanges       SubscriptionPlanPriceHistory[] @relation("PriceChangedBy")
   aiWallet               AiWallet?
   aiCreditPurchases      AiCreditPurchase[]
-  boostCredits           BoostCredit[]
 
   @@index([role, approvalStatus, createdAt(sort: Desc)], map: "idx_users_role_approval_created_desc")
   @@index([role, isActive, createdAt(sort: Desc)], map: "idx_users_role_active_created_desc")
@@ -214,7 +213,6 @@ model SubscriptionPlan {
   sortOrder                 Int      @default(0) @map("sort_order")
   monthlyAiLimit            Int      @default(0) @map("monthly_ai_limit")
   rankingTier               String   @default("normal") @map("ranking_tier")
-  boostCredits              Int      @default(0) @map("boost_credits")
   homepageRotation         Boolean  @default(false) @map("homepage_rotation")
   aiOptimizationSuggestions Boolean  @default(false) @map("ai_optimization_suggestions")
   aiCreditTier              String   @default("silver") @map("ai_credit_tier")
@@ -275,7 +273,6 @@ model Subscription {
   cancelledByUser    User?              @relation("CancelledBy", fields: [cancelledBy], references: [id])
   aiWallets          AiWallet[]
   aiCreditPurchases  AiCreditPurchase[]
-  boostCredits       BoostCredit[]
 
   @@index([shopkeeperId, createdAt(sort: Desc)], map: "idx_subscriptions_shopkeeper_created_desc")
   @@index([status, endDate], map: "idx_subscriptions_status_end_date")
@@ -395,24 +392,6 @@ model AiCreditPurchase {
   @@index([shopkeeperId, createdAt(sort: Desc)], map: "idx_ai_credit_purchases_shopkeeper_created_desc")
   @@index([subscriptionId], map: "idx_ai_credit_purchases_subscription_id")
   @@map("ai_credit_purchases")
-}
-
-model BoostCredit {
-  id             String    @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
-  shopkeeperId   String    @map("shopkeeper_id") @db.Uuid
-  subscriptionId String    @map("subscription_id") @db.Uuid
-  totalGranted   Int       @map("total_granted")
-  used           Int       @default(0)
-  expiresAt      DateTime? @map("expires_at") @db.Timestamptz(6)
-  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
-
-  shopkeeper   User         @relation(fields: [shopkeeperId], references: [id], onDelete: Cascade)
-  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
-
-  @@index([shopkeeperId], map: "idx_boost_credits_shopkeeper_id")
-  @@index([subscriptionId], map: "idx_boost_credits_subscription_id")
-  @@map("boost_credits")
 }
 
 model AiCreditPack {

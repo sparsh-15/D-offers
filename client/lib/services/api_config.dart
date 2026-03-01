@@ -6,23 +6,25 @@ class ApiConfig {
   /// Toggle between environments
   /// Set to false for local development
   /// Set to true for production/deployed backend
-  ///
-  static const bool useProduction = true;
+  static const bool useProduction = false;
+
+  /// Your machine's IP on the local network. Used for physical device & iOS.
+  /// - Physical Android/iOS on same Wi‑Fi: use this (e.g. 192.168.29.47).
+  /// - Android emulator: use '10.0.2.2' to reach host.
+  /// Find your IP: Windows `ipconfig`, Mac/Linux `ifconfig` or `ip addr`.
+  static const String devHost = '192.168.29.47';
 
   static String get baseUrl {
     if (useProduction) {
-      // TODO: set your deployed Node backend URL, e.g. https://api.doffers.com/api
-      return 'https://d-offers.onrender.com/api';
+      return 'https://d-offers-azrc.onrender.com/api';
     } else {
-      // Local Node backend on port 3000 with /api prefix
       if (kIsWeb) return 'http://localhost:3000/api';
       try {
         if (Platform.isAndroid) {
-          // Android emulator talks to host via 10.0.2.2
-          return 'http://10.0.2.2:3000/api';
+          // Use devHost for both emulator (10.0.2.2) and physical device (your LAN IP)
+          return 'http://$devHost:3000/api';
         } else {
-          // return 'http://192.168.1.15:3000/api'; // iOS simulator / physical on same machine
-          return 'http://192.168.29.47:3000/api'; // iOS simulator / physical on same machine
+          return 'http://$devHost:3000/api';
         }
       } catch (_) {
         return 'http://localhost:3000/api';

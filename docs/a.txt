@@ -13,3 +13,8 @@ automatic banner generation
 
 campaign generation
 filtering by age pincode area
+
+
+
+
+create a proper a universal black theme error page like it can use for failed empty api call or errors or page not found create this type or error page matching the proper dark contrast form  like if api returned empty like this 

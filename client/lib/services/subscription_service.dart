@@ -95,7 +95,6 @@ class SubscriptionService {
     required String displayName,
     required String category,
     required double monthlyPrice,
-    int durationDays = 30,
     String? description,
     List<String>? features,
     int maxOffers = -1,
@@ -105,7 +104,6 @@ class SubscriptionService {
     int sortOrder = 0,
     int monthlyAiLimit = 0,
     String rankingTier = 'normal',
-    int boostCredits = 0,
     bool homepageRotation = false,
     bool aiOptimizationSuggestions = false,
     String aiCreditTier = 'silver',
@@ -121,7 +119,6 @@ class SubscriptionService {
         'displayName': displayName,
         'category': category,
         'monthlyPrice': monthlyPrice,
-        'durationDays': durationDays,
         if (description != null) 'description': description,
         if (features != null) 'features': features,
         'maxOffers': maxOffers,
@@ -131,7 +128,6 @@ class SubscriptionService {
         'sortOrder': sortOrder,
         'monthlyAiLimit': monthlyAiLimit,
         'rankingTier': rankingTier,
-        'boostCredits': boostCredits,
         'homepageRotation': homepageRotation,
         'aiOptimizationSuggestions': aiOptimizationSuggestions,
         'aiCreditTier': aiCreditTier,
@@ -165,7 +161,6 @@ class SubscriptionService {
     String? displayName,
     String? description,
     double? monthlyPrice,
-    int? durationDays,
     String? category,
     List<String>? features,
     int? maxOffers,
@@ -177,7 +172,6 @@ class SubscriptionService {
     String? priceChangeReason,
     int? monthlyAiLimit,
     String? rankingTier,
-    int? boostCredits,
     bool? homepageRotation,
     bool? aiOptimizationSuggestions,
     String? aiCreditTier,
@@ -193,7 +187,6 @@ class SubscriptionService {
       if (displayName != null) body['displayName'] = displayName;
       if (description != null) body['description'] = description;
       if (monthlyPrice != null) body['monthlyPrice'] = monthlyPrice;
-      if (durationDays != null) body['durationDays'] = durationDays;
       if (category != null) body['category'] = category;
       if (features != null) body['features'] = features;
       if (maxOffers != null) body['maxOffers'] = maxOffers;
@@ -207,7 +200,6 @@ class SubscriptionService {
         body['priceChangeReason'] = priceChangeReason;
       if (monthlyAiLimit != null) body['monthlyAiLimit'] = monthlyAiLimit;
       if (rankingTier != null) body['rankingTier'] = rankingTier;
-      if (boostCredits != null) body['boostCredits'] = boostCredits;
       if (homepageRotation != null) body['homepageRotation'] = homepageRotation;
       if (aiOptimizationSuggestions != null)
         body['aiOptimizationSuggestions'] = aiOptimizationSuggestions;

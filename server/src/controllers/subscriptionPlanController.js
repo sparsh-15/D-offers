@@ -18,7 +18,7 @@ async function getCategories(req, res, next) {
 
 async function createPlan(req, res, next) {
   try {
-    const { name, displayName, description, monthlyPrice, durationDays, category, features, maxOffers, maxPhotosPerOffer, analyticsEnabled, prioritySupport, sortOrder, monthlyAiLimit, rankingTier, boostCredits, homepageRotation, aiOptimizationSuggestions, aiCreditTier, tier } = req.body;
+    const { name, displayName, description, monthlyPrice, durationDays, category, features, maxOffers, maxPhotosPerOffer, analyticsEnabled, prioritySupport, sortOrder, monthlyAiLimit, rankingTier, homepageRotation, aiOptimizationSuggestions, aiCreditTier, tier } = req.body;
     if (!name || !displayName || monthlyPrice === undefined || !category) {
       return res.status(400).json({ success: false, message: 'Name, display name, monthly price, and category are required' });
     }
@@ -45,7 +45,6 @@ async function createPlan(req, res, next) {
       isActive: true,
       monthlyAiLimit: monthlyAiLimit !== undefined ? monthlyAiLimit : 0,
       rankingTier: rankingTier || 'normal',
-      boostCredits: boostCredits !== undefined ? boostCredits : 0,
       homepageRotation: !!homepageRotation,
       aiOptimizationSuggestions: !!aiOptimizationSuggestions,
       aiCreditTier: aiCreditTier || 'silver',
@@ -100,7 +99,7 @@ async function updatePlan(req, res, next) {
     const { planId } = req.params;
     const plan = await prisma.subscriptionPlan.findUnique({ where: { id: planId } });
     if (!plan) return res.status(404).json({ success: false, message: 'Plan not found' });
-    const { displayName, description, monthlyPrice, durationDays, category, features, maxOffers, maxPhotosPerOffer, analyticsEnabled, prioritySupport, sortOrder, isActive, priceChangeReason, monthlyAiLimit, rankingTier, boostCredits, homepageRotation, aiOptimizationSuggestions, aiCreditTier, tier } = req.body;
+    const { displayName, description, monthlyPrice, durationDays, category, features, maxOffers, maxPhotosPerOffer, analyticsEnabled, prioritySupport, sortOrder, isActive, priceChangeReason, monthlyAiLimit, rankingTier, homepageRotation, aiOptimizationSuggestions, aiCreditTier, tier } = req.body;
     if (category !== undefined && !isValidCategory(category)) {
       return res.status(400).json({ success: false, message: 'Invalid category' });
     }
@@ -120,7 +119,6 @@ async function updatePlan(req, res, next) {
       ...(isActive !== undefined ? { isActive } : {}),
       ...(monthlyAiLimit !== undefined ? { monthlyAiLimit } : {}),
       ...(rankingTier !== undefined ? { rankingTier } : {}),
-      ...(boostCredits !== undefined ? { boostCredits } : {}),
       ...(homepageRotation !== undefined ? { homepageRotation } : {}),
       ...(aiOptimizationSuggestions !== undefined ? { aiOptimizationSuggestions } : {}),
       ...(aiCreditTier !== undefined ? { aiCreditTier } : {}),

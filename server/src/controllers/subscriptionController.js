@@ -1,7 +1,7 @@
 const { prisma } = require('../db/prisma');
 const { resolvePgId } = require('../repositories/idResolver');
 const subscriptionRepository = require('../repositories/subscriptionRepository');
-const { buildPlanSnapshot, upsertWalletForSubscription, upsertBoostCreditForSubscription, getAvailableCredits } = require('../services/aiWalletService');
+const { buildPlanSnapshot, upsertWalletForSubscription, getAvailableCredits } = require('../services/aiWalletService');
 
 function serializeSubscription(subscription, wallet) {
   const base = {
@@ -87,7 +87,6 @@ async function activateTrial(req, res, next) {
       notes: 'trial',
     });
     await upsertWalletForSubscription(subscription);
-    await upsertBoostCreditForSubscription(subscription);
     await prisma.onboardingStatus.upsert({
       where: { userId: shopkeeperId },
       create: {
@@ -139,7 +138,6 @@ async function createSubscription(req, res, next) {
       notes: req.body.notes || '',
     });
     await upsertWalletForSubscription(subscription);
-    await upsertBoostCreditForSubscription(subscription);
     await prisma.onboardingStatus.upsert({
       where: { userId: shopkeeperId },
       create: { userId: shopkeeperId, subscriptionActivated: true },

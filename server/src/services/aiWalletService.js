@@ -43,7 +43,6 @@ function buildPlanSnapshot(plan) {
     maxPhotosPerOffer: plan.maxPhotosPerOffer,
     monthlyAiLimit: plan.monthlyAiLimit !== undefined ? plan.monthlyAiLimit : 0,
     rankingTier: plan.rankingTier || 'normal',
-    boostCredits: plan.boostCredits !== undefined ? plan.boostCredits : 0,
     homepageRotation: !!plan.homepageRotation,
     aiOptimizationSuggestions: !!plan.aiOptimizationSuggestions,
     aiCreditTier: plan.aiCreditTier || 'silver',
@@ -87,41 +86,9 @@ async function upsertWalletForSubscription(subscription) {
   });
 }
 
-async function upsertBoostCreditForSubscription(subscription) {
-  const snapshot = subscription.planSnapshot || {};
-  const totalGranted = snapshot.boostCredits !== undefined ? snapshot.boostCredits : 0;
-  if (totalGranted === 0) return null;
-
-  const existing = await prisma.boostCredit.findFirst({
-    where: { subscriptionId: subscription.id },
-  });
-
-  if (existing) {
-    return prisma.boostCredit.update({
-      where: { id: existing.id },
-      data: {
-        totalGranted,
-        used: 0,
-        expiresAt: subscription.endDate,
-      },
-    });
-  }
-
-  return prisma.boostCredit.create({
-    data: {
-      shopkeeperId: subscription.shopkeeperId,
-      subscriptionId: subscription.id,
-      totalGranted,
-      used: 0,
-      expiresAt: subscription.endDate,
-    },
-  });
-}
-
 module.exports = {
   buildPlanSnapshot,
   upsertWalletForSubscription,
-  upsertBoostCreditForSubscription,
   getAvailableCredits,
   deductAiCredit,
 };

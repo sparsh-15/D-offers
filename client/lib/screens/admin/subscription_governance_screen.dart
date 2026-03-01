@@ -75,6 +75,8 @@ class _PlansManagementTabState extends State<PlansManagementTab> {
   List<Map<String, dynamic>> _plans = [];
   List<Map<String, dynamic>> _categories = [];
   bool _loading = true;
+  /// null or 'all' = show all; else filter by this category value
+  String? _filterCategory;
 
   @override
   void initState() {
@@ -137,6 +139,25 @@ class _PlansManagementTabState extends State<PlansManagementTab> {
       return const Center(child: CircularProgressIndicator());
     }
 
+    final filteredPlans = _filterCategory == null ||
+            _filterCategory == 'all' ||
+            _filterCategory!.isEmpty
+        ? _plans
+        : _plans.where((p) => (p['category'] ?? '') == _filterCategory).toList();
+
+    // Display order: higher price first
+    num toNum(dynamic v) {
+      if (v == null) return 0;
+      if (v is num) return v;
+      if (v is String) return num.tryParse(v) ?? 0;
+      return 0;
+    }
+    filteredPlans.sort((a, b) {
+      final priceA = toNum(a['monthlyPrice'] ?? a['price']);
+      final priceB = toNum(b['monthlyPrice'] ?? b['price']);
+      return priceB.compareTo(priceA);
+    });
+
     return Column(
       children: [
         Padding(
@@ -145,7 +166,7 @@ class _PlansManagementTabState extends State<PlansManagementTab> {
             children: [
               Expanded(
                 child: Text(
-                  '${_plans.length} Plans',
+                  '${filteredPlans.length} Plans',
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
               ),
@@ -164,12 +185,55 @@ class _PlansManagementTabState extends State<PlansManagementTab> {
             ],
           ),
         ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+          child: Row(
+            children: [
+              Text(
+                'Category: ',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  value: (_filterCategory == null ||
+                          _filterCategory == 'all' ||
+                          (_filterCategory?.isEmpty ?? true) ||
+                          !_categories.any((c) => c['value'] == _filterCategory))
+                      ? 'all'
+                      : _filterCategory!,
+                  decoration: const InputDecoration(
+                    isDense: true,
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    border: OutlineInputBorder(),
+                  ),
+                  items: [
+                    const DropdownMenuItem(value: 'all', child: Text('All categories')),
+                    ..._categories.map<DropdownMenuItem<String>>((cat) {
+                      final value = cat['value'] as String? ?? '';
+                      final label = cat['label'] as String? ?? value;
+                      return DropdownMenuItem(
+                        value: value,
+                        child: Text(label),
+                      );
+                    }),
+                  ],
+                  onChanged: (value) {
+                    setState(() {
+                      _filterCategory = (value == 'all' || value == null) ? null : value;
+                    });
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
         Expanded(
           child: ListView.builder(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: _plans.length,
+            itemCount: filteredPlans.length,
             itemBuilder: (context, index) {
-              final plan = _plans[index];
+              final plan = filteredPlans[index];
               return FadeInUp(
                 delay: Duration(milliseconds: 100 * index),
                 child: _buildPlanCard(plan),
@@ -192,7 +256,6 @@ class _PlansManagementTabState extends State<PlansManagementTab> {
     // Use correct API field names
     final displayName = plan['displayName'] ?? plan['name'] ?? 'Unnamed Plan';
     final monthlyPrice = plan['monthlyPrice'] ?? plan['price'] ?? 0;
-    final durationDays = plan['durationDays'] ?? plan['duration'] ?? 30;
     final maxOffers = plan['maxOffers'] ?? plan['offerLimit'] ?? 0;
     final monthlyAiLimit = plan['monthlyAiLimit'];
     final tierLabel = plan['tier'] ?? plan['rankingTier'] ?? '';
@@ -311,13 +374,6 @@ class _PlansManagementTabState extends State<PlansManagementTab> {
                 ),
                 Expanded(
                   child: _buildPlanDetail(
-                    'Duration',
-                    '$durationDays days',
-                    Icons.calendar_today_rounded,
-                  ),
-                ),
-                Expanded(
-                  child: _buildPlanDetail(
                     'Offers',
                     maxOffers == -1 ? 'Unlimited' : '$maxOffers',
                     Icons.local_offer_rounded,
@@ -379,6 +435,8 @@ class _PlansManagementTabState extends State<PlansManagementTab> {
 
   Future<void> _showPlanDialog({Map<String, dynamic>? plan}) async {
     final isEdit = plan != null;
+    final mutedStyle = TextStyle(color: AppColors.textMuted, fontSize: 10);
+    final sectionStyle = TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textMuted);
 
     // Use correct API field names
     final displayNameController = TextEditingController(
@@ -386,9 +444,6 @@ class _PlansManagementTabState extends State<PlansManagementTab> {
     );
     final priceController = TextEditingController(
       text: (plan?['monthlyPrice'] ?? plan?['price'] ?? '').toString(),
-    );
-    final durationController = TextEditingController(
-      text: (plan?['durationDays'] ?? plan?['duration'] ?? 30).toString(),
     );
     final offerLimitController = TextEditingController(
       text: (plan?['maxOffers'] ?? plan?['offerLimit'] ?? 10).toString(),
@@ -399,20 +454,21 @@ class _PlansManagementTabState extends State<PlansManagementTab> {
     final monthlyAiLimitController = TextEditingController(
       text: (plan?['monthlyAiLimit'] ?? 0).toString(),
     );
-    final boostCreditsController = TextEditingController(
-      text: (plan?['boostCredits'] ?? 0).toString(),
-    );
-    final sortOrderController = TextEditingController(
-      text: (plan?['sortOrder'] ?? 0).toString(),
-    );
     final descriptionController = TextEditingController(
       text: plan?['description'] ?? '',
     );
 
     String? selectedCategory = plan?['category'];
-    String? selectedRankingTier = plan?['rankingTier'] ?? 'normal';
-    String? selectedAiCreditTier = plan?['aiCreditTier'] ?? 'silver';
     String? selectedTier = plan?['tier'];
+    // Ranking Tier: set from Tier when present (silver→normal, gold→top3, platinum→priority)
+    String? selectedRankingTier = selectedTier == 'silver'
+        ? 'normal'
+        : selectedTier == 'gold'
+            ? 'top3'
+            : selectedTier == 'platinum'
+                ? 'priority'
+                : (plan?['rankingTier'] ?? 'normal');
+    String? selectedAiCreditTier = plan?['aiCreditTier'] ?? selectedTier ?? 'silver';
     bool homepageRotation = plan?['homepageRotation'] == true;
     bool aiOptimizationSuggestions = plan?['aiOptimizationSuggestions'] == true;
     bool analyticsEnabled = plan?['analyticsEnabled'] == true;
@@ -422,184 +478,235 @@ class _PlansManagementTabState extends State<PlansManagementTab> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: Text(isEdit ? 'Edit Plan' : 'Create Plan'),
+          title: Text(
+            isEdit ? 'Edit Plan' : 'Create Plan',
+            style: const TextStyle(color: Colors.white),
+          ),
           content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: displayNameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Display Name *',
-                    hintText: 'e.g., Basic Plan - Retail',
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: (MediaQuery.sizeOf(context).width * 0.9).clamp(280.0, 500.0),
+              ),
+              child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // ─── Manual / input-based fields (above) ───
+                      Text('Basic info', style: sectionStyle),
+                      const SizedBox(height: 6),
+                      TextField(
+                        controller: displayNameController,
+                        decoration: InputDecoration(
+                          labelText: 'Display Name *',
+                          hintText: 'e.g., Silver Plan - Retail',
+                          helperText: 'Name shown on plan cards',
+                          helperStyle: mutedStyle,
+                          helperMaxLines: 2,
+                          isDense: true,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      DropdownButtonFormField<String>(
+                        value: selectedCategory,
+                        decoration: InputDecoration(
+                          labelText: 'Business Category *',
+                          hintText: 'Shop type or "all"',
+                          helperText: 'e.g. retail, restaurant, all',
+                          helperStyle: mutedStyle,
+                          helperMaxLines: 2,
+                          isDense: true,
+                        ),
+                        isExpanded: true,
+                        menuMaxHeight: 280,
+                        items: _categories.map((category) {
+                          return DropdownMenuItem<String>(
+                            value: category['value'],
+                            child: Text(category['label'] ?? category['value'], overflow: TextOverflow.ellipsis),
+                          );
+                        }).toList(),
+                        onChanged: (value) => setDialogState(() => selectedCategory = value),
+                        validator: (value) => (value == null || value.isEmpty) ? 'Select category' : null,
+                      ),
+                      const SizedBox(height: 14),
+                      Text('Pricing', style: sectionStyle),
+                      const SizedBox(height: 6),
+                      TextField(
+                        controller: priceController,
+                        decoration: InputDecoration(
+                          labelText: 'Monthly Price (₹) *',
+                          hintText: 'e.g., 999',
+                          helperText: 'Amount per month',
+                          helperStyle: mutedStyle,
+                          helperMaxLines: 1,
+                          isDense: true,
+                        ),
+                        keyboardType: TextInputType.number,
+                      ),
+                      const SizedBox(height: 14),
+                      Text('Offer & media limits', style: sectionStyle),
+                      const SizedBox(height: 6),
+                      TextField(
+                        controller: offerLimitController,
+                        decoration: InputDecoration(
+                          labelText: 'Max Offers *',
+                          hintText: '10 or -1 unlimited',
+                          helperText: 'Max offers per shop',
+                          helperStyle: mutedStyle,
+                          helperMaxLines: 1,
+                          isDense: true,
+                        ),
+                        keyboardType: TextInputType.number,
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: maxPhotosController,
+                        decoration: InputDecoration(
+                          labelText: 'Max Photos Per Offer',
+                          hintText: 'e.g., 5',
+                          helperText: 'Photos per offer',
+                          helperStyle: mutedStyle,
+                          helperMaxLines: 1,
+                          isDense: true,
+                        ),
+                        keyboardType: TextInputType.number,
+                      ),
+                      const SizedBox(height: 14),
+                      Text('AI Banner Limit', style: sectionStyle),
+                      const SizedBox(height: 6),
+                      TextField(
+                        controller: monthlyAiLimitController,
+                        decoration: InputDecoration(
+                          labelText: 'Monthly AI Banner Limit',
+                          hintText: '2 or -1 unlimited',
+                          helperText: 'AI banners per month',
+                          helperStyle: mutedStyle,
+                          helperMaxLines: 1,
+                          isDense: true,
+                        ),
+                        keyboardType: TextInputType.number,
+                      ),
+                      const SizedBox(height: 18),
+                      // ─── Auto-set fields (below) ───
+                      Text('Tier & ranking (auto-set from Tier)', style: sectionStyle),
+                      const SizedBox(height: 6),
+                      DropdownButtonFormField<String>(
+                        value: selectedTier?.isEmpty ?? true ? null : selectedTier,
+                        decoration: InputDecoration(
+                          labelText: 'Tier (optional)',
+                          hintText: 'Silver / Gold / Platinum',
+                          helperText: 'Sets ranking & AI tier below',
+                          helperStyle: mutedStyle,
+                          helperMaxLines: 1,
+                          isDense: true,
+                        ),
+                        isExpanded: true,
+                        menuMaxHeight: 220,
+                        items: const [
+                          DropdownMenuItem(value: null, child: Text('None')),
+                          DropdownMenuItem(value: 'silver', child: Text('Silver')),
+                          DropdownMenuItem(value: 'gold', child: Text('Gold')),
+                          DropdownMenuItem(value: 'platinum', child: Text('Platinum')),
+                        ],
+                        onChanged: (v) {
+                          setDialogState(() {
+                            selectedTier = v;
+                            if (v == 'silver') { selectedRankingTier = 'normal'; selectedAiCreditTier = 'silver'; }
+                            else if (v == 'gold') { selectedRankingTier = 'top3'; selectedAiCreditTier = 'gold'; }
+                            else if (v == 'platinum') { selectedRankingTier = 'priority'; selectedAiCreditTier = 'platinum'; }
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                      DropdownButtonFormField<String>(
+                        value: selectedRankingTier,
+                        decoration: InputDecoration(
+                          labelText: 'Ranking Tier',
+                          helperText: 'Silver→Normal, Gold→Top 3, Platinum→Priority',
+                          helperStyle: mutedStyle,
+                          helperMaxLines: 1,
+                          isDense: true,
+                        ),
+                        isExpanded: true,
+                        menuMaxHeight: 180,
+                        items: const [
+                          DropdownMenuItem(value: 'normal', child: Text('Normal')),
+                          DropdownMenuItem(value: 'priority', child: Text('Priority')),
+                          DropdownMenuItem(value: 'top3', child: Text('Top 3')),
+                        ],
+                        onChanged: (v) => setDialogState(() => selectedRankingTier = v),
+                      ),
+                      const SizedBox(height: 8),
+                      DropdownButtonFormField<String>(
+                        value: selectedAiCreditTier,
+                        decoration: InputDecoration(
+                          labelText: 'AI Credit Tier',
+                          helperText: 'Pack price tier',
+                          helperStyle: mutedStyle,
+                          helperMaxLines: 1,
+                          isDense: true,
+                        ),
+                        isExpanded: true,
+                        menuMaxHeight: 180,
+                        items: const [
+                          DropdownMenuItem(value: 'silver', child: Text('Silver')),
+                          DropdownMenuItem(value: 'gold', child: Text('Gold')),
+                          DropdownMenuItem(value: 'platinum', child: Text('Platinum')),
+                        ],
+                        onChanged: (v) => setDialogState(() => selectedAiCreditTier = v),
+                      ),
+                      const SizedBox(height: 6),
+                      CheckboxListTile(
+                        title: const Text('Homepage Rotation', style: TextStyle(fontSize: 14)),
+                        subtitle: Text('Platinum feature', style: mutedStyle),
+                        value: homepageRotation,
+                        onChanged: (v) => setDialogState(() => homepageRotation = v ?? false),
+                        controlAffinity: ListTileControlAffinity.leading,
+                        contentPadding: EdgeInsets.zero,
+                        dense: true,
+                      ),
+                      CheckboxListTile(
+                        title: const Text('AI Optimization Suggestions', style: TextStyle(fontSize: 14)),
+                        subtitle: Text('AI tips', style: mutedStyle),
+                        value: aiOptimizationSuggestions,
+                        onChanged: (v) => setDialogState(() => aiOptimizationSuggestions = v ?? false),
+                        controlAffinity: ListTileControlAffinity.leading,
+                        contentPadding: EdgeInsets.zero,
+                        dense: true,
+                      ),
+                      CheckboxListTile(
+                        title: const Text('Analytics Enabled', style: TextStyle(fontSize: 14)),
+                        subtitle: Text('Advanced analytics', style: mutedStyle),
+                        value: analyticsEnabled,
+                        onChanged: (v) => setDialogState(() => analyticsEnabled = v ?? false),
+                        controlAffinity: ListTileControlAffinity.leading,
+                        contentPadding: EdgeInsets.zero,
+                        dense: true,
+                      ),
+                      CheckboxListTile(
+                        title: const Text('Priority Support', style: TextStyle(fontSize: 14)),
+                        subtitle: Text('Priority channel', style: mutedStyle),
+                        value: prioritySupport,
+                        onChanged: (v) => setDialogState(() => prioritySupport = v ?? false),
+                        controlAffinity: ListTileControlAffinity.leading,
+                        contentPadding: EdgeInsets.zero,
+                        dense: true,
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: descriptionController,
+                        decoration: InputDecoration(
+                          labelText: 'Description',
+                          hintText: 'Brief description for shopkeepers',
+                          helperText: 'Optional',
+                          helperStyle: mutedStyle,
+                          helperMaxLines: 1,
+                          isDense: true,
+                        ),
+                        maxLines: 2,
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  value: selectedCategory,
-                  decoration: const InputDecoration(
-                    labelText: 'Category *',
-                    hintText: 'Select business category',
-                  ),
-                  isExpanded: true,
-                  items: _categories.map((category) {
-                    return DropdownMenuItem<String>(
-                      value: category['value'],
-                      child: Text(category['label']),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    setDialogState(() {
-                      selectedCategory = value;
-                    });
-                  },
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please select a category';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: priceController,
-                  decoration: const InputDecoration(
-                    labelText: 'Monthly Price (₹) *',
-                    hintText: 'e.g., 999',
-                  ),
-                  keyboardType: TextInputType.number,
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: durationController,
-                  decoration: const InputDecoration(
-                    labelText: 'Duration (days) *',
-                    hintText: 'e.g., 30',
-                  ),
-                  keyboardType: TextInputType.number,
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: offerLimitController,
-                  decoration: const InputDecoration(
-                    labelText: 'Max Offers *',
-                    hintText: 'e.g., 10 or -1 for unlimited',
-                  ),
-                  keyboardType: TextInputType.number,
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: maxPhotosController,
-                  decoration: const InputDecoration(
-                    labelText: 'Max Photos Per Offer',
-                    hintText: 'e.g., 5',
-                  ),
-                  keyboardType: TextInputType.number,
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: monthlyAiLimitController,
-                  decoration: const InputDecoration(
-                    labelText: 'Monthly AI Banner Limit',
-                    hintText: 'e.g., 2 or -1 for unlimited',
-                  ),
-                  keyboardType: TextInputType.number,
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  value: selectedRankingTier,
-                  decoration: const InputDecoration(labelText: 'Ranking Tier'),
-                  items: const [
-                    DropdownMenuItem(value: 'normal', child: Text('Normal')),
-                    DropdownMenuItem(value: 'priority', child: Text('Priority')),
-                    DropdownMenuItem(value: 'top3', child: Text('Top 3')),
-                  ],
-                  onChanged: (v) => setDialogState(() => selectedRankingTier = v),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: boostCreditsController,
-                  decoration: const InputDecoration(
-                    labelText: 'Boost Credits',
-                    hintText: 'e.g., 0, 3, or -1 for unlimited',
-                  ),
-                  keyboardType: TextInputType.number,
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  value: selectedAiCreditTier,
-                  decoration: const InputDecoration(labelText: 'AI Credit Tier'),
-                  items: const [
-                    DropdownMenuItem(value: 'silver', child: Text('Silver')),
-                    DropdownMenuItem(value: 'gold', child: Text('Gold')),
-                    DropdownMenuItem(value: 'platinum', child: Text('Platinum')),
-                  ],
-                  onChanged: (v) => setDialogState(() => selectedAiCreditTier = v),
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  value: selectedTier?.isEmpty ?? true ? null : selectedTier,
-                  decoration: const InputDecoration(
-                    labelText: 'Tier (optional)',
-                    hintText: 'e.g. silver, gold, platinum',
-                  ),
-                  items: const [
-                    DropdownMenuItem(value: null, child: Text('None')),
-                    DropdownMenuItem(value: 'silver', child: Text('Silver')),
-                    DropdownMenuItem(value: 'gold', child: Text('Gold')),
-                    DropdownMenuItem(value: 'platinum', child: Text('Platinum')),
-                  ],
-                  onChanged: (v) => setDialogState(() => selectedTier = v),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: sortOrderController,
-                  decoration: const InputDecoration(
-                    labelText: 'Sort Order',
-                    hintText: 'e.g., 0',
-                  ),
-                  keyboardType: TextInputType.number,
-                ),
-                const SizedBox(height: 12),
-                CheckboxListTile(
-                  title: const Text('Homepage Rotation'),
-                  value: homepageRotation,
-                  onChanged: (v) => setDialogState(() => homepageRotation = v ?? false),
-                  controlAffinity: ListTileControlAffinity.leading,
-                  contentPadding: EdgeInsets.zero,
-                ),
-                CheckboxListTile(
-                  title: const Text('AI Optimization Suggestions'),
-                  value: aiOptimizationSuggestions,
-                  onChanged: (v) => setDialogState(() => aiOptimizationSuggestions = v ?? false),
-                  controlAffinity: ListTileControlAffinity.leading,
-                  contentPadding: EdgeInsets.zero,
-                ),
-                CheckboxListTile(
-                  title: const Text('Analytics Enabled'),
-                  value: analyticsEnabled,
-                  onChanged: (v) => setDialogState(() => analyticsEnabled = v ?? false),
-                  controlAffinity: ListTileControlAffinity.leading,
-                  contentPadding: EdgeInsets.zero,
-                ),
-                CheckboxListTile(
-                  title: const Text('Priority Support'),
-                  value: prioritySupport,
-                  onChanged: (v) => setDialogState(() => prioritySupport = v ?? false),
-                  controlAffinity: ListTileControlAffinity.leading,
-                  contentPadding: EdgeInsets.zero,
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: descriptionController,
-                  decoration: const InputDecoration(
-                    labelText: 'Description',
-                    hintText: 'Brief description of the plan',
-                  ),
-                  maxLines: 2,
-                ),
-              ],
-            ),
           ),
           actions: [
             TextButton(
@@ -617,6 +724,29 @@ class _PlansManagementTabState extends State<PlansManagementTab> {
                     ),
                   );
                   return;
+                }
+                // Auto-set tier (and ranking) from display name if tier not set
+                final name = displayNameController.text.trim().toLowerCase();
+                if ((selectedTier == null || selectedTier!.isEmpty) && name.isNotEmpty) {
+                  if (name.contains('platinum')) {
+                    setDialogState(() {
+                      selectedTier = 'platinum';
+                      selectedRankingTier = 'priority';
+                      selectedAiCreditTier = 'platinum';
+                    });
+                  } else if (name.contains('gold')) {
+                    setDialogState(() {
+                      selectedTier = 'gold';
+                      selectedRankingTier = 'top3';
+                      selectedAiCreditTier = 'gold';
+                    });
+                  } else if (name.contains('silver')) {
+                    setDialogState(() {
+                      selectedTier = 'silver';
+                      selectedRankingTier = 'normal';
+                      selectedAiCreditTier = 'silver';
+                    });
+                  }
                 }
                 Navigator.pop(context, true);
               },
@@ -639,20 +769,17 @@ class _PlansManagementTabState extends State<PlansManagementTab> {
                 ? null
                 : descriptionController.text.trim(),
             monthlyPrice: double.tryParse(priceController.text.trim()),
-            durationDays: int.tryParse(durationController.text.trim()),
             category: selectedCategory,
             maxOffers: int.tryParse(offerLimitController.text.trim()),
             maxPhotosPerOffer: int.tryParse(maxPhotosController.text.trim()),
             monthlyAiLimit: int.tryParse(monthlyAiLimitController.text.trim()),
             rankingTier: selectedRankingTier,
-            boostCredits: int.tryParse(boostCreditsController.text.trim()),
             homepageRotation: homepageRotation,
             aiOptimizationSuggestions: aiOptimizationSuggestions,
             aiCreditTier: selectedAiCreditTier,
             tier: selectedTier?.isEmpty ?? true ? null : selectedTier,
             analyticsEnabled: analyticsEnabled,
             prioritySupport: prioritySupport,
-            sortOrder: int.tryParse(sortOrderController.text.trim()),
           );
 
           if (!mounted) return;
@@ -678,7 +805,6 @@ class _PlansManagementTabState extends State<PlansManagementTab> {
             displayName: displayName,
             category: category,
             monthlyPrice: double.parse(priceController.text.trim()),
-            durationDays: int.parse(durationController.text.trim()),
             description: descriptionController.text.trim().isEmpty
                 ? null
                 : descriptionController.text.trim(),
@@ -686,14 +812,12 @@ class _PlansManagementTabState extends State<PlansManagementTab> {
             maxPhotosPerOffer: int.tryParse(maxPhotosController.text.trim()) ?? 5,
             monthlyAiLimit: int.tryParse(monthlyAiLimitController.text.trim()) ?? 0,
             rankingTier: selectedRankingTier ?? 'normal',
-            boostCredits: int.tryParse(boostCreditsController.text.trim()) ?? 0,
             homepageRotation: homepageRotation,
             aiOptimizationSuggestions: aiOptimizationSuggestions,
             aiCreditTier: selectedAiCreditTier ?? 'silver',
             tier: selectedTier?.isEmpty ?? true ? null : selectedTier,
             analyticsEnabled: analyticsEnabled,
             prioritySupport: prioritySupport,
-            sortOrder: int.tryParse(sortOrderController.text.trim()) ?? 0,
           );
 
           if (!mounted) return;
@@ -788,6 +912,8 @@ class _SubscriptionsManagementTabState
     super.initState();
     _loadSubscriptions();
   }
+
+  
 
   Future<void> _loadSubscriptions() async {
     setState(() => _loading = true);
