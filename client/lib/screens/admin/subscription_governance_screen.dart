@@ -1517,7 +1517,7 @@ class _AiCreditPacksTabState extends State<AiCreditPacksTab> {
                   ),
                   const SizedBox(height: 10),
                   DropdownButtonFormField<String>(
-                    value: (selectedCategory == null || selectedCategory.isEmpty || selectedCategory == 'all' ||
+                    value: (selectedCategory == null || (selectedCategory?.isEmpty ?? true) || selectedCategory == 'all' ||
                             !categories.any((c) => c['value'] == selectedCategory))
                         ? 'all'
                         : selectedCategory,
