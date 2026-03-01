@@ -129,6 +129,10 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
     final maxPhotos = plan['maxPhotosPerOffer'] ?? 5;
     final analyticsEnabled = plan['analyticsEnabled'] ?? false;
     final prioritySupport = plan['prioritySupport'] ?? false;
+    final monthlyAiLimit = plan['monthlyAiLimit'];
+    final rankingTier = plan['rankingTier'] ?? 'normal';
+    final boostCredits = plan['boostCredits'];
+    final aiCreditTier = plan['aiCreditTier'] ?? 'silver';
     final features = List<String>.from(plan['features'] ?? []);
 
     return Card(
@@ -236,6 +240,42 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
               value: prioritySupport ? 'Priority' : 'Standard',
               color: prioritySupport ? AppColors.success : null,
             ),
+            const SizedBox(height: 12),
+            _buildDetailRow(
+              icon: Icons.auto_awesome_rounded,
+              label: 'AI Banners',
+              value: monthlyAiLimit == null || monthlyAiLimit == -1
+                  ? 'Unlimited'
+                  : '$monthlyAiLimit per month',
+            ),
+            const SizedBox(height: 12),
+            _buildDetailRow(
+              icon: Icons.trending_up_rounded,
+              label: 'Ranking',
+              value: rankingTier == 'top3'
+                  ? 'Top 3'
+                  : rankingTier == 'priority'
+                      ? 'Priority'
+                      : 'Standard',
+              color: rankingTier != 'normal' ? AppColors.success : null,
+            ),
+            if (boostCredits != null && boostCredits != 0) ...[
+              const SizedBox(height: 12),
+              _buildDetailRow(
+                icon: Icons.rocket_launch_rounded,
+                label: 'Boost credits',
+                value: boostCredits == -1 ? 'Unlimited' : '$boostCredits per cycle',
+              ),
+            ],
+            if (aiCreditTier != 'silver') ...[
+              const SizedBox(height: 12),
+              _buildDetailRow(
+                icon: Icons.discount_rounded,
+                label: 'AI credits',
+                value: 'Discounted ($aiCreditTier)',
+                color: AppColors.success,
+              ),
+            ],
             if (features.isNotEmpty) ...[
               const SizedBox(height: 20),
               const Divider(),

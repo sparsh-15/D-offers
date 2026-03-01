@@ -1,6 +1,7 @@
 const shopkeeperProfileRepository = require('../repositories/shopkeeperProfileRepository');
 const { prisma } = require('../db/prisma');
 const { resolvePgId } = require('../repositories/idResolver');
+const { getAvailableCredits } = require('../services/aiWalletService');
 
 async function getProfile(req, res, next) {
   try {
@@ -53,6 +54,17 @@ async function getDashboard(req, res, next) {
   try {
     const pgUserId = await resolvePgId('users', req.user.userId);
     const profile = await prisma.shopkeeperProfile.findUnique({ where: { userId: pgUserId } });
+    let subscription = req.subscription || null;
+    if (subscription && subscription.status === 'active') {
+      const wallet = await prisma.aiWallet.findUnique({ where: { shopkeeperId: pgUserId } });
+      subscription = {
+        ...subscription,
+        availableAiCredits: wallet ? getAvailableCredits(wallet) : 0,
+        usedThisCycle: wallet?.usedThisCycle ?? 0,
+        extraCreditsCurrentCycle: wallet?.extraCreditsCurrentCycle ?? 0,
+        cycleEnd: wallet?.cycleEnd ?? subscription.endDate,
+      };
+    }
     res.status(200).json({
       success: true,
       dashboard: {
@@ -65,7 +77,7 @@ async function getDashboard(req, res, next) {
               category: profile.category,
             }
           : null,
-        subscription: req.subscription || null,
+        subscription,
       },
     });
   } catch (err) {

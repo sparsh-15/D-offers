@@ -5,10 +5,12 @@ const {
   requireActiveSubscription,
   checkSubscriptionStatus,
   checkOfferLimit,
+  checkAiCreditLimit,
 } = require('../middleware/subscriptionCheck');
 const shopkeeperProfileController = require('../controllers/shopkeeperProfileController');
 const offerController = require('../controllers/offerController');
 const subscriptionPlanController = require('../controllers/subscriptionPlanController');
+const shopkeeperAiController = require('../controllers/shopkeeperAiController');
 
 const router = express.Router();
 
@@ -22,6 +24,12 @@ router.put('/profile', shopkeeperProfileController.upsertProfile);
 // Subscription plan viewing (for shopkeepers to see available plans)
 router.get('/plans', subscriptionPlanController.getAllPlans);
 router.get('/plans/recommend', subscriptionPlanController.getRecommendedPlans);
+
+// AI wallet and credit packs (require active subscription for purchase/use)
+router.get('/ai-wallet', shopkeeperAiController.getAiWallet);
+router.get('/ai-credits/packs', shopkeeperAiController.getAiCreditPacks);
+router.post('/ai-credits/purchase', requireActiveSubscription, shopkeeperAiController.purchaseAiCreditPack);
+router.post('/ai-banners/use', requireActiveSubscription, checkAiCreditLimit, shopkeeperAiController.useAiBanner);
 
 // Dashboard - check subscription status but don't block
 router.get('/dashboard', checkSubscriptionStatus, shopkeeperProfileController.getDashboard);

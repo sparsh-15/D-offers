@@ -4,6 +4,7 @@ const authMiddleware = require('../middleware/auth');
 const { requireSuperAdmin } = require('../middleware/roleAuth');
 const subscriptionPlanController = require('../controllers/subscriptionPlanController');
 const subscriptionGovernanceController = require('../controllers/subscriptionGovernanceController');
+const aiCreditPackController = require('../controllers/aiCreditPackController');
 
 // All routes require authentication and super admin role
 router.use(authMiddleware);
@@ -33,6 +34,14 @@ router.delete('/plans/:planId', subscriptionPlanController.deletePlan);
 
 // Get recommended plans for category
 router.get('/plans/recommend/category', subscriptionPlanController.getRecommendedPlans);
+
+// ============ AI Credit Packs (Admin) ============
+
+router.get('/ai-credit-packs', aiCreditPackController.getAllPacks);
+router.get('/ai-credit-packs/:packId', aiCreditPackController.getPackById);
+router.post('/ai-credit-packs', aiCreditPackController.createPack);
+router.patch('/ai-credit-packs/:packId', aiCreditPackController.updatePack);
+router.delete('/ai-credit-packs/:packId', aiCreditPackController.deletePack);
 
 // ============ Subscription Management ============
 

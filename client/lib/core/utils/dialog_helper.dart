@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
+import '../../screens/shopkeeper/ai_credit_packs_screen.dart';
 
 class DialogHelper {
   static Future<bool> showConfirmDialog({
@@ -121,6 +122,49 @@ class DialogHelper {
         behavior: SnackBarBehavior.fixed,
         duration: const Duration(seconds: 2),
       ),
+    );
+  }
+
+  /// Show dialog when AI banner limit is reached. "Buy AI Credit Pack" opens
+  /// [AiCreditPacksScreen].
+  static Future<void> showAiLimitReachedDialog(BuildContext context) async {
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext ctx) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text('AI Banner Limit Reached'),
+          content: const Text(
+            "You have reached your AI banner limit. Buy AI Credit Pack.",
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: Text(
+                'Cancel',
+                style: TextStyle(
+                  color: Theme.of(ctx).textTheme.bodyMedium?.color,
+                ),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(ctx).pop();
+                Navigator.of(ctx).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const AiCreditPacksScreen(),
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+              child: const Text('Buy AI Credit Pack'),
+            ),
+          ],
+        );
+      },
     );
   }
 }

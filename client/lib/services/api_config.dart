@@ -7,7 +7,7 @@ class ApiConfig {
   /// Set to false for local development
   /// Set to true for production/deployed backend
   ///
-  static const bool useProduction = false;
+  static const bool useProduction = true;
 
   static String get baseUrl {
     if (useProduction) {
@@ -21,7 +21,8 @@ class ApiConfig {
           // Android emulator talks to host via 10.0.2.2
           return 'http://10.0.2.2:3000/api';
         } else {
-          return 'http://192.168.1.15:3000/api'; // iOS simulator / physical on same machine
+          // return 'http://192.168.1.15:3000/api'; // iOS simulator / physical on same machine
+          return 'http://192.168.29.47:3000/api'; // iOS simulator / physical on same machine
         }
       } catch (_) {
         return 'http://localhost:3000/api';

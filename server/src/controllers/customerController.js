@@ -45,12 +45,38 @@ async function listOffers(req, res, next) {
     if (!shopkeeperIds.length) return res.status(200).json({ success: true, offers: [] });
     where.shopkeeperId = { in: shopkeeperIds };
 
-    const offers = await prisma.offer.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-      skip: skipNum,
-      take: limitNum,
+    const [offersRaw, subscriptions] = await Promise.all([
+      prisma.offer.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.subscription.findMany({
+        where: { shopkeeperId: { in: shopkeeperIds }, status: 'active' },
+        orderBy: { createdAt: 'desc' },
+        select: { shopkeeperId: true, planSnapshot: true },
+      }),
+    ]);
+
+    const tierOrder = { top3: 3, priority: 2, normal: 1 };
+    const tierByShop = {};
+    subscriptions.forEach((s) => {
+      if (!tierByShop[s.shopkeeperId]) {
+        const tier = (s.planSnapshot && s.planSnapshot.rankingTier) ? s.planSnapshot.rankingTier : 'normal';
+        tierByShop[s.shopkeeperId] = tierOrder[tier] ?? 1;
+      }
     });
+
+    const offers = offersRaw
+      .map((o) => ({
+        ...o,
+        _tierScore: tierByShop[o.shopkeeperId] ?? 1,
+      }))
+      .sort((a, b) => {
+        if (b._tierScore !== a._tierScore) return b._tierScore - a._tierScore;
+        if ((b.likesCount || 0) !== (a.likesCount || 0)) return (b.likesCount || 0) - (a.likesCount || 0);
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      })
+      .slice(skipNum, skipNum + limitNum);
 
     const profiles = await prisma.shopkeeperProfile.findMany({
       where: { userId: { in: shopkeeperIds } },

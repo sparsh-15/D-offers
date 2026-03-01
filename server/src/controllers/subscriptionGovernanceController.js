@@ -2,6 +2,7 @@ const { prisma } = require('../db/prisma');
 const { logAdminAction } = require('../middleware/roleAuth');
 const subscriptionRepository = require('../repositories/subscriptionRepository');
 const { resolvePgId } = require('../repositories/idResolver');
+const { buildPlanSnapshot, upsertWalletForSubscription, upsertBoostCreditForSubscription } = require('../services/aiWalletService');
 
 async function createSubscription(req, res, next) {
   try {
@@ -16,17 +17,11 @@ async function createSubscription(req, res, next) {
     const start = startDate ? new Date(startDate) : new Date();
     const end = new Date(start);
     end.setMonth(end.getMonth() + durationMonths);
+    const planSnapshot = buildPlanSnapshot(plan);
     const subscription = await subscriptionRepository.createSubscription({
       shopkeeperId: pgShopkeeperId,
       planId: plan.id,
-      planSnapshot: {
-        name: plan.name,
-        displayName: plan.displayName,
-        monthlyPrice: plan.monthlyPrice,
-        features: plan.features,
-        maxOffers: plan.maxOffers,
-        maxPhotosPerOffer: plan.maxPhotosPerOffer,
-      },
+      planSnapshot,
       status: 'active',
       startDate: start,
       endDate: end,
@@ -37,6 +32,8 @@ async function createSubscription(req, res, next) {
       transactionId,
       notes,
     });
+    await upsertWalletForSubscription(subscription);
+    await upsertBoostCreditForSubscription(subscription);
     await logAdminAction(req.user.userId, req.user.role, 'subscription_created', shopkeeperId, 'shopkeeper', { subscriptionId: subscription.id, planName: plan.name, duration: durationMonths }, req.ip);
     res.status(201).json({ success: true, message: 'Subscription created successfully', data: subscription });
   } catch (err) {
@@ -264,10 +261,12 @@ async function renewSubscription(req, res, next) {
     const { durationMonths = 1, paymentMethod, transactionId } = req.body;
     const existing = await prisma.subscription.findUnique({ where: { id: subscriptionId } });
     if (!existing) return res.status(404).json({ success: false, message: 'Subscription not found' });
-    const newEndDate = new Date(existing.endDate || new Date());
+    const newCycleStart = new Date(existing.endDate || new Date());
+    const newEndDate = new Date(newCycleStart);
     newEndDate.setMonth(newEndDate.getMonth() + durationMonths);
     const updated = await subscriptionRepository.updateSubscription(subscriptionId, {
       status: 'active',
+      startDate: newCycleStart,
       endDate: newEndDate,
       renewalCount: (existing.renewalCount || 0) + 1,
       lastRenewalDate: new Date(),
@@ -275,6 +274,8 @@ async function renewSubscription(req, res, next) {
       paymentMethod,
       transactionId,
     });
+    await upsertWalletForSubscription(updated);
+    await upsertBoostCreditForSubscription(updated);
     await logAdminAction(req.user.userId, req.user.role, 'subscription_renewed', existing.shopkeeperId, 'shopkeeper', { subscriptionId: existing.id, duration: durationMonths, newEndDate }, req.ip);
     res.json({ success: true, message: 'Subscription renewed successfully', data: updated });
   } catch (err) {

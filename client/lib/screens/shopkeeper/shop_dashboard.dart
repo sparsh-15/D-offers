@@ -12,6 +12,8 @@ import '../../widgets/offer_card.dart';
 import '../common/offer_detail_screen.dart';
 import 'offer_details_screen.dart';
 import 'onboarding_flow.dart';
+import 'subscription_plans_screen.dart';
+import 'ai_credit_packs_screen.dart';
 
 class ShopDashboard extends StatefulWidget {
   const ShopDashboard({super.key});
@@ -700,6 +702,13 @@ class _ShopProfileTabState extends State<ShopProfileTab> {
     final offerLimitLabel = maxOffers == null || maxOffers == -1
         ? 'Unlimited offers'
         : '${_offerCount ?? 0} / $maxOffers offers used';
+    final monthlyAiLimit = planSnapshot?['monthlyAiLimit'];
+    final usedThisCycle = _subscription?['usedThisCycle'] ?? 0;
+    final extraCredits = _subscription?['extraCreditsCurrentCycle'] ?? 0;
+    final showAiUsage = monthlyAiLimit != null && monthlyAiLimit != -1;
+    final aiUsageLabel = showAiUsage
+        ? 'AI Banners: $usedThisCycle / $monthlyAiLimit used${extraCredits > 0 ? ' (+ $extraCredits extra)' : ''}'
+        : null;
     final startDate = _formatDate(_subscription?['startDate']);
     final endDate = _formatDate(_subscription?['endDate']);
 
@@ -731,6 +740,28 @@ class _ShopProfileTabState extends State<ShopProfileTab> {
             offerLimitLabel,
             style: Theme.of(context).textTheme.bodySmall,
           ),
+          if (aiUsageLabel != null) ...[
+            const SizedBox(height: 6),
+            Text(aiUsageLabel, style: Theme.of(context).textTheme.bodySmall),
+            const SizedBox(height: 8),
+            TextButton.icon(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const AiCreditPacksScreen(),
+                  ),
+                ).then((_) => _loadSubscriptionDetails());
+              },
+              icon: const Icon(Icons.auto_awesome_rounded, size: 18),
+              label: const Text('Buy AI Credit Pack'),
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                padding: EdgeInsets.zero,
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+            ),
+          ],
           const SizedBox(height: 6),
           Text(
             'Valid: $startDate → $endDate',
@@ -790,9 +821,11 @@ class _ShopProfileTabState extends State<ShopProfileTab> {
                     const SizedBox(height: 16),
                     ElevatedButton(
                       onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Subscription plans coming soon'),
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const SubscriptionPlansScreen(
+                              shopCategory: 'all',
+                            ),
                           ),
                         );
                       },

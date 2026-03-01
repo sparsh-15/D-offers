@@ -22,7 +22,7 @@ class _SubscriptionGovernanceScreenState
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
   }
 
   @override
@@ -41,6 +41,7 @@ class _SubscriptionGovernanceScreenState
           tabs: const [
             Tab(text: 'Plans', icon: Icon(Icons.list_alt_rounded)),
             Tab(text: 'Subscriptions', icon: Icon(Icons.subscriptions_rounded)),
+            Tab(text: 'AI Packs', icon: Icon(Icons.auto_awesome_rounded)),
             Tab(text: 'Analytics', icon: Icon(Icons.analytics_rounded)),
           ],
         ),
@@ -53,6 +54,7 @@ class _SubscriptionGovernanceScreenState
           children: const [
             PlansManagementTab(),
             SubscriptionsManagementTab(),
+            AiCreditPacksTab(),
             SubscriptionAnalyticsTab(),
           ],
         ),
@@ -147,13 +149,16 @@ class _PlansManagementTabState extends State<PlansManagementTab> {
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
               ),
-              ElevatedButton.icon(
-                onPressed: () => _showPlanDialog(),
-                icon: const Icon(Icons.add_rounded),
-                label: const Text('Add Plan'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.accent,
-                  foregroundColor: AppColors.black,
+              Flexible(
+                fit: FlexFit.loose,
+                child: ElevatedButton.icon(
+                  onPressed: () => _showPlanDialog(),
+                  icon: const Icon(Icons.add_rounded),
+                  label: const Text('Add Plan'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.accent,
+                    foregroundColor: AppColors.black,
+                  ),
                 ),
               ),
             ],
@@ -189,6 +194,8 @@ class _PlansManagementTabState extends State<PlansManagementTab> {
     final monthlyPrice = plan['monthlyPrice'] ?? plan['price'] ?? 0;
     final durationDays = plan['durationDays'] ?? plan['duration'] ?? 30;
     final maxOffers = plan['maxOffers'] ?? plan['offerLimit'] ?? 0;
+    final monthlyAiLimit = plan['monthlyAiLimit'];
+    final tierLabel = plan['tier'] ?? plan['rankingTier'] ?? '';
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -318,6 +325,29 @@ class _PlansManagementTabState extends State<PlansManagementTab> {
                 ),
               ],
             ),
+            if (tierLabel.toString().isNotEmpty || monthlyAiLimit != null) ...[
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  if (tierLabel.toString().isNotEmpty)
+                    Expanded(
+                      child: _buildPlanDetail(
+                        'Tier',
+                        tierLabel.toString(),
+                        Icons.star_rounded,
+                      ),
+                    ),
+                  if (monthlyAiLimit != null)
+                    Expanded(
+                      child: _buildPlanDetail(
+                        'AI/mo',
+                        monthlyAiLimit == -1 ? 'Unlimited' : '$monthlyAiLimit',
+                        Icons.auto_awesome_rounded,
+                      ),
+                    ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
@@ -363,11 +393,30 @@ class _PlansManagementTabState extends State<PlansManagementTab> {
     final offerLimitController = TextEditingController(
       text: (plan?['maxOffers'] ?? plan?['offerLimit'] ?? 10).toString(),
     );
+    final maxPhotosController = TextEditingController(
+      text: (plan?['maxPhotosPerOffer'] ?? 5).toString(),
+    );
+    final monthlyAiLimitController = TextEditingController(
+      text: (plan?['monthlyAiLimit'] ?? 0).toString(),
+    );
+    final boostCreditsController = TextEditingController(
+      text: (plan?['boostCredits'] ?? 0).toString(),
+    );
+    final sortOrderController = TextEditingController(
+      text: (plan?['sortOrder'] ?? 0).toString(),
+    );
     final descriptionController = TextEditingController(
       text: plan?['description'] ?? '',
     );
 
     String? selectedCategory = plan?['category'];
+    String? selectedRankingTier = plan?['rankingTier'] ?? 'normal';
+    String? selectedAiCreditTier = plan?['aiCreditTier'] ?? 'silver';
+    String? selectedTier = plan?['tier'];
+    bool homepageRotation = plan?['homepageRotation'] == true;
+    bool aiOptimizationSuggestions = plan?['aiOptimizationSuggestions'] == true;
+    bool analyticsEnabled = plan?['analyticsEnabled'] == true;
+    bool prioritySupport = plan?['prioritySupport'] == true;
 
     final result = await showDialog<bool>(
       context: context,
@@ -440,6 +489,108 @@ class _PlansManagementTabState extends State<PlansManagementTab> {
                 ),
                 const SizedBox(height: 12),
                 TextField(
+                  controller: maxPhotosController,
+                  decoration: const InputDecoration(
+                    labelText: 'Max Photos Per Offer',
+                    hintText: 'e.g., 5',
+                  ),
+                  keyboardType: TextInputType.number,
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: monthlyAiLimitController,
+                  decoration: const InputDecoration(
+                    labelText: 'Monthly AI Banner Limit',
+                    hintText: 'e.g., 2 or -1 for unlimited',
+                  ),
+                  keyboardType: TextInputType.number,
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: selectedRankingTier,
+                  decoration: const InputDecoration(labelText: 'Ranking Tier'),
+                  items: const [
+                    DropdownMenuItem(value: 'normal', child: Text('Normal')),
+                    DropdownMenuItem(value: 'priority', child: Text('Priority')),
+                    DropdownMenuItem(value: 'top3', child: Text('Top 3')),
+                  ],
+                  onChanged: (v) => setDialogState(() => selectedRankingTier = v),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: boostCreditsController,
+                  decoration: const InputDecoration(
+                    labelText: 'Boost Credits',
+                    hintText: 'e.g., 0, 3, or -1 for unlimited',
+                  ),
+                  keyboardType: TextInputType.number,
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: selectedAiCreditTier,
+                  decoration: const InputDecoration(labelText: 'AI Credit Tier'),
+                  items: const [
+                    DropdownMenuItem(value: 'silver', child: Text('Silver')),
+                    DropdownMenuItem(value: 'gold', child: Text('Gold')),
+                    DropdownMenuItem(value: 'platinum', child: Text('Platinum')),
+                  ],
+                  onChanged: (v) => setDialogState(() => selectedAiCreditTier = v),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: selectedTier?.isEmpty ?? true ? null : selectedTier,
+                  decoration: const InputDecoration(
+                    labelText: 'Tier (optional)',
+                    hintText: 'e.g. silver, gold, platinum',
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: null, child: Text('None')),
+                    DropdownMenuItem(value: 'silver', child: Text('Silver')),
+                    DropdownMenuItem(value: 'gold', child: Text('Gold')),
+                    DropdownMenuItem(value: 'platinum', child: Text('Platinum')),
+                  ],
+                  onChanged: (v) => setDialogState(() => selectedTier = v),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: sortOrderController,
+                  decoration: const InputDecoration(
+                    labelText: 'Sort Order',
+                    hintText: 'e.g., 0',
+                  ),
+                  keyboardType: TextInputType.number,
+                ),
+                const SizedBox(height: 12),
+                CheckboxListTile(
+                  title: const Text('Homepage Rotation'),
+                  value: homepageRotation,
+                  onChanged: (v) => setDialogState(() => homepageRotation = v ?? false),
+                  controlAffinity: ListTileControlAffinity.leading,
+                  contentPadding: EdgeInsets.zero,
+                ),
+                CheckboxListTile(
+                  title: const Text('AI Optimization Suggestions'),
+                  value: aiOptimizationSuggestions,
+                  onChanged: (v) => setDialogState(() => aiOptimizationSuggestions = v ?? false),
+                  controlAffinity: ListTileControlAffinity.leading,
+                  contentPadding: EdgeInsets.zero,
+                ),
+                CheckboxListTile(
+                  title: const Text('Analytics Enabled'),
+                  value: analyticsEnabled,
+                  onChanged: (v) => setDialogState(() => analyticsEnabled = v ?? false),
+                  controlAffinity: ListTileControlAffinity.leading,
+                  contentPadding: EdgeInsets.zero,
+                ),
+                CheckboxListTile(
+                  title: const Text('Priority Support'),
+                  value: prioritySupport,
+                  onChanged: (v) => setDialogState(() => prioritySupport = v ?? false),
+                  controlAffinity: ListTileControlAffinity.leading,
+                  contentPadding: EdgeInsets.zero,
+                ),
+                const SizedBox(height: 12),
+                TextField(
                   controller: descriptionController,
                   decoration: const InputDecoration(
                     labelText: 'Description',
@@ -491,6 +642,17 @@ class _PlansManagementTabState extends State<PlansManagementTab> {
             durationDays: int.tryParse(durationController.text.trim()),
             category: selectedCategory,
             maxOffers: int.tryParse(offerLimitController.text.trim()),
+            maxPhotosPerOffer: int.tryParse(maxPhotosController.text.trim()),
+            monthlyAiLimit: int.tryParse(monthlyAiLimitController.text.trim()),
+            rankingTier: selectedRankingTier,
+            boostCredits: int.tryParse(boostCreditsController.text.trim()),
+            homepageRotation: homepageRotation,
+            aiOptimizationSuggestions: aiOptimizationSuggestions,
+            aiCreditTier: selectedAiCreditTier,
+            tier: selectedTier?.isEmpty ?? true ? null : selectedTier,
+            analyticsEnabled: analyticsEnabled,
+            prioritySupport: prioritySupport,
+            sortOrder: int.tryParse(sortOrderController.text.trim()),
           );
 
           if (!mounted) return;
@@ -521,6 +683,17 @@ class _PlansManagementTabState extends State<PlansManagementTab> {
                 ? null
                 : descriptionController.text.trim(),
             maxOffers: int.parse(offerLimitController.text.trim()),
+            maxPhotosPerOffer: int.tryParse(maxPhotosController.text.trim()) ?? 5,
+            monthlyAiLimit: int.tryParse(monthlyAiLimitController.text.trim()) ?? 0,
+            rankingTier: selectedRankingTier ?? 'normal',
+            boostCredits: int.tryParse(boostCreditsController.text.trim()) ?? 0,
+            homepageRotation: homepageRotation,
+            aiOptimizationSuggestions: aiOptimizationSuggestions,
+            aiCreditTier: selectedAiCreditTier ?? 'silver',
+            tier: selectedTier?.isEmpty ?? true ? null : selectedTier,
+            analyticsEnabled: analyticsEnabled,
+            prioritySupport: prioritySupport,
+            sortOrder: int.tryParse(sortOrderController.text.trim()) ?? 0,
           );
 
           if (!mounted) return;
@@ -906,6 +1079,289 @@ class _SubscriptionsManagementTabState
         context,
         'Failed to cancel subscription: $e',
       );
+    }
+  }
+}
+
+// ============ AI Credit Packs Tab ============
+class AiCreditPacksTab extends StatefulWidget {
+  const AiCreditPacksTab({super.key});
+
+  @override
+  State<AiCreditPacksTab> createState() => _AiCreditPacksTabState();
+}
+
+class _AiCreditPacksTabState extends State<AiCreditPacksTab> {
+  List<Map<String, dynamic>> _packs = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPacks();
+  }
+
+  Future<void> _loadPacks() async {
+    setState(() => _loading = true);
+    try {
+      final packs = await SubscriptionService.instance.getAiCreditPacks();
+      if (!mounted) return;
+      setState(() {
+        _packs = packs;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      DialogHelper.showErrorSnackBar(context, e.toString());
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '${_packs.length} AI Credit Packs',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ),
+              Flexible(
+                fit: FlexFit.loose,
+                child: ElevatedButton.icon(
+                  onPressed: () => _showPackDialog(),
+                  icon: const Icon(Icons.add_rounded),
+                  label: const Text('Add Pack'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.accent,
+                    foregroundColor: AppColors.black,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: ListView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: _packs.length,
+            itemBuilder: (context, index) {
+              final pack = _packs[index];
+              return FadeInUp(
+                delay: Duration(milliseconds: 100 * index),
+                child: _buildPackCard(pack),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPackCard(Map<String, dynamic> pack) {
+    final sku = pack['sku'] ?? '';
+    final displayName = pack['displayName'] ?? sku;
+    final credits = pack['credits'] ?? 0;
+    final priceSilver = pack['priceSilver'] ?? 0;
+    final priceGold = pack['priceGold'] ?? 0;
+    final pricePlatinum = pack['pricePlatinum'] ?? 0;
+    final isActive = pack['isActive'] as bool? ?? true;
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: ListTile(
+        contentPadding: const EdgeInsets.all(16),
+        leading: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(Icons.auto_awesome_rounded, color: AppColors.primary),
+        ),
+        title: Text(displayName),
+        subtitle: Text(
+          '$credits credits • Silver: ₹$priceSilver | Gold: ₹$priceGold | Platinum: ₹$pricePlatinum',
+          style: TextStyle(fontSize: 12, color: AppColors.grey600),
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (!isActive)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.grey,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Text('Inactive', style: TextStyle(color: AppColors.white, fontSize: 12)),
+              ),
+            const SizedBox(width: 8),
+            PopupMenuButton<String>(
+              onSelected: (v) {
+                if (v == 'edit') _showPackDialog(pack: pack);
+                else if (v == 'delete') _deletePack(pack);
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem(value: 'edit', child: Row(children: [Icon(Icons.edit_rounded, size: 20), SizedBox(width: 12), Text('Edit')])),
+                const PopupMenuItem(value: 'delete', child: Row(children: [Icon(Icons.delete_rounded, size: 20, color: AppColors.error), SizedBox(width: 12), Text('Delete', style: TextStyle(color: AppColors.error))])),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showPackDialog({Map<String, dynamic>? pack}) async {
+    final isEdit = pack != null;
+    final skuController = TextEditingController(text: pack?['sku'] ?? '');
+    final displayNameController = TextEditingController(text: pack?['displayName'] ?? '');
+    final creditsController = TextEditingController(text: (pack?['credits'] ?? 0).toString());
+    final priceSilverController = TextEditingController(text: (pack?['priceSilver'] ?? 0).toString());
+    final priceGoldController = TextEditingController(text: (pack?['priceGold'] ?? 0).toString());
+    final pricePlatinumController = TextEditingController(text: (pack?['pricePlatinum'] ?? 0).toString());
+    final sortOrderController = TextEditingController(text: (pack?['sortOrder'] ?? 0).toString());
+    bool isActive = pack?['isActive'] as bool? ?? true;
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(isEdit ? 'Edit Pack' : 'Add AI Credit Pack'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: skuController,
+                  decoration: const InputDecoration(labelText: 'SKU *', hintText: 'e.g. starter'),
+                  enabled: !isEdit,
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: displayNameController,
+                  decoration: const InputDecoration(labelText: 'Display Name *'),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: creditsController,
+                  decoration: const InputDecoration(labelText: 'Credits *'),
+                  keyboardType: TextInputType.number,
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: priceSilverController,
+                  decoration: const InputDecoration(labelText: 'Price (Silver) ₹ *'),
+                  keyboardType: TextInputType.number,
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: priceGoldController,
+                  decoration: const InputDecoration(labelText: 'Price (Gold) ₹ *'),
+                  keyboardType: TextInputType.number,
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: pricePlatinumController,
+                  decoration: const InputDecoration(labelText: 'Price (Platinum) ₹ *'),
+                  keyboardType: TextInputType.number,
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: sortOrderController,
+                  decoration: const InputDecoration(labelText: 'Sort Order'),
+                  keyboardType: TextInputType.number,
+                ),
+                CheckboxListTile(
+                  title: const Text('Active'),
+                  value: isActive,
+                  onChanged: (v) => setDialogState(() => isActive = v ?? true),
+                  controlAffinity: ListTileControlAffinity.leading,
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () {
+                if (skuController.text.trim().isEmpty && !isEdit) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('SKU is required')));
+                  return;
+                }
+                if (displayNameController.text.trim().isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Display name is required')));
+                  return;
+                }
+                Navigator.pop(context, true);
+              },
+              child: Text(isEdit ? 'Update' : 'Create'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (result != true || !mounted) return;
+    try {
+      if (isEdit) {
+        await SubscriptionService.instance.updateAiCreditPack(
+          packId: pack!['id'] ?? pack['_id'],
+          displayName: displayNameController.text.trim(),
+          credits: int.tryParse(creditsController.text.trim()),
+          priceSilver: double.tryParse(priceSilverController.text.trim()),
+          priceGold: double.tryParse(priceGoldController.text.trim()),
+          pricePlatinum: double.tryParse(pricePlatinumController.text.trim()),
+          sortOrder: int.tryParse(sortOrderController.text.trim()),
+          isActive: isActive,
+        );
+        DialogHelper.showSuccessSnackBar(context, 'Pack updated successfully');
+      } else {
+        await SubscriptionService.instance.createAiCreditPack(
+          sku: skuController.text.trim().toLowerCase(),
+          displayName: displayNameController.text.trim(),
+          credits: int.parse(creditsController.text.trim()),
+          priceSilver: double.parse(priceSilverController.text.trim()),
+          priceGold: double.parse(priceGoldController.text.trim()),
+          pricePlatinum: double.parse(pricePlatinumController.text.trim()),
+          sortOrder: int.tryParse(sortOrderController.text.trim()) ?? 0,
+          isActive: isActive,
+        );
+        DialogHelper.showSuccessSnackBar(context, 'Pack created successfully');
+      }
+      _loadPacks();
+    } catch (e) {
+      if (!mounted) return;
+      DialogHelper.showErrorSnackBar(context, 'Failed: $e');
+    }
+  }
+
+  Future<void> _deletePack(Map<String, dynamic> pack) async {
+    final confirm = await DialogHelper.showConfirmDialog(
+      context: context,
+      title: 'Deactivate Pack',
+      message: 'Deactivate "${pack['displayName'] ?? pack['sku']}"?',
+      confirmText: 'Deactivate',
+      isDestructive: true,
+    );
+    if (!confirm || !mounted) return;
+    try {
+      await SubscriptionService.instance.deleteAiCreditPack(pack['id'] ?? pack['_id']);
+      if (!mounted) return;
+      DialogHelper.showSuccessSnackBar(context, 'Pack deactivated');
+      _loadPacks();
+    } catch (e) {
+      if (!mounted) return;
+      DialogHelper.showErrorSnackBar(context, 'Failed: $e');
     }
   }
 }

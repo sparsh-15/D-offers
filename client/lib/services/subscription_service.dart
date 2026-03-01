@@ -3,6 +3,12 @@ import 'package:http/http.dart' as http;
 import 'api_config.dart';
 import 'auth_store.dart';
 
+/// Thrown when the backend returns 403 with code AI_LIMIT_REACHED (e.g. no AI credits left).
+class AiLimitReachedException implements Exception {
+  @override
+  String toString() => "You have reached your AI banner limit. Buy AI Credit Pack.";
+}
+
 class SubscriptionService {
   static final SubscriptionService _instance = SubscriptionService._internal();
   factory SubscriptionService() => _instance;
@@ -97,6 +103,13 @@ class SubscriptionService {
     bool analyticsEnabled = false,
     bool prioritySupport = false,
     int sortOrder = 0,
+    int monthlyAiLimit = 0,
+    String rankingTier = 'normal',
+    int boostCredits = 0,
+    bool homepageRotation = false,
+    bool aiOptimizationSuggestions = false,
+    String aiCreditTier = 'silver',
+    String? tier,
   }) async {
     try {
       final uri =
@@ -116,6 +129,13 @@ class SubscriptionService {
         'analyticsEnabled': analyticsEnabled,
         'prioritySupport': prioritySupport,
         'sortOrder': sortOrder,
+        'monthlyAiLimit': monthlyAiLimit,
+        'rankingTier': rankingTier,
+        'boostCredits': boostCredits,
+        'homepageRotation': homepageRotation,
+        'aiOptimizationSuggestions': aiOptimizationSuggestions,
+        'aiCreditTier': aiCreditTier,
+        if (tier != null && tier.isNotEmpty) 'tier': tier,
       };
 
       final response = await _client.post(
@@ -155,6 +175,13 @@ class SubscriptionService {
     int? sortOrder,
     bool? isActive,
     String? priceChangeReason,
+    int? monthlyAiLimit,
+    String? rankingTier,
+    int? boostCredits,
+    bool? homepageRotation,
+    bool? aiOptimizationSuggestions,
+    String? aiCreditTier,
+    String? tier,
   }) async {
     try {
       final uri = Uri.parse(
@@ -178,6 +205,14 @@ class SubscriptionService {
       if (isActive != null) body['isActive'] = isActive;
       if (priceChangeReason != null)
         body['priceChangeReason'] = priceChangeReason;
+      if (monthlyAiLimit != null) body['monthlyAiLimit'] = monthlyAiLimit;
+      if (rankingTier != null) body['rankingTier'] = rankingTier;
+      if (boostCredits != null) body['boostCredits'] = boostCredits;
+      if (homepageRotation != null) body['homepageRotation'] = homepageRotation;
+      if (aiOptimizationSuggestions != null)
+        body['aiOptimizationSuggestions'] = aiOptimizationSuggestions;
+      if (aiCreditTier != null) body['aiCreditTier'] = aiCreditTier;
+      if (tier != null) body['tier'] = tier;
 
       final response = await _client.patch(
         uri,
@@ -222,6 +257,127 @@ class SubscriptionService {
       throw Exception(errorData['message'] ?? 'Failed to delete plan');
     } catch (e) {
       print('[SUBSCRIPTION] deletePlan error: $e');
+      rethrow;
+    }
+  }
+
+  // ============ AI Credit Packs (Admin) ============
+
+  Future<List<Map<String, dynamic>>> getAiCreditPacks({bool? isActive}) async {
+    try {
+      final queryParams = <String, String>{};
+      if (isActive != null) queryParams['isActive'] = isActive.toString();
+      final uri = Uri.parse(
+        '${ApiConfig.baseUrl}/subscription-governance/ai-credit-packs',
+      ).replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
+      final response = await _client.get(uri, headers: _getHeaders());
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) {
+          return List<Map<String, dynamic>>.from(data['data'] ?? []);
+        }
+      }
+      throw Exception('Failed to fetch AI credit packs');
+    } catch (e) {
+      print('[SUBSCRIPTION] getAiCreditPacks error: $e');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> createAiCreditPack({
+    required String sku,
+    required String displayName,
+    required int credits,
+    required double priceSilver,
+    required double priceGold,
+    required double pricePlatinum,
+    int sortOrder = 0,
+    bool isActive = true,
+  }) async {
+    try {
+      final uri = Uri.parse(
+        '${ApiConfig.baseUrl}/subscription-governance/ai-credit-packs',
+      );
+      final body = {
+        'sku': sku.trim().toLowerCase(),
+        'displayName': displayName.trim(),
+        'credits': credits,
+        'priceSilver': priceSilver,
+        'priceGold': priceGold,
+        'pricePlatinum': pricePlatinum,
+        'sortOrder': sortOrder,
+        'isActive': isActive,
+      };
+      final response = await _client.post(
+        uri,
+        headers: _getHeaders(),
+        body: jsonEncode(body),
+      );
+      if (response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) return data['data'] as Map<String, dynamic>;
+      }
+      final err = jsonDecode(response.body);
+      throw Exception(err['message'] ?? 'Failed to create pack');
+    } catch (e) {
+      print('[SUBSCRIPTION] createAiCreditPack error: $e');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> updateAiCreditPack({
+    required String packId,
+    String? displayName,
+    int? credits,
+    double? priceSilver,
+    double? priceGold,
+    double? pricePlatinum,
+    int? sortOrder,
+    bool? isActive,
+  }) async {
+    try {
+      final uri = Uri.parse(
+        '${ApiConfig.baseUrl}/subscription-governance/ai-credit-packs/$packId',
+      );
+      final body = <String, dynamic>{};
+      if (displayName != null) body['displayName'] = displayName;
+      if (credits != null) body['credits'] = credits;
+      if (priceSilver != null) body['priceSilver'] = priceSilver;
+      if (priceGold != null) body['priceGold'] = priceGold;
+      if (pricePlatinum != null) body['pricePlatinum'] = pricePlatinum;
+      if (sortOrder != null) body['sortOrder'] = sortOrder;
+      if (isActive != null) body['isActive'] = isActive;
+      final response = await _client.patch(
+        uri,
+        headers: _getHeaders(),
+        body: jsonEncode(body),
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) return data['data'] as Map<String, dynamic>;
+      }
+      final err = jsonDecode(response.body);
+      throw Exception(err['message'] ?? 'Failed to update pack');
+    } catch (e) {
+      print('[SUBSCRIPTION] updateAiCreditPack error: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> deleteAiCreditPack(String packId) async {
+    try {
+      final uri = Uri.parse(
+        '${ApiConfig.baseUrl}/subscription-governance/ai-credit-packs/$packId',
+      );
+      final response = await _client.delete(uri, headers: _getHeaders());
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) return;
+      }
+      final err = jsonDecode(response.body);
+      throw Exception(err['message'] ?? 'Failed to deactivate pack');
+    } catch (e) {
+      print('[SUBSCRIPTION] deleteAiCreditPack error: $e');
       rethrow;
     }
   }
@@ -478,6 +634,96 @@ class SubscriptionService {
           errorData['message'] ?? 'Failed to activate subscription');
     } catch (e) {
       print('[SUBSCRIPTION] activateSubscription error: $e');
+      rethrow;
+    }
+  }
+
+  // ============ Shopkeeper AI Wallet & Packs ============
+
+  Future<Map<String, dynamic>> getAiWallet() async {
+    try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}/shopkeeper/ai-wallet');
+      final response = await _client.get(uri, headers: _getHeaders());
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) return data['data'] as Map<String, dynamic>;
+      }
+      throw Exception('Failed to fetch AI wallet');
+    } catch (e) {
+      print('[SUBSCRIPTION] getAiWallet error: $e');
+      rethrow;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getAiCreditPacksForShopkeeper() async {
+    try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}/shopkeeper/ai-credits/packs');
+      final response = await _client.get(uri, headers: _getHeaders());
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) {
+          return List<Map<String, dynamic>>.from(data['data'] ?? []);
+        }
+      }
+      throw Exception('Failed to fetch AI credit packs');
+    } catch (e) {
+      print('[SUBSCRIPTION] getAiCreditPacksForShopkeeper error: $e');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> purchaseAiCreditPack({
+    required String packSku,
+    required String paymentMethod,
+    String? transactionId,
+  }) async {
+    try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}/shopkeeper/ai-credits/purchase');
+      final body = {
+        'packSku': packSku,
+        'paymentMethod': paymentMethod,
+        if (transactionId != null) 'transactionId': transactionId,
+      };
+      final response = await _client.post(
+        uri,
+        headers: _getHeaders(),
+        body: jsonEncode(body),
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) return data['data'] as Map<String, dynamic>;
+      }
+      final err = jsonDecode(response.body);
+      if (response.statusCode == 403 &&
+          (err['code']?.toString() == 'AI_LIMIT_REACHED')) {
+        throw AiLimitReachedException();
+      }
+      throw Exception(err['message'] ?? 'Failed to purchase pack');
+    } catch (e) {
+      print('[SUBSCRIPTION] purchaseAiCreditPack error: $e');
+      rethrow;
+    }
+  }
+
+  /// Call before or when using an AI banner. Deducts 1 credit; throws
+  /// [AiLimitReachedException] if no credits available.
+  Future<void> useAiBanner() async {
+    try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}/shopkeeper/ai-banners/use');
+      final response = await _client.post(
+        uri,
+        headers: _getHeaders(),
+        body: jsonEncode({}),
+      );
+      if (response.statusCode == 200) return;
+      final err = jsonDecode(response.body);
+      if (response.statusCode == 403 &&
+          (err['code']?.toString() == 'AI_LIMIT_REACHED')) {
+        throw AiLimitReachedException();
+      }
+      throw Exception(err['message'] ?? 'Failed to use AI banner');
+    } catch (e) {
+      print('[SUBSCRIPTION] useAiBanner error: $e');
       rethrow;
     }
   }

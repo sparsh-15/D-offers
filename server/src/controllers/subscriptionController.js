@@ -1,43 +1,53 @@
 const { prisma } = require('../db/prisma');
 const { resolvePgId } = require('../repositories/idResolver');
 const subscriptionRepository = require('../repositories/subscriptionRepository');
+const { buildPlanSnapshot, upsertWalletForSubscription, upsertBoostCreditForSubscription, getAvailableCredits } = require('../services/aiWalletService');
 
-function serializeSubscription(subscription) {
-  if (!subscription) {
-    return {
-      planType: null,
-      status: 'inactive',
-      startDate: null,
-      endDate: null,
-      autoRenew: false,
-      isActive: false,
-      isExpired: false,
-    };
-  }
+function serializeSubscription(subscription, wallet) {
+  const base = {
+    planType: subscription?.planSnapshot?.name || null,
+    status: subscription?.status || 'inactive',
+    startDate: subscription?.startDate ?? null,
+    endDate: subscription?.endDate ?? null,
+    autoRenew: subscription?.autoRenew ?? false,
+    isActive: false,
+    isExpired: false,
+    availableAiCredits: 0,
+    usedThisCycle: 0,
+    extraCreditsCurrentCycle: 0,
+    cycleEnd: null,
+  };
+  if (!subscription) return base;
   const now = new Date();
-  const isActive =
+  base.isActive =
     subscription.status === 'active' &&
     !!subscription.endDate &&
     new Date(subscription.endDate) > now;
-  return {
-    planType: subscription.planSnapshot?.name || null,
-    status: subscription.status,
-    startDate: subscription.startDate,
-    endDate: subscription.endDate,
-    autoRenew: subscription.autoRenew,
-    isActive,
-    isExpired: !!subscription.endDate && new Date(subscription.endDate) <= now,
-  };
+  base.isExpired = !!subscription.endDate && new Date(subscription.endDate) <= now;
+  if (wallet) {
+    base.availableAiCredits = getAvailableCredits(wallet);
+    base.usedThisCycle = wallet.usedThisCycle ?? 0;
+    base.extraCreditsCurrentCycle = wallet.extraCreditsCurrentCycle ?? 0;
+    base.cycleEnd = wallet.cycleEnd ?? subscription.endDate;
+  } else if (subscription.endDate) {
+    base.cycleEnd = subscription.endDate;
+  }
+  return base;
 }
 
 async function getSubscription(req, res, next) {
   try {
     const shopkeeperId = await resolvePgId('users', req.user.userId);
-    const subscription = await prisma.subscription.findFirst({
-      where: { shopkeeperId },
-      orderBy: { createdAt: 'desc' },
-    });
-    res.status(200).json({ success: true, subscription: serializeSubscription(subscription) });
+    const [subscription, wallet] = await Promise.all([
+      prisma.subscription.findFirst({
+        where: { shopkeeperId },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.aiWallet.findUnique({
+        where: { shopkeeperId },
+      }),
+    ]);
+    res.status(200).json({ success: true, subscription: serializeSubscription(subscription, wallet) });
   } catch (err) {
     next(err);
   }
@@ -63,17 +73,11 @@ async function activateTrial(req, res, next) {
     const startDate = new Date();
     const endDate = new Date();
     endDate.setDate(endDate.getDate() + 7);
+    const planSnapshot = buildPlanSnapshot(trialPlan);
     const subscription = await subscriptionRepository.createSubscription({
       shopkeeperId,
       planId: trialPlan.id,
-      planSnapshot: {
-        name: trialPlan.name,
-        displayName: trialPlan.displayName,
-        monthlyPrice: 0,
-        features: trialPlan.features || [],
-        maxOffers: trialPlan.maxOffers,
-        maxPhotosPerOffer: trialPlan.maxPhotosPerOffer,
-      },
+      planSnapshot,
       status: 'active',
       startDate,
       endDate,
@@ -82,6 +86,8 @@ async function activateTrial(req, res, next) {
       paymentStatus: 'paid',
       notes: 'trial',
     });
+    await upsertWalletForSubscription(subscription);
+    await upsertBoostCreditForSubscription(subscription);
     await prisma.onboardingStatus.upsert({
       where: { userId: shopkeeperId },
       create: {
@@ -117,17 +123,11 @@ async function createSubscription(req, res, next) {
     const startDate = new Date();
     const endDate = new Date();
     endDate.setMonth(endDate.getMonth() + parseInt(durationMonths, 10));
+    const planSnapshot = buildPlanSnapshot(plan);
     const subscription = await subscriptionRepository.createSubscription({
       shopkeeperId,
       planId: plan.id,
-      planSnapshot: {
-        name: plan.name,
-        displayName: plan.displayName,
-        monthlyPrice: plan.monthlyPrice,
-        features: plan.features || [],
-        maxOffers: plan.maxOffers,
-        maxPhotosPerOffer: plan.maxPhotosPerOffer,
-      },
+      planSnapshot,
       status: 'active',
       startDate,
       endDate,
@@ -138,6 +138,8 @@ async function createSubscription(req, res, next) {
       transactionId: transactionId || null,
       notes: req.body.notes || '',
     });
+    await upsertWalletForSubscription(subscription);
+    await upsertBoostCreditForSubscription(subscription);
     await prisma.onboardingStatus.upsert({
       where: { userId: shopkeeperId },
       create: { userId: shopkeeperId, subscriptionActivated: true },

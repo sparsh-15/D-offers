@@ -17,6 +17,13 @@ async function createPlan(payload) {
       prioritySupport: !!payload.prioritySupport,
       isActive: payload.isActive !== false,
       sortOrder: payload.sortOrder || 0,
+      monthlyAiLimit: payload.monthlyAiLimit !== undefined ? payload.monthlyAiLimit : 0,
+      rankingTier: payload.rankingTier || 'normal',
+      boostCredits: payload.boostCredits !== undefined ? payload.boostCredits : 0,
+      homepageRotation: !!payload.homepageRotation,
+      aiOptimizationSuggestions: !!payload.aiOptimizationSuggestions,
+      aiCreditTier: payload.aiCreditTier || 'silver',
+      tier: payload.tier ?? undefined,
     },
   });
 }

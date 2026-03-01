@@ -1,5 +1,6 @@
 const { prisma } = require('../db/prisma');
 const { resolvePgId } = require('../repositories/idResolver');
+const { getAvailableCredits } = require('../services/aiWalletService');
 
 async function requireActiveSubscription(req, res, next) {
   try {
@@ -109,4 +110,34 @@ async function checkOfferLimit(req, res, next) {
   }
 }
 
-module.exports = { requireActiveSubscription, checkSubscriptionStatus, checkOfferLimit };
+async function checkAiCreditLimit(req, res, next) {
+  try {
+    if (req.user.role !== 'shopkeeper') return next();
+    if (!req.subscription) {
+      return res.status(403).json({
+        success: false,
+        message: 'Active subscription required',
+        code: 'SUBSCRIPTION_REQUIRED',
+      });
+    }
+    const shopkeeperId = await resolvePgId('users', req.user.userId);
+    const wallet = await prisma.aiWallet.findUnique({
+      where: { shopkeeperId },
+    });
+    const available = getAvailableCredits(wallet);
+    if (available < 1) {
+      return res.status(403).json({
+        success: false,
+        message: 'You have reached your AI banner limit. Buy AI Credit Pack.',
+        code: 'AI_LIMIT_REACHED',
+        details: { action: 'Purchase an AI credit pack to continue' },
+      });
+    }
+    next();
+  } catch (error) {
+    console.error('[AI_CREDIT_LIMIT_CHECK] Error:', error);
+    next(error);
+  }
+}
+
+module.exports = { requireActiveSubscription, checkSubscriptionStatus, checkOfferLimit, checkAiCreditLimit };
