@@ -4,6 +4,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/utils/theme_helper.dart';
 import '../../core/utils/dialog_helper.dart';
 import '../../services/subscription_service.dart';
+import '../../widgets/data_state_wrapper.dart';
 
 class AiCreditPacksScreen extends StatefulWidget {
   const AiCreditPacksScreen({super.key});
@@ -15,6 +16,7 @@ class AiCreditPacksScreen extends StatefulWidget {
 class _AiCreditPacksScreenState extends State<AiCreditPacksScreen> {
   List<Map<String, dynamic>> _packs = [];
   bool _loading = true;
+  String? _error;
   String? _purchasingSku;
 
   @override
@@ -30,11 +32,15 @@ class _AiCreditPacksScreenState extends State<AiCreditPacksScreen> {
       if (!mounted) return;
       setState(() {
         _packs = packs;
+        _error = null;
         _loading = false;
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() => _loading = false);
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
       DialogHelper.showErrorSnackBar(context, e.toString());
     }
   }
@@ -66,33 +72,24 @@ class _AiCreditPacksScreenState extends State<AiCreditPacksScreen> {
         leading: ThemeHelper.buildBackButton(context),
         title: const Text('AI Credit Packs'),
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _packs.isEmpty
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.auto_awesome_rounded, size: 64, color: Theme.of(context).textTheme.bodySmall?.color),
-                        const SizedBox(height: 16),
-                        Text('No AI credit packs available', style: Theme.of(context).textTheme.titleMedium),
-                      ],
-                    ),
-                  ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _packs.length,
-                  itemBuilder: (context, index) {
-                    final pack = _packs[index];
-                    return FadeInUp(
-                      delay: Duration(milliseconds: 80 * index),
-                      child: _buildPackCard(pack),
-                    );
-                  },
-                ),
+      body: DataStateWrapper(
+        loading: _loading,
+        error: _error,
+        isEmpty: _packs.isEmpty,
+        onRetry: _loadPacks,
+        emptyTitle: 'No AI credit packs available',
+        child: ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: _packs.length,
+          itemBuilder: (context, index) {
+            final pack = _packs[index];
+            return FadeInUp(
+              delay: Duration(milliseconds: 80 * index),
+              child: _buildPackCard(pack),
+            );
+          },
+        ),
+      ),
     );
   }
 

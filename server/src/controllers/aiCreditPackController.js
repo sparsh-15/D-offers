@@ -1,15 +1,30 @@
 const { prisma } = require('../db/prisma');
 const { resolvePgId } = require('../repositories/idResolver');
 const { logAdminAction } = require('../middleware/roleAuth');
+const { isValidCategory } = require('../config/businessCategories');
+
+/** Generate unique SKU from displayName + category (e.g. starter_100_retail). */
+function generatePackSku(displayName, category) {
+  const base = `${String(displayName).trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '')}_${String(category).trim().toLowerCase()}`
+    .replace(/_+/g, '_')
+    .replace(/^_|_$/g, '');
+  return base || 'pack';
+}
 
 async function getAllPacks(req, res, next) {
   try {
-    const { isActive } = req.query;
+    const { isActive, category } = req.query;
     const where = {};
     if (isActive !== undefined) where.isActive = isActive === 'true';
+    if (category && category.trim()) {
+      if (!isValidCategory(category)) {
+        return res.status(400).json({ success: false, message: 'Invalid category' });
+      }
+      where.category = category.trim();
+    }
     const packs = await prisma.aiCreditPack.findMany({
       where,
-      orderBy: [{ sortOrder: 'asc' }, { credits: 'asc' }],
+      orderBy: [{ priceSilver: 'desc' }, { sortOrder: 'asc' }, { credits: 'asc' }],
     });
     res.json({ success: true, data: packs });
   } catch (err) {
@@ -30,21 +45,27 @@ async function getPackById(req, res, next) {
 
 async function createPack(req, res, next) {
   try {
-    const { sku, displayName, credits, priceSilver, priceGold, pricePlatinum, sortOrder, isActive } = req.body;
-    if (!sku || !displayName || credits === undefined || priceSilver === undefined || priceGold === undefined || pricePlatinum === undefined) {
+    const { displayName, category, credits, priceSilver, priceGold, pricePlatinum, sortOrder, isActive } = req.body;
+    if (!displayName || !category || credits === undefined || priceSilver === undefined || priceGold === undefined || pricePlatinum === undefined) {
       return res.status(400).json({
         success: false,
-        message: 'sku, displayName, credits, priceSilver, priceGold, and pricePlatinum are required',
+        message: 'displayName, category, credits, priceSilver, priceGold, and pricePlatinum are required',
       });
     }
-    const existing = await prisma.aiCreditPack.findUnique({ where: { sku } });
-    if (existing) {
-      return res.status(400).json({ success: false, message: 'Pack with this SKU already exists' });
+    if (!isValidCategory(category)) {
+      return res.status(400).json({ success: false, message: 'Invalid category' });
+    }
+    let sku = generatePackSku(displayName, category);
+    let suffix = 0;
+    while (await prisma.aiCreditPack.findUnique({ where: { sku } })) {
+      suffix += 1;
+      sku = `${generatePackSku(displayName, category)}_${suffix}`;
     }
     const pack = await prisma.aiCreditPack.create({
       data: {
-        sku: String(sku).trim().toLowerCase(),
+        sku,
         displayName: String(displayName).trim(),
+        category: String(category).trim().toLowerCase(),
         credits: Number(credits),
         priceSilver: Number(priceSilver),
         priceGold: Number(priceGold),
@@ -65,11 +86,15 @@ async function updatePack(req, res, next) {
     const packId = await resolvePgId('ai_credit_packs', req.params.packId) || req.params.packId;
     const pack = await prisma.aiCreditPack.findUnique({ where: { id: packId } });
     if (!pack) return res.status(404).json({ success: false, message: 'AI credit pack not found' });
-    const { displayName, credits, priceSilver, priceGold, pricePlatinum, sortOrder, isActive } = req.body;
+    const { displayName, category, credits, priceSilver, priceGold, pricePlatinum, sortOrder, isActive } = req.body;
+    if (category !== undefined && !isValidCategory(category)) {
+      return res.status(400).json({ success: false, message: 'Invalid category' });
+    }
     const updated = await prisma.aiCreditPack.update({
       where: { id: packId },
       data: {
         ...(displayName !== undefined ? { displayName: String(displayName).trim() } : {}),
+        ...(category !== undefined ? { category: String(category).trim().toLowerCase() } : {}),
         ...(credits !== undefined ? { credits: Number(credits) } : {}),
         ...(priceSilver !== undefined ? { priceSilver: Number(priceSilver) } : {}),
         ...(priceGold !== undefined ? { priceGold: Number(priceGold) } : {}),

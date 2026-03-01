@@ -129,6 +129,7 @@ async function seedAiPacks() {
         where: { id: existing.id },
         data: {
           displayName: pack.displayName,
+          category: pack.category ?? 'all',
           credits: pack.credits,
           priceSilver: pack.priceSilver,
           priceGold: pack.priceGold,
@@ -143,6 +144,7 @@ async function seedAiPacks() {
         data: {
           sku: pack.sku,
           displayName: pack.displayName,
+          category: pack.category ?? 'all',
           credits: pack.credits,
           priceSilver: pack.priceSilver,
           priceGold: pack.priceGold,

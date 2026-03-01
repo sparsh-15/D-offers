@@ -398,6 +398,7 @@ model AiCreditPack {
   id            String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
   sku           String   @unique
   displayName   String   @map("display_name")
+  category      String   @default("all") @db.Text
   credits       Int
   priceSilver   Decimal  @map("price_silver") @db.Decimal(12, 2)
   priceGold     Decimal  @map("price_gold") @db.Decimal(12, 2)
@@ -407,5 +408,6 @@ model AiCreditPack {
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
+  @@index([category])
   @@map("ai_credit_packs")
 }

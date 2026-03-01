@@ -5,6 +5,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/utils/dialog_helper.dart';
 import '../../core/utils/theme_helper.dart';
 import '../../services/subscription_service.dart';
+import '../../widgets/data_state_wrapper.dart';
 import 'payment_screen.dart';
 
 class SubscriptionPlansScreen extends StatefulWidget {
@@ -23,6 +24,7 @@ class SubscriptionPlansScreen extends StatefulWidget {
 class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
   List<Map<String, dynamic>> _plans = [];
   bool _loading = true;
+  String? _error;
 
   @override
   void initState() {
@@ -40,11 +42,15 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
       if (!mounted) return;
       setState(() {
         _plans = plans;
+        _error = null;
         _loading = false;
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() => _loading = false);
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
       DialogHelper.showErrorSnackBar(
         context,
         'Failed to load plans: $e',
@@ -54,50 +60,20 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
     return Scaffold(
       appBar: AppBar(
         leading: ThemeHelper.buildBackButton(context),
         title: const Text('Choose Subscription Plan'),
       ),
-      body: _loading
-          ? Center(
-              child: CircularProgressIndicator(color: colorScheme.primary),
-            )
-          : _plans.isEmpty
-              ? _buildEmptyState()
-              : _buildPlansList(),
-    );
-  }
-
-  Widget _buildEmptyState() {
-    final theme = Theme.of(context);
-
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.inbox_rounded,
-              size: 80,
-              color: theme.textTheme.bodySmall?.color,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'No Plans Available',
-              style: theme.textTheme.titleLarge,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'There are no subscription plans available for your business category right now.',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium,
-            ),
-          ],
-        ),
+      body: DataStateWrapper(
+        loading: _loading,
+        error: _error,
+        isEmpty: _plans.isEmpty,
+        onRetry: _loadPlans,
+        emptyTitle: 'No Plans Available',
+        emptyMessage:
+            'There are no subscription plans available for your business category right now.',
+        child: _buildPlansList(),
       ),
     );
   }

@@ -59,14 +59,27 @@ async function getAiWallet(req, res, next) {
 async function getAiCreditPacks(req, res, next) {
   try {
     const shopkeeperId = await resolvePgId('users', req.user.userId) || req.user.userId;
-    const subscription = await prisma.subscription.findFirst({
-      where: { shopkeeperId, status: 'active' },
-      orderBy: { createdAt: 'desc' },
-    });
+    const [subscription, profile] = await Promise.all([
+      prisma.subscription.findFirst({
+        where: { shopkeeperId, status: 'active' },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.shopkeeperProfile.findUnique({
+        where: { userId: shopkeeperId },
+        select: { category: true },
+      }),
+    ]);
+    const shopCategory = profile?.category?.trim() || null;
     const tier = subscription?.planSnapshot?.aiCreditTier || 'silver';
+    const where = {
+      isActive: true,
+      OR: shopCategory
+        ? [{ category: 'all' }, { category: shopCategory }]
+        : [{ category: 'all' }],
+    };
     const packs = await prisma.aiCreditPack.findMany({
-      where: { isActive: true },
-      orderBy: [{ sortOrder: 'asc' }, { credits: 'asc' }],
+      where,
+      orderBy: [{ priceSilver: 'desc' }, { sortOrder: 'asc' }, { credits: 'asc' }],
     });
     const withPrice = packs.map((p) => {
       let price = Number(p.priceSilver);
@@ -106,6 +119,15 @@ async function purchaseAiCreditPack(req, res, next) {
     });
     if (!pack) {
       return res.status(404).json({ success: false, message: 'AI credit pack not found' });
+    }
+    const profile = await prisma.shopkeeperProfile.findUnique({
+      where: { userId: shopkeeperId },
+      select: { category: true },
+    });
+    const shopCategory = profile?.category?.trim() || null;
+    const allowed = pack.category === 'all' || (shopCategory && pack.category === shopCategory);
+    if (!allowed) {
+      return res.status(403).json({ success: false, message: 'This pack is not available for your shop category' });
     }
     const tier = subscription.planSnapshot?.aiCreditTier || 'silver';
     let price = Number(pack.priceSilver);

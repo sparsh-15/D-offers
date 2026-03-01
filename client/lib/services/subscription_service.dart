@@ -255,10 +255,11 @@ class SubscriptionService {
 
   // ============ AI Credit Packs (Admin) ============
 
-  Future<List<Map<String, dynamic>>> getAiCreditPacks({bool? isActive}) async {
+  Future<List<Map<String, dynamic>>> getAiCreditPacks({bool? isActive, String? category}) async {
     try {
       final queryParams = <String, String>{};
       if (isActive != null) queryParams['isActive'] = isActive.toString();
+      if (category != null && category.isNotEmpty) queryParams['category'] = category;
       final uri = Uri.parse(
         '${ApiConfig.baseUrl}/subscription-governance/ai-credit-packs',
       ).replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
@@ -277,8 +278,8 @@ class SubscriptionService {
   }
 
   Future<Map<String, dynamic>> createAiCreditPack({
-    required String sku,
     required String displayName,
+    required String category,
     required int credits,
     required double priceSilver,
     required double priceGold,
@@ -291,8 +292,8 @@ class SubscriptionService {
         '${ApiConfig.baseUrl}/subscription-governance/ai-credit-packs',
       );
       final body = {
-        'sku': sku.trim().toLowerCase(),
         'displayName': displayName.trim(),
+        'category': category.trim().toLowerCase(),
         'credits': credits,
         'priceSilver': priceSilver,
         'priceGold': priceGold,
@@ -320,6 +321,7 @@ class SubscriptionService {
   Future<Map<String, dynamic>> updateAiCreditPack({
     required String packId,
     String? displayName,
+    String? category,
     int? credits,
     double? priceSilver,
     double? priceGold,
@@ -333,6 +335,7 @@ class SubscriptionService {
       );
       final body = <String, dynamic>{};
       if (displayName != null) body['displayName'] = displayName;
+      if (category != null) body['category'] = category;
       if (credits != null) body['credits'] = credits;
       if (priceSilver != null) body['priceSilver'] = priceSilver;
       if (priceGold != null) body['priceGold'] = priceGold;

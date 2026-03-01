@@ -3,6 +3,7 @@ import 'package:animate_do/animate_do.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/theme_helper.dart';
 import '../../core/utils/dialog_helper.dart';
+import '../../widgets/data_state_wrapper.dart';
 import '../../widgets/gradient_card.dart';
 import '../../services/subscription_service.dart';
 
@@ -75,6 +76,7 @@ class _PlansManagementTabState extends State<PlansManagementTab> {
   List<Map<String, dynamic>> _plans = [];
   List<Map<String, dynamic>> _categories = [];
   bool _loading = true;
+  String? _error;
   /// null or 'all' = show all; else filter by this category value
   String? _filterCategory;
 
@@ -94,7 +96,10 @@ class _PlansManagementTabState extends State<PlansManagementTab> {
       ]);
     } catch (e) {
       if (!mounted) return;
-      setState(() => _loading = false);
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
       DialogHelper.showErrorSnackBar(context, e.toString());
     }
   }
@@ -124,21 +129,21 @@ class _PlansManagementTabState extends State<PlansManagementTab> {
       if (!mounted) return;
       setState(() {
         _plans = plans;
+        _error = null;
         _loading = false;
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() => _loading = false);
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
       DialogHelper.showErrorSnackBar(context, e.toString());
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
     final filteredPlans = _filterCategory == null ||
             _filterCategory == 'all' ||
             _filterCategory!.isEmpty
@@ -158,15 +163,20 @@ class _PlansManagementTabState extends State<PlansManagementTab> {
       return priceB.compareTo(priceA);
     });
 
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  '${filteredPlans.length} Plans',
+    return DataStateWrapper(
+      loading: _loading,
+      error: _error,
+      isEmpty: _plans.isEmpty,
+      onRetry: _loadData,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '${filteredPlans.length} Plans',
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
               ),
@@ -241,7 +251,8 @@ class _PlansManagementTabState extends State<PlansManagementTab> {
             },
           ),
         ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -905,6 +916,7 @@ class _SubscriptionsManagementTabState
     extends State<SubscriptionsManagementTab> {
   List<Map<String, dynamic>> _subscriptions = [];
   bool _loading = true;
+  String? _error;
   String _filter = 'all'; // all, active, expired
 
   @override
@@ -913,7 +925,7 @@ class _SubscriptionsManagementTabState
     _loadSubscriptions();
   }
 
-  
+
 
   Future<void> _loadSubscriptions() async {
     setState(() => _loading = true);
@@ -931,11 +943,15 @@ class _SubscriptionsManagementTabState
         _subscriptions = List<Map<String, dynamic>>.from(
           result['subscriptions'] ?? [],
         );
+        _error = null;
         _loading = false;
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() => _loading = false);
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
       DialogHelper.showErrorSnackBar(
           context, 'Failed to load subscriptions: $e');
     }
@@ -948,39 +964,40 @@ class _SubscriptionsManagementTabState
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
     final activeCount =
         _subscriptions.where((s) => s['status'] == 'active').length;
     final expiredCount =
         _subscriptions.where((s) => s['status'] == 'expired').length;
 
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: GradientCard(
-                      gradient: const LinearGradient(
-                        colors: [AppColors.cardBackground, AppColors.highlight],
-                      ),
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        children: [
-                          const Icon(
-                            Icons.check_circle_rounded,
-                            color: AppColors.textSecondary,
-                            size: 32,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            '$activeCount',
+    return DataStateWrapper(
+      loading: _loading,
+      error: _error,
+      isEmpty: _subscriptions.isEmpty,
+      onRetry: _loadSubscriptions,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: GradientCard(
+                        gradient: const LinearGradient(
+                          colors: [AppColors.cardBackground, AppColors.highlight],
+                        ),
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          children: [
+                            const Icon(
+                              Icons.check_circle_rounded,
+                              color: AppColors.textSecondary,
+                              size: 32,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              '$activeCount',
                             style: const TextStyle(
                               color: AppColors.textPrimary,
                               fontSize: 24,
@@ -1056,6 +1073,7 @@ class _SubscriptionsManagementTabState
           ),
         ),
       ],
+    ),
     );
   }
 
@@ -1219,64 +1237,143 @@ class AiCreditPacksTab extends StatefulWidget {
 
 class _AiCreditPacksTabState extends State<AiCreditPacksTab> {
   List<Map<String, dynamic>> _packs = [];
+  List<Map<String, dynamic>> _categories = [];
   bool _loading = true;
+  String? _error;
+  String? _filterCategory;
 
   @override
   void initState() {
     super.initState();
-    _loadPacks();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    setState(() => _loading = true);
+    try {
+      await Future.wait([_loadCategories(), _loadPacks()]);
+      if (!mounted) return;
+      setState(() => _loading = false);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
+      DialogHelper.showErrorSnackBar(context, e.toString());
+    }
+  }
+
+  Future<void> _loadCategories() async {
+    try {
+      final categories = await SubscriptionService.instance.getCategories();
+      if (!mounted) return;
+      setState(() => _categories = categories);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _categories = []);
+    }
   }
 
   Future<void> _loadPacks() async {
-    setState(() => _loading = true);
     try {
-      final packs = await SubscriptionService.instance.getAiCreditPacks();
+      final packs = await SubscriptionService.instance.getAiCreditPacks(
+        category: _filterCategory,
+      );
       if (!mounted) return;
       setState(() {
         _packs = packs;
+        _error = null;
         _loading = false;
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() => _loading = false);
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
       DialogHelper.showErrorSnackBar(context, e.toString());
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  '${_packs.length} AI Credit Packs',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-              ),
-              Flexible(
-                fit: FlexFit.loose,
-                child: ElevatedButton.icon(
-                  onPressed: () => _showPackDialog(),
-                  icon: const Icon(Icons.add_rounded),
-                  label: const Text('Add Pack'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.accent,
-                    foregroundColor: AppColors.black,
+    return DataStateWrapper(
+      loading: _loading,
+      error: _error,
+      isEmpty: _packs.isEmpty,
+      onRetry: _loadData,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '${_packs.length} AI Credit Packs',
+                    style: Theme.of(context).textTheme.titleLarge,
                   ),
                 ),
-              ),
-            ],
+                Flexible(
+                  fit: FlexFit.loose,
+                  child: ElevatedButton.icon(
+                    onPressed: () => _showPackDialog(),
+                    icon: const Icon(Icons.add_rounded),
+                    label: const Text('Add Pack'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.accent,
+                      foregroundColor: AppColors.black,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-        Expanded(
-          child: ListView.builder(
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+            child: Row(
+              children: [
+                Text('Category: ', style: Theme.of(context).textTheme.bodyMedium),
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    value: (_filterCategory == null ||
+                            _filterCategory == 'all' ||
+                            (_filterCategory?.isEmpty ?? true) ||
+                            !_categories.any((c) => c['value'] == _filterCategory))
+                        ? 'all'
+                        : _filterCategory!,
+                    decoration: const InputDecoration(
+                      isDense: true,
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      border: OutlineInputBorder(),
+                    ),
+                    items: [
+                      const DropdownMenuItem(value: 'all', child: Text('All categories')),
+                      ..._categories.map<DropdownMenuItem<String>>((cat) {
+                        final value = cat['value'] as String? ?? '';
+                        final label = cat['label'] as String? ?? value;
+                        return DropdownMenuItem(
+                          value: value,
+                          child: Text(label),
+                        );
+                      }),
+                    ],
+                    onChanged: (value) {
+                      setState(() {
+                        _filterCategory = (value == 'all' || value == null) ? null : value;
+                        _loading = true;
+                      });
+                      _loadPacks();
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            child: ListView.builder(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             itemCount: _packs.length,
             itemBuilder: (context, index) {
@@ -1289,12 +1386,14 @@ class _AiCreditPacksTabState extends State<AiCreditPacksTab> {
           ),
         ),
       ],
+    ),
     );
   }
 
   Widget _buildPackCard(Map<String, dynamic> pack) {
     final sku = pack['sku'] ?? '';
     final displayName = pack['displayName'] ?? sku;
+    final category = pack['category'] as String? ?? 'all';
     final credits = pack['credits'] ?? 0;
     final priceSilver = pack['priceSilver'] ?? 0;
     final priceGold = pack['priceGold'] ?? 0;
@@ -1314,7 +1413,7 @@ class _AiCreditPacksTabState extends State<AiCreditPacksTab> {
         ),
         title: Text(displayName),
         subtitle: Text(
-          '$credits credits • Silver: ₹$priceSilver | Gold: ₹$priceGold | Platinum: ₹$pricePlatinum',
+          '$credits credits • $category • Silver: ₹$priceSilver | Gold: ₹$priceGold | Platinum: ₹$pricePlatinum',
           style: TextStyle(fontSize: 12, color: AppColors.grey600),
         ),
         trailing: Row(
@@ -1348,6 +1447,14 @@ class _AiCreditPacksTabState extends State<AiCreditPacksTab> {
 
   Future<void> _showPackDialog({Map<String, dynamic>? pack}) async {
     final isEdit = pack != null;
+    List<Map<String, dynamic>> categories = [];
+    try {
+      categories = await SubscriptionService.instance.getCategories();
+    } catch (_) {}
+
+    final mutedStyle = TextStyle(color: AppColors.textMuted, fontSize: 10);
+    final sectionStyle = TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textMuted);
+
     final skuController = TextEditingController(text: pack?['sku'] ?? '');
     final displayNameController = TextEditingController(text: pack?['displayName'] ?? '');
     final creditsController = TextEditingController(text: (pack?['credits'] ?? 0).toString());
@@ -1356,76 +1463,200 @@ class _AiCreditPacksTabState extends State<AiCreditPacksTab> {
     final pricePlatinumController = TextEditingController(text: (pack?['pricePlatinum'] ?? 0).toString());
     final sortOrderController = TextEditingController(text: (pack?['sortOrder'] ?? 0).toString());
     bool isActive = pack?['isActive'] as bool? ?? true;
+    String? selectedCategory = pack?['category'] as String? ?? 'all';
+    if (selectedCategory != 'all' && !categories.any((c) => c['value'] == selectedCategory)) {
+      selectedCategory = 'all';
+    }
 
     final result = await showDialog<bool>(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: Text(isEdit ? 'Edit Pack' : 'Add AI Credit Pack'),
+          title: Text(
+            isEdit ? 'Edit Pack' : 'Add AI Credit Pack',
+            style: const TextStyle(color: Colors.white),
+          ),
           content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: skuController,
-                  decoration: const InputDecoration(labelText: 'SKU *', hintText: 'e.g. starter'),
-                  enabled: !isEdit,
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: displayNameController,
-                  decoration: const InputDecoration(labelText: 'Display Name *'),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: creditsController,
-                  decoration: const InputDecoration(labelText: 'Credits *'),
-                  keyboardType: TextInputType.number,
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: priceSilverController,
-                  decoration: const InputDecoration(labelText: 'Price (Silver) ₹ *'),
-                  keyboardType: TextInputType.number,
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: priceGoldController,
-                  decoration: const InputDecoration(labelText: 'Price (Gold) ₹ *'),
-                  keyboardType: TextInputType.number,
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: pricePlatinumController,
-                  decoration: const InputDecoration(labelText: 'Price (Platinum) ₹ *'),
-                  keyboardType: TextInputType.number,
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: sortOrderController,
-                  decoration: const InputDecoration(labelText: 'Sort Order'),
-                  keyboardType: TextInputType.number,
-                ),
-                CheckboxListTile(
-                  title: const Text('Active'),
-                  value: isActive,
-                  onChanged: (v) => setDialogState(() => isActive = v ?? true),
-                  controlAffinity: ListTileControlAffinity.leading,
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ],
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: (MediaQuery.sizeOf(context).width * 0.9).clamp(280.0, 500.0),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text('Basic info', style: sectionStyle),
+                  const SizedBox(height: 6),
+                  if (isEdit)
+                    TextField(
+                      controller: skuController,
+                      readOnly: true,
+                      decoration: InputDecoration(
+                        labelText: 'SKU',
+                        helperText: 'Generated at create; cannot be changed',
+                        helperStyle: mutedStyle,
+                        isDense: true,
+                      ),
+                    )
+                  else
+                    Text(
+                      'SKU will be generated from display name + category (e.g. starter_100_retail)',
+                      style: mutedStyle,
+                    ),
+                  if (isEdit) const SizedBox(height: 10),
+                  TextField(
+                    controller: displayNameController,
+                    decoration: InputDecoration(
+                      labelText: 'Display Name *',
+                      hintText: 'e.g. Starter 100 Credits',
+                      helperText: 'Name shown on pack cards',
+                      helperStyle: mutedStyle,
+                      helperMaxLines: 1,
+                      isDense: true,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  DropdownButtonFormField<String>(
+                    value: (selectedCategory == null || selectedCategory.isEmpty || selectedCategory == 'all' ||
+                            !categories.any((c) => c['value'] == selectedCategory))
+                        ? 'all'
+                        : selectedCategory,
+                    decoration: InputDecoration(
+                      labelText: 'Shop Category *',
+                      helperText: 'Packs with "All" or this category are shown to shopkeepers',
+                      helperStyle: mutedStyle,
+                      isDense: true,
+                    ),
+                    items: [
+                      const DropdownMenuItem(value: 'all', child: Text('All categories')),
+                      ...categories.map<DropdownMenuItem<String>>((cat) {
+                        final value = cat['value'] as String? ?? '';
+                        final label = cat['label'] as String? ?? value;
+                        return DropdownMenuItem(value: value, child: Text(label));
+                      }),
+                    ],
+                    onChanged: (value) => setDialogState(() => selectedCategory = value ?? 'all'),
+                  ),
+                  const SizedBox(height: 14),
+                  Text('Credits & pricing', style: sectionStyle),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: creditsController,
+                    decoration: InputDecoration(
+                      labelText: 'Credits *',
+                      hintText: 'e.g. 100',
+                      helperText: 'AI credits included in this pack',
+                      helperStyle: mutedStyle,
+                      helperMaxLines: 1,
+                      isDense: true,
+                    ),
+                    keyboardType: TextInputType.number,
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: priceSilverController,
+                    decoration: InputDecoration(
+                      labelText: 'Price (Silver tier) ₹ *',
+                      hintText: 'e.g. 199',
+                      helperText: 'Price for Silver subscription tier',
+                      helperStyle: mutedStyle,
+                      helperMaxLines: 1,
+                      isDense: true,
+                    ),
+                    keyboardType: TextInputType.number,
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: priceGoldController,
+                    decoration: InputDecoration(
+                      labelText: 'Price (Gold tier) ₹ *',
+                      hintText: 'e.g. 179',
+                      helperText: 'Price for Gold subscription tier',
+                      helperStyle: mutedStyle,
+                      helperMaxLines: 1,
+                      isDense: true,
+                    ),
+                    keyboardType: TextInputType.number,
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: pricePlatinumController,
+                    decoration: InputDecoration(
+                      labelText: 'Price (Platinum tier) ₹ *',
+                      hintText: 'e.g. 149',
+                      helperText: 'Price for Platinum subscription tier',
+                      helperStyle: mutedStyle,
+                      helperMaxLines: 1,
+                      isDense: true,
+                    ),
+                    keyboardType: TextInputType.number,
+                  ),
+                  const SizedBox(height: 14),
+                  Text('Display order & status', style: sectionStyle),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: sortOrderController,
+                    decoration: InputDecoration(
+                      labelText: 'Sort Order',
+                      hintText: 'e.g. 0',
+                      helperText: 'Lower number appears first in list',
+                      helperStyle: mutedStyle,
+                      helperMaxLines: 1,
+                      isDense: true,
+                    ),
+                    keyboardType: TextInputType.number,
+                  ),
+                  const SizedBox(height: 8),
+                  CheckboxListTile(
+                    title: const Text('Active'),
+                    subtitle: Text('Inactive packs are hidden from shopkeepers', style: mutedStyle),
+                    value: isActive,
+                    onChanged: (v) => setDialogState(() => isActive = v ?? true),
+                    controlAffinity: ListTileControlAffinity.leading,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ],
+              ),
             ),
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
             ElevatedButton(
               onPressed: () {
-                if (skuController.text.trim().isEmpty && !isEdit) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('SKU is required')));
+                if (displayNameController.text.trim().isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text('Display name is required'),
+                    backgroundColor: AppColors.red,
+                  ));
                   return;
                 }
-                if (displayNameController.text.trim().isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Display name is required')));
+                final cat = selectedCategory ?? 'all';
+                if (cat.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text('Please select a category'),
+                    backgroundColor: AppColors.red,
+                  ));
+                  return;
+                }
+                final creditsStr = creditsController.text.trim();
+                final creditsVal = int.tryParse(creditsStr);
+                if (creditsStr.isEmpty || creditsVal == null || creditsVal < 0) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text('Credits must be a valid number (0 or more)'),
+                    backgroundColor: AppColors.red,
+                  ));
+                  return;
+                }
+                final priceSilverVal = double.tryParse(priceSilverController.text.trim());
+                final priceGoldVal = double.tryParse(priceGoldController.text.trim());
+                final pricePlatinumVal = double.tryParse(pricePlatinumController.text.trim());
+                if (priceSilverVal == null || priceSilverVal < 0 ||
+                    priceGoldVal == null || priceGoldVal < 0 ||
+                    pricePlatinumVal == null || pricePlatinumVal < 0) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text('All prices must be valid numbers (0 or more)'),
+                    backgroundColor: AppColors.red,
+                  ));
                   return;
                 }
                 Navigator.pop(context, true);
@@ -1438,11 +1669,13 @@ class _AiCreditPacksTabState extends State<AiCreditPacksTab> {
     );
 
     if (result != true || !mounted) return;
+    final cat = selectedCategory ?? 'all';
     try {
       if (isEdit) {
         await SubscriptionService.instance.updateAiCreditPack(
-          packId: pack!['id'] ?? pack['_id'],
+          packId: pack['id'] ?? pack['_id'],
           displayName: displayNameController.text.trim(),
+          category: cat.isEmpty ? null : cat,
           credits: int.tryParse(creditsController.text.trim()),
           priceSilver: double.tryParse(priceSilverController.text.trim()),
           priceGold: double.tryParse(priceGoldController.text.trim()),
@@ -1453,18 +1686,18 @@ class _AiCreditPacksTabState extends State<AiCreditPacksTab> {
         DialogHelper.showSuccessSnackBar(context, 'Pack updated successfully');
       } else {
         await SubscriptionService.instance.createAiCreditPack(
-          sku: skuController.text.trim().toLowerCase(),
           displayName: displayNameController.text.trim(),
-          credits: int.parse(creditsController.text.trim()),
-          priceSilver: double.parse(priceSilverController.text.trim()),
-          priceGold: double.parse(priceGoldController.text.trim()),
-          pricePlatinum: double.parse(pricePlatinumController.text.trim()),
+          category: cat,
+          credits: int.tryParse(creditsController.text.trim()) ?? 0,
+          priceSilver: double.tryParse(priceSilverController.text.trim()) ?? 0,
+          priceGold: double.tryParse(priceGoldController.text.trim()) ?? 0,
+          pricePlatinum: double.tryParse(pricePlatinumController.text.trim()) ?? 0,
           sortOrder: int.tryParse(sortOrderController.text.trim()) ?? 0,
           isActive: isActive,
         );
         DialogHelper.showSuccessSnackBar(context, 'Pack created successfully');
       }
-      _loadPacks();
+      _loadData();
     } catch (e) {
       if (!mounted) return;
       DialogHelper.showErrorSnackBar(context, 'Failed: $e');
@@ -1484,7 +1717,7 @@ class _AiCreditPacksTabState extends State<AiCreditPacksTab> {
       await SubscriptionService.instance.deleteAiCreditPack(pack['id'] ?? pack['_id']);
       if (!mounted) return;
       DialogHelper.showSuccessSnackBar(context, 'Pack deactivated');
-      _loadPacks();
+      _loadData();
     } catch (e) {
       if (!mounted) return;
       DialogHelper.showErrorSnackBar(context, 'Failed: $e');
