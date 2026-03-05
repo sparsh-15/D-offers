@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 import '../core/constants/app_colors.dart';
 import '../core/constants/app_design_tokens.dart';
@@ -155,6 +156,8 @@ class _OfferCardState extends State<OfferCard>
       discountLabel = 'Offer';
     }
 
+    final hasPhoto = widget.offer.photos.isNotEmpty;
+
     return Material(
       color: AppColors.cardBackground,
       borderRadius: BorderRadius.circular(AppTokens.radiusLG),
@@ -168,13 +171,33 @@ class _OfferCardState extends State<OfferCard>
           mainAxisSize: MainAxisSize.min,
           children: [
             // ── Banner / image ──────────────────────────────────────────────
-            OfferBannerPreview(
-              title: widget.offer.title,
-              discountType: widget.offer.discountType,
-              discountValue: widget.offer.discountValue,
-              width: double.infinity,
-              height: 140,
-            ),
+            if (hasPhoto)
+              SizedBox(
+                height: 140,
+                child: CachedNetworkImage(
+                  imageUrl: widget.offer.photos.first,
+                  fit: BoxFit.cover,
+                  placeholder: (_, __) => const Center(
+                    child: SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+                  errorWidget: (_, __, ___) => const Icon(
+                    Icons.broken_image_outlined,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+              )
+            else
+              OfferBannerPreview(
+                title: widget.offer.title,
+                discountType: widget.offer.discountType,
+                discountValue: widget.offer.discountValue,
+                width: double.infinity,
+                height: 140,
+              ),
 
             // ── Info strip ─────────────────────────────────────────────────
             Padding(

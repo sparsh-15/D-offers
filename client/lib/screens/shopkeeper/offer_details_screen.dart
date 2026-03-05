@@ -47,6 +47,10 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
   List<Map<String, dynamic>> _categories = [];
   String? _selectedCategory;
   bool _isGeneratingBanner = false;
+  Map<String, dynamic>? _aiWallet;
+  bool _loadingAiWallet = false;
+  String? _shopName;
+  String? _shopLocation;
 
   @override
   void initState() {
@@ -67,7 +71,9 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
       _photoUrls = List.from(widget.offer!.photos);
     }
     _loadSubscriptionDetails();
+    _loadAiWallet();
     _loadCategories();
+    _loadShopProfile();
   }
 
   @override
@@ -103,6 +109,35 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
       if (!mounted) return;
       setState(() => _loadingSubscription = false);
     }
+  }
+
+  Future<void> _loadAiWallet() async {
+    setState(() => _loadingAiWallet = true);
+    try {
+      final wallet = await SubscriptionService.instance.getAiWallet();
+      if (!mounted) return;
+      setState(() {
+        _aiWallet = wallet;
+        _loadingAiWallet = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loadingAiWallet = false);
+    }
+  }
+
+  Future<void> _loadShopProfile() async {
+    try {
+      final profile = await AuthService.instance.getShopkeeperProfile();
+      if (!mounted || profile == null) return;
+      setState(() {
+        _shopName = profile.shopName;
+        final parts = [profile.city, profile.pincode]
+            .where((s) => s.isNotEmpty)
+            .toList();
+        _shopLocation = parts.isNotEmpty ? parts.join(', ') : null;
+      });
+    } catch (_) {}
   }
 
   Future<void> _loadCategories() async {
@@ -149,6 +184,19 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
         : '${_currentOfferCount ?? 0} / $maxOffers offers used';
     final startDate = _formatDate(_subscription?['startDate']);
     final endDate = _formatDate(_subscription?['endDate']);
+    String? aiCreditsLabel;
+    if (_aiWallet != null && _aiWallet?['hasSubscription'] == true) {
+      final monthlyLimit = _aiWallet?['monthlyLimit'];
+      final used = (_aiWallet?['usedThisCycle'] ?? 0) as int;
+      final extra = (_aiWallet?['extraCreditsCurrentCycle'] ?? 0) as int;
+      final available = (_aiWallet?['availableAiCredits'] ?? 0) as int;
+      if (monthlyLimit == -1) {
+        aiCreditsLabel = 'AI banners: Unlimited this month';
+      } else if (monthlyLimit != null) {
+        aiCreditsLabel =
+            'AI banners left: $available (used $used / $monthlyLimit${extra > 0 ? ' + $extra extra' : ''})';
+      }
+    }
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -161,16 +209,38 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Subscription Details',
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  planName,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                  overflow: TextOverflow.ellipsis,
                 ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            '$planName • ${status.toUpperCase()}',
-            style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: status == 'active'
+                      ? AppColors.success.withValues(alpha: 0.12)
+                      : AppColors.error.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  status.toUpperCase(),
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: status == 'active'
+                            ? AppColors.success
+                            : AppColors.error,
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 6),
           Text(
@@ -182,6 +252,26 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
             'Valid: $startDate → $endDate',
             style: Theme.of(context).textTheme.bodySmall,
           ),
+          if (_loadingAiWallet) ...[
+            const SizedBox(height: 6),
+            const LinearProgressIndicator(minHeight: 2),
+          ] else if (aiCreditsLabel != null) ...[
+            const SizedBox(height: 6),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const Icon(Icons.auto_awesome_rounded,
+                    size: 18, color: AppColors.accent),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    aiCreditsLabel,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -795,10 +885,12 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
                                     category: _categoryController.text.trim(),
                                     discountType: _discountType,
                                     discountValue: discountValue,
+                                    shopName: _shopName,
+                                    shopLocation: _shopLocation,
                                   );
                                   if (!mounted) return;
                                   setState(() {
-                                    _photoUrls.add(imageUrl);
+                                    _photoUrls.insert(0, imageUrl);
                                   });
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(

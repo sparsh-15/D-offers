@@ -224,7 +224,21 @@ async function useAiBanner(req, res, next) {
 async function generateBanner(req, res, next) {
   try {
     const shopkeeperId = (await resolvePgId('users', req.user.userId)) || req.user.userId;
-    const { title, description, category, discountType, discountValue, shopName } = req.body || {};
+    let { title, description, category, discountType, discountValue, shopName, shopLocation } = req.body || {};
+
+    if (!shopName || !shopLocation) {
+      const profile = await prisma.shopkeeperProfile.findUnique({
+        where: { userId: shopkeeperId },
+        select: { shopName: true, city: true, pincode: true },
+      });
+      if (profile) {
+        if (!shopName) shopName = profile.shopName || '';
+        if (!shopLocation) {
+          const parts = [profile.city, profile.pincode].filter(Boolean);
+          shopLocation = parts.join(', ');
+        }
+      }
+    }
 
     if (!title || typeof title !== 'string') {
       return res
@@ -261,6 +275,7 @@ async function generateBanner(req, res, next) {
       discountType: String(discountType),
       discountValue: Number(discountValue),
       shopName: typeof shopName === 'string' ? shopName.trim().slice(0, 120) : '',
+      shopLocation: typeof shopLocation === 'string' ? shopLocation.trim().slice(0, 120) : '',
     });
 
     res.status(200).json({

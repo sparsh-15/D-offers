@@ -19,6 +19,7 @@ class ShopkeeperAiService {
     String? discountType,
     num? discountValue,
     String? shopName,
+    String? shopLocation,
   }) async {
     final token = AuthStore.token;
     if (token == null) {
@@ -37,6 +38,8 @@ class ShopkeeperAiService {
       if (discountValue != null) 'discountValue': discountValue,
       if (shopName != null && shopName.trim().isNotEmpty)
         'shopName': shopName.trim(),
+      if (shopLocation != null && shopLocation.trim().isNotEmpty)
+        'shopLocation': shopLocation.trim(),
     };
 
     final resp = await http

@@ -3,7 +3,7 @@ const cloudinary = require('../config/cloudinary');
 
 // Use a valid Gemini image model; allow override via env
 const IMAGE_MODEL_NAME =
-  process.env.GEMINI_IMAGE_MODEL || 'imagen-3.0-fast';
+  process.env.GEMINI_IMAGE_MODEL || 'gemini-2.5-flash-image';
 
 let imageModel;
 
@@ -25,6 +25,7 @@ function buildBannerPrompt({
   discountType,
   discountValue,
   shopName,
+  shopLocation,
 }) {
   const discountLabel =
     discountType === 'percentage' && discountValue != null
@@ -43,6 +44,7 @@ function buildBannerPrompt({
     '- Avoid any text that looks like UI buttons.',
     '',
     `Shop name: ${shopName || 'Local Shop'}`,
+    shopLocation ? `Location: ${shopLocation}` : '',
     `Offer title: ${title || 'Limited time offer'}`,
     `Discount: ${discountLabel}`,
     category ? `Category: ${category}` : '',
