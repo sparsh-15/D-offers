@@ -90,6 +90,14 @@ enum AuditActionEnum {
   @@map("audit_action_enum")
 }
 
+enum CallbackStatusEnum {
+  pending
+  completed
+  cancelled
+
+  @@map("callback_status_enum")
+}
+
 model User {
   id             String             @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
   name           String             @default("")
@@ -411,3 +419,18 @@ model AiCreditPack {
   @@index([category])
   @@map("ai_credit_packs")
 }
+
+model CallbackRequest {
+  id          String             @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  offerId     String             @map("offer_id") @db.Uuid
+  customerId  String             @map("customer_id") @db.Uuid
+  message     String?            @db.Text
+  status      CallbackStatusEnum @default(pending)
+  createdAt   DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([offerId, createdAt(sort: Desc)], map: "idx_callback_requests_offer_created_desc")
+  @@index([customerId, createdAt(sort: Desc)], map: "idx_callback_requests_customer_created_desc")
+  @@map("callback_requests")
+}
+

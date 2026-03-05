@@ -30,6 +30,12 @@ router.get('/ai-wallet', shopkeeperAiController.getAiWallet);
 router.get('/ai-credits/packs', shopkeeperAiController.getAiCreditPacks);
 router.post('/ai-credits/purchase', requireActiveSubscription, shopkeeperAiController.purchaseAiCreditPack);
 router.post('/ai-banners/use', requireActiveSubscription, checkAiCreditLimit, shopkeeperAiController.useAiBanner);
+router.post(
+  '/ai/banner',
+  requireActiveSubscription,
+  checkAiCreditLimit,
+  shopkeeperAiController.generateBanner,
+);
 
 // Dashboard - check subscription status but don't block
 router.get('/dashboard', checkSubscriptionStatus, shopkeeperProfileController.getDashboard);

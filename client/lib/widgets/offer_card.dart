@@ -136,13 +136,21 @@ class _OfferCardState extends State<OfferCard>
             ? widget.offer.shopName!
             : 'Shop';
 
+    // Optional: badge for higher subscription tier.
+    // Currently not wired to backend; leave null until metadata is added.
+    const String? tierLabel = null;
+
     String discountLabel;
-    if (widget.offer.discountType == 'percentage' &&
-        widget.offer.discountValue != null) {
-      discountLabel = '${widget.offer.discountValue!.toStringAsFixed(widget.offer.discountValue! % 1 == 0 ? 0 : 1)}%';
-    } else if (widget.offer.discountType == 'fixed' &&
-        widget.offer.discountValue != null) {
-      discountLabel = '₹${widget.offer.discountValue!.toStringAsFixed(widget.offer.discountValue! % 1 == 0 ? 0 : 1)}';
+    final dynamic rawDiscount = widget.offer.discountValue;
+    final num? discountVal = rawDiscount is num
+        ? rawDiscount
+        : num.tryParse(rawDiscount?.toString() ?? '');
+    if (widget.offer.discountType == 'percentage' && discountVal != null) {
+      final decimals = discountVal % 1 == 0 ? 0 : 1;
+      discountLabel = '${discountVal.toStringAsFixed(decimals)}%';
+    } else if (widget.offer.discountType == 'fixed' && discountVal != null) {
+      final decimals = discountVal % 1 == 0 ? 0 : 1;
+      discountLabel = '₹${discountVal.toStringAsFixed(decimals)}';
     } else {
       discountLabel = 'Offer';
     }
@@ -191,6 +199,17 @@ class _OfferCardState extends State<OfferCard>
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
+                        if (tierLabel != null && tierLabel.isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            tierLabel,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: AppColors.highlight,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.4,
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: 2),
                         Row(
                           children: [

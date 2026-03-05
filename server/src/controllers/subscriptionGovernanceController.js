@@ -3,6 +3,7 @@ const { logAdminAction } = require('../middleware/roleAuth');
 const subscriptionRepository = require('../repositories/subscriptionRepository');
 const { resolvePgId } = require('../repositories/idResolver');
 const { buildPlanSnapshot, upsertWalletForSubscription } = require('../services/aiWalletService');
+const { resolveCityStateFromPincode } = require('../services/pincodeService');
 
 async function createSubscription(req, res, next) {
   try {
@@ -87,6 +88,118 @@ async function getMonitoringDashboard(req, res, next) {
         recentlyExpired: { count: recentlyExpired.length, subscriptions: recentlyExpired },
         pending: { count: pending.length, subscriptions: pending },
         mrr,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * Subscription metrics with simple filters.
+ * Example: how many Gold subscriptions in this city / category.
+ *
+ * Query params:
+ * - status: subscription status (default: active)
+ * - city: shopkeeper user city (optional, case-insensitive)
+ * - pincode: shopkeeper pincode (optional) – will also resolve city/state
+ * - category: plan category (optional)
+ */
+async function getSubscriptionMetrics(req, res, next) {
+  try {
+    const { status = 'active', city, pincode, category } = req.query;
+
+    const where = {};
+
+    if (status && status !== 'all') {
+      where.status = status;
+    }
+
+    // Filter by shopkeeper location (user table)
+    if (city && String(city).trim()) {
+      where.shopkeeper = {
+        ...(where.shopkeeper || {}),
+        city: { equals: String(city).trim(), mode: 'insensitive' },
+      };
+    }
+
+    let resolvedLocation = null;
+    if (pincode && String(pincode).trim()) {
+      const normalizedPincode = String(pincode).trim();
+      // Always filter by exact pincode
+      where.shopkeeper = {
+        ...(where.shopkeeper || {}),
+        pincode: normalizedPincode,
+      };
+
+      // Additionally resolve city/state for display (does not change filter)
+      try {
+        const resolved = await resolveCityStateFromPincode(normalizedPincode);
+        resolvedLocation = {
+          pincode: resolved.pincode,
+          state: resolved.state,
+          district: resolved.district,
+          areas: resolved.areas,
+        };
+      } catch (e) {
+        // If resolution fails, continue with pincode-only filter
+        resolvedLocation = {
+          pincode: normalizedPincode,
+        };
+      }
+    }
+
+    // Filter by plan category
+    if (category && String(category).trim()) {
+      where.plan = {
+        ...(where.plan || {}),
+        category: String(category).trim(),
+      };
+    }
+
+    // Pull subscriptions with related plan + shopkeeper city, then aggregate in JS.
+    const subscriptions = await prisma.subscription.findMany({
+      where,
+      select: {
+        id: true,
+        plan: {
+          select: {
+            tier: true,
+          },
+        },
+      },
+    });
+
+    const totals = {
+      total: 0,
+      byTier: {
+        silver: 0,
+        gold: 0,
+        platinum: 0,
+        other: 0,
+      },
+    };
+
+    subscriptions.forEach((sub) => {
+      totals.total += 1;
+      const tier = (sub.plan?.tier || '').toLowerCase();
+      if (tier === 'silver') totals.byTier.silver += 1;
+      else if (tier === 'gold') totals.byTier.gold += 1;
+      else if (tier === 'platinum') totals.byTier.platinum += 1;
+      else totals.byTier.other += 1;
+    });
+
+    res.json({
+      success: true,
+      data: {
+        totals,
+        filters: {
+          status,
+          city: city || null,
+          pincode: pincode || null,
+          category: category || null,
+          resolvedLocation,
+        },
       },
     });
   } catch (err) {
@@ -294,6 +407,7 @@ module.exports = {
   createSubscription,
   getMonitoringDashboard,
   getRevenueIntelligence,
+  getSubscriptionMetrics,
   getAllSubscriptions,
   updateSubscription,
   cancelSubscription,

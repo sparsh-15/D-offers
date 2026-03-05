@@ -516,6 +516,43 @@ class SubscriptionService {
     }
   }
 
+  /// Filterable subscription metrics (by pincode / city / category / status, grouped by tier).
+  Future<Map<String, dynamic>> getSubscriptionMetrics({
+    String status = 'active',
+    String? pincode,
+    String? city,
+    String? category,
+  }) async {
+    try {
+      final uri = Uri.parse(
+        '${ApiConfig.baseUrl}/subscription-governance/analytics/subscription-metrics',
+      ).replace(queryParameters: {
+        'status': status,
+        if (pincode != null && pincode.trim().isNotEmpty) 'pincode': pincode.trim(),
+        if (city != null && city.trim().isNotEmpty) 'city': city.trim(),
+        if (category != null && category.trim().isNotEmpty) 'category': category.trim(),
+      });
+
+      print(
+          '[SUBSCRIPTION] Fetching subscription metrics with status=$status, pincode=$pincode, city=$city, category=$category');
+
+      final response = await _client.get(uri, headers: _getHeaders());
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) {
+          print('[SUBSCRIPTION] Fetched subscription metrics');
+          return data['data'];
+        }
+      }
+
+      throw Exception('Failed to fetch subscription metrics');
+    } catch (e) {
+      print('[SUBSCRIPTION] getSubscriptionMetrics error: $e');
+      rethrow;
+    }
+  }
+
   Future<Map<String, dynamic>> getRevenueIntelligence() async {
     try {
       final uri = Uri.parse(

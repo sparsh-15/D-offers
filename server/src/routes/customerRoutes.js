@@ -11,5 +11,6 @@ router.use(requireRole(['customer', 'super_admin', 'subadmin']));
 router.get('/offers', customerController.listOffers);
 router.post('/offers/:id/like', customerController.toggleLike);
 router.get('/offers/liked', customerController.getLikedOffers);
+router.post('/callbacks', customerController.requestCallback);
 
 module.exports = router;

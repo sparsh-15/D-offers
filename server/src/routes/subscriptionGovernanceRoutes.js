@@ -74,6 +74,12 @@ router.post(
 // Get monitoring dashboard
 router.get('/monitoring/dashboard', subscriptionGovernanceController.getMonitoringDashboard);
 
+// Get subscription metrics (by tier, with filters)
+router.get(
+  '/analytics/subscription-metrics',
+  subscriptionGovernanceController.getSubscriptionMetrics
+);
+
 // Get revenue intelligence
 router.get('/intelligence/revenue', subscriptionGovernanceController.getRevenueIntelligence);
 

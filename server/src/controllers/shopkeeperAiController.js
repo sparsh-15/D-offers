@@ -1,6 +1,7 @@
 const { prisma } = require('../db/prisma');
 const { resolvePgId } = require('../repositories/idResolver');
 const { getAvailableCredits, deductAiCredit } = require('../services/aiWalletService');
+const { generateBannerImageUrl } = require('../ai/bannerGenerator');
 
 async function getAiWallet(req, res, next) {
   try {
@@ -220,9 +221,66 @@ async function useAiBanner(req, res, next) {
   }
 }
 
+async function generateBanner(req, res, next) {
+  try {
+    const shopkeeperId = (await resolvePgId('users', req.user.userId)) || req.user.userId;
+    const { title, description, category, discountType, discountValue, shopName } = req.body || {};
+
+    if (!title || typeof title !== 'string') {
+      return res
+        .status(400)
+        .json({ success: false, message: 'title (string) is required' });
+    }
+
+    if (!discountType || !['percentage', 'fixed'].includes(String(discountType))) {
+      return res.status(400).json({
+        success: false,
+        message: "discountType must be 'percentage' or 'fixed'",
+      });
+    }
+
+    if (discountValue === undefined || discountValue === null || Number.isNaN(Number(discountValue))) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'discountValue (number) is required' });
+    }
+
+    const creditResult = await deductAiCredit(shopkeeperId);
+    if (!creditResult.ok) {
+      return res.status(403).json({
+        success: false,
+        message: creditResult.message || 'No AI credits available for banner generation',
+        code: creditResult.code || 'AI_NO_CREDITS',
+      });
+    }
+
+    const banner = await generateBannerImageUrl({
+      title: String(title).trim().slice(0, 120),
+      description: typeof description === 'string' ? description.trim().slice(0, 300) : '',
+      category: typeof category === 'string' ? category.trim().slice(0, 80) : '',
+      discountType: String(discountType),
+      discountValue: Number(discountValue),
+      shopName: typeof shopName === 'string' ? shopName.trim().slice(0, 120) : '',
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        imageUrl: banner.imageUrl,
+        altText: banner.altText,
+        promptUsed: banner.promptUsed,
+      },
+    });
+  } catch (err) {
+    console.error('[AI_BANNER] Error generating banner:', err);
+    next(err);
+  }
+}
+
 module.exports = {
   getAiWallet,
   getAiCreditPacks,
   purchaseAiCreditPack,
   useAiBanner,
+  generateBanner,
 };

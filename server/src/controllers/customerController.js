@@ -191,4 +191,53 @@ async function getLikedOffers(req, res, next) {
   }
 }
 
-module.exports = { listOffers, toggleLike, getLikedOffers };
+async function requestCallback(req, res, next) {
+  try {
+    const { offerId, message } = req.body || {};
+
+    if (!offerId || typeof offerId !== 'string') {
+      const err = new Error('offerId is required');
+      err.statusCode = 400;
+      return next(err);
+    }
+
+    const pgOfferId = (await resolvePgId('offers', offerId)) || offerId;
+    const pgUserId = (await resolvePgId('users', req.user.userId)) || req.user.userId;
+
+    const offer = await prisma.offer.findUnique({ where: { id: pgOfferId } });
+    if (!offer) {
+      const err = new Error('Offer not found');
+      err.statusCode = 404;
+      return next(err);
+    }
+
+    const trimmedMessage = typeof message === 'string' ? message.trim() : null;
+    const finalMessage =
+      trimmedMessage && trimmedMessage.length > 500
+        ? trimmedMessage.slice(0, 500)
+        : trimmedMessage;
+
+    const callback = await prisma.callbackRequest.create({
+      data: {
+        offerId: pgOfferId,
+        customerId: pgUserId,
+        message: finalMessage,
+      },
+    });
+
+    res.status(201).json({
+      success: true,
+      callback: {
+        id: callback.id,
+        offerId: callback.offerId,
+        customerId: callback.customerId,
+        status: callback.status,
+        createdAt: callback.createdAt.toISOString(),
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { listOffers, toggleLike, getLikedOffers, requestCallback };
