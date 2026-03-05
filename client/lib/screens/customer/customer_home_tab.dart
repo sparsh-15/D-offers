@@ -79,23 +79,44 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
   }
 
   Future<void> _getCurrentLocation() async {
+    // Avoid IME open/close jank while toggling location from app bar.
+    FocusScope.of(context).unfocus();
     setState(() => _isLoadingLocation = true);
     try {
       final locationData =
           await LocationService.instance.getCurrentLocationWithAddress();
       if (!mounted) return;
+      final pincode = (locationData['pincode'] as String?)?.trim();
+      final city = (locationData['city'] as String?)?.trim();
+      final state = (locationData['state'] as String?)?.trim();
+      if (pincode == null || pincode.isEmpty) {
+        setState(() {
+          _isLoadingLocation = false;
+          _useCurrentLocation = false;
+        });
+        DialogHelper.showErrorSnackBar(
+          context,
+          'Could not detect pincode from current location.',
+        );
+        return;
+      }
       setState(() {
-        _currentPincode = locationData['pincode'] as String?;
-        _currentCity = locationData['city'] as String?;
-        _currentState = locationData['state'] as String?;
+        _currentPincode = pincode;
+        _currentCity = city;
+        _currentState = state;
         _currentLocationText = [
           if (_currentCity?.isNotEmpty == true) _currentCity,
           if (_currentPincode?.isNotEmpty == true) _currentPincode,
+          if (_currentState?.isNotEmpty == true) _currentState,
         ].join(', ');
         _useCurrentLocation = true;
         _isLoadingLocation = false;
       });
       _refresh();
+      DialogHelper.showSuccessSnackBar(
+        context,
+        'Applied pincode filter: $_currentPincode',
+      );
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -113,6 +134,7 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
   }
 
   void _toggleLocation() {
+    FocusScope.of(context).unfocus();
     if (_useCurrentLocation) {
       setState(() {
         _useCurrentLocation = false;

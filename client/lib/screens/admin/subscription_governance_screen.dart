@@ -470,16 +470,18 @@ class _PlansManagementTabState extends State<PlansManagementTab> {
     );
 
     String? selectedCategory = plan?['category'];
-    String? selectedTier = plan?['tier'];
-    // Ranking Tier: set from Tier when present (silver→normal, gold→top3, platinum→priority)
-    String? selectedRankingTier = selectedTier == 'silver'
+    // Tier is mandatory: default to silver when creating or when plan has no tier
+    String selectedTier = (plan?['tier']?.toString().trim().isNotEmpty == true)
+        ? (plan!['tier'] as String)
+        : 'silver';
+    String selectedRankingTier = selectedTier == 'silver'
         ? 'normal'
         : selectedTier == 'gold'
             ? 'top3'
             : selectedTier == 'platinum'
                 ? 'priority'
                 : (plan?['rankingTier'] ?? 'normal');
-    String? selectedAiCreditTier = plan?['aiCreditTier'] ?? selectedTier ?? 'silver';
+    String selectedAiCreditTier = plan?['aiCreditTier'] ?? selectedTier;
     bool homepageRotation = plan?['homepageRotation'] == true;
     bool aiOptimizationSuggestions = plan?['aiOptimizationSuggestions'] == true;
     bool analyticsEnabled = plan?['analyticsEnabled'] == true;
@@ -521,20 +523,23 @@ class _PlansManagementTabState extends State<PlansManagementTab> {
                         value: selectedCategory,
                         decoration: InputDecoration(
                           labelText: 'Business Category *',
-                          hintText: 'Shop type or "all"',
-                          helperText: 'e.g. retail, restaurant, all',
+                          hintText: 'Shop type or All',
+                          helperText: 'Retail, restaurant, or All',
                           helperStyle: mutedStyle,
-                          helperMaxLines: 2,
+                          helperMaxLines: 1,
                           isDense: true,
                         ),
                         isExpanded: true,
                         menuMaxHeight: 280,
-                        items: _categories.map((category) {
-                          return DropdownMenuItem<String>(
-                            value: category['value'],
-                            child: Text(category['label'] ?? category['value'], overflow: TextOverflow.ellipsis),
-                          );
-                        }).toList(),
+                        items: [
+                          const DropdownMenuItem(value: 'all', child: Text('All categories')),
+                          ..._categories.map((category) {
+                            return DropdownMenuItem<String>(
+                              value: category['value'],
+                              child: Text(category['label'] ?? category['value'], overflow: TextOverflow.ellipsis),
+                            );
+                          }),
+                        ],
                         onChanged: (value) => setDialogState(() => selectedCategory = value),
                         validator: (value) => (value == null || value.isEmpty) ? 'Select category' : null,
                       ),
@@ -597,15 +602,15 @@ class _PlansManagementTabState extends State<PlansManagementTab> {
                         keyboardType: TextInputType.number,
                       ),
                       const SizedBox(height: 18),
-                      // ─── Auto-set fields (below) ───
-                      Text('Tier & ranking (auto-set from Tier)', style: sectionStyle),
+                      // ─── Pack price tier (drives ranking + AI tier in DB) ───
+                      Text('Pack price tier', style: sectionStyle),
                       const SizedBox(height: 6),
                       DropdownButtonFormField<String>(
-                        value: selectedTier?.isEmpty ?? true ? null : selectedTier,
+                        value: selectedTier,
                         decoration: InputDecoration(
-                          labelText: 'Tier (optional)',
+                          labelText: 'Tier *',
                           hintText: 'Silver / Gold / Platinum',
-                          helperText: 'Sets ranking & AI tier below',
+                          helperText: 'Sets ranking & AI tier',
                           helperStyle: mutedStyle,
                           helperMaxLines: 1,
                           isDense: true,
@@ -613,57 +618,20 @@ class _PlansManagementTabState extends State<PlansManagementTab> {
                         isExpanded: true,
                         menuMaxHeight: 220,
                         items: const [
-                          DropdownMenuItem(value: null, child: Text('None')),
                           DropdownMenuItem(value: 'silver', child: Text('Silver')),
                           DropdownMenuItem(value: 'gold', child: Text('Gold')),
                           DropdownMenuItem(value: 'platinum', child: Text('Platinum')),
                         ],
                         onChanged: (v) {
+                          if (v == null) return;
                           setDialogState(() {
                             selectedTier = v;
                             if (v == 'silver') { selectedRankingTier = 'normal'; selectedAiCreditTier = 'silver'; }
                             else if (v == 'gold') { selectedRankingTier = 'top3'; selectedAiCreditTier = 'gold'; }
-                            else if (v == 'platinum') { selectedRankingTier = 'priority'; selectedAiCreditTier = 'platinum'; }
+                            else { selectedRankingTier = 'priority'; selectedAiCreditTier = 'platinum'; }
                           });
                         },
-                      ),
-                      const SizedBox(height: 8),
-                      DropdownButtonFormField<String>(
-                        value: selectedRankingTier,
-                        decoration: InputDecoration(
-                          labelText: 'Ranking Tier',
-                          helperText: 'Silver→Normal, Gold→Top 3, Platinum→Priority',
-                          helperStyle: mutedStyle,
-                          helperMaxLines: 1,
-                          isDense: true,
-                        ),
-                        isExpanded: true,
-                        menuMaxHeight: 180,
-                        items: const [
-                          DropdownMenuItem(value: 'normal', child: Text('Normal')),
-                          DropdownMenuItem(value: 'priority', child: Text('Priority')),
-                          DropdownMenuItem(value: 'top3', child: Text('Top 3')),
-                        ],
-                        onChanged: (v) => setDialogState(() => selectedRankingTier = v),
-                      ),
-                      const SizedBox(height: 8),
-                      DropdownButtonFormField<String>(
-                        value: selectedAiCreditTier,
-                        decoration: InputDecoration(
-                          labelText: 'AI Credit Tier',
-                          helperText: 'Pack price tier',
-                          helperStyle: mutedStyle,
-                          helperMaxLines: 1,
-                          isDense: true,
-                        ),
-                        isExpanded: true,
-                        menuMaxHeight: 180,
-                        items: const [
-                          DropdownMenuItem(value: 'silver', child: Text('Silver')),
-                          DropdownMenuItem(value: 'gold', child: Text('Gold')),
-                          DropdownMenuItem(value: 'platinum', child: Text('Platinum')),
-                        ],
-                        onChanged: (v) => setDialogState(() => selectedAiCreditTier = v),
+                        validator: (v) => (v == null || v.isEmpty) ? 'Select tier' : null,
                       ),
                       const SizedBox(height: 6),
                       CheckboxListTile(
@@ -726,8 +694,7 @@ class _PlansManagementTabState extends State<PlansManagementTab> {
             ),
             ElevatedButton(
               onPressed: () {
-                if (selectedCategory == null ||
-                    (selectedCategory?.isEmpty ?? true)) {
+                if (selectedCategory == null || selectedCategory!.isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text('Please select a category'),
@@ -736,28 +703,14 @@ class _PlansManagementTabState extends State<PlansManagementTab> {
                   );
                   return;
                 }
-                // Auto-set tier (and ranking) from display name if tier not set
-                final name = displayNameController.text.trim().toLowerCase();
-                if ((selectedTier == null || selectedTier!.isEmpty) && name.isNotEmpty) {
-                  if (name.contains('platinum')) {
-                    setDialogState(() {
-                      selectedTier = 'platinum';
-                      selectedRankingTier = 'priority';
-                      selectedAiCreditTier = 'platinum';
-                    });
-                  } else if (name.contains('gold')) {
-                    setDialogState(() {
-                      selectedTier = 'gold';
-                      selectedRankingTier = 'top3';
-                      selectedAiCreditTier = 'gold';
-                    });
-                  } else if (name.contains('silver')) {
-                    setDialogState(() {
-                      selectedTier = 'silver';
-                      selectedRankingTier = 'normal';
-                      selectedAiCreditTier = 'silver';
-                    });
-                  }
+                if (selectedTier.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please select a pack price tier'),
+                      backgroundColor: AppColors.red,
+                    ),
+                  );
+                  return;
                 }
                 Navigator.pop(context, true);
               },
@@ -788,7 +741,7 @@ class _PlansManagementTabState extends State<PlansManagementTab> {
             homepageRotation: homepageRotation,
             aiOptimizationSuggestions: aiOptimizationSuggestions,
             aiCreditTier: selectedAiCreditTier,
-            tier: selectedTier?.isEmpty ?? true ? null : selectedTier,
+            tier: selectedTier,
             analyticsEnabled: analyticsEnabled,
             prioritySupport: prioritySupport,
           );
@@ -822,11 +775,11 @@ class _PlansManagementTabState extends State<PlansManagementTab> {
             maxOffers: int.parse(offerLimitController.text.trim()),
             maxPhotosPerOffer: int.tryParse(maxPhotosController.text.trim()) ?? 5,
             monthlyAiLimit: int.tryParse(monthlyAiLimitController.text.trim()) ?? 0,
-            rankingTier: selectedRankingTier ?? 'normal',
+            rankingTier: selectedRankingTier,
             homepageRotation: homepageRotation,
             aiOptimizationSuggestions: aiOptimizationSuggestions,
-            aiCreditTier: selectedAiCreditTier ?? 'silver',
-            tier: selectedTier?.isEmpty ?? true ? null : selectedTier,
+            aiCreditTier: selectedAiCreditTier,
+            tier: selectedTier,
             analyticsEnabled: analyticsEnabled,
             prioritySupport: prioritySupport,
           );
@@ -918,6 +871,9 @@ class _SubscriptionsManagementTabState
   bool _loading = true;
   String? _error;
   String _filter = 'all'; // all, active, expired
+  int _page = 1;
+  int _totalPages = 1;
+  int _pageSize = 20;
 
   @override
   void initState() {
@@ -936,6 +892,8 @@ class _SubscriptionsManagementTabState
 
       final result = await SubscriptionService.instance.getAllSubscriptions(
         status: statusFilter,
+        page: _page,
+        limit: _pageSize,
       );
 
       if (!mounted) return;
@@ -943,6 +901,9 @@ class _SubscriptionsManagementTabState
         _subscriptions = List<Map<String, dynamic>>.from(
           result['subscriptions'] ?? [],
         );
+        final pagination = result['pagination'] as Map<String, dynamic>? ?? {};
+        _page = pagination['page'] ?? _page;
+        _totalPages = pagination['pages'] ?? _totalPages;
         _error = null;
         _loading = false;
       });
@@ -1056,7 +1017,9 @@ class _SubscriptionsManagementTabState
                 onSelectionChanged: (Set<String> newSelection) {
                   setState(() {
                     _filter = newSelection.first;
+                    _page = 1;
                   });
+                  _loadSubscriptions();
                 },
               ),
             ],
@@ -1070,6 +1033,47 @@ class _SubscriptionsManagementTabState
               final sub = _filteredSubscriptions[index];
               return _buildSubscriptionCard(sub);
             },
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Page $_page of $_totalPages',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              Row(
+                children: [
+                  TextButton.icon(
+                    onPressed: _page > 1 && !_loading
+                        ? () {
+                            setState(() {
+                              _page -= 1;
+                            });
+                            _loadSubscriptions();
+                          }
+                        : null,
+                    icon: const Icon(Icons.chevron_left),
+                    label: const Text('Prev'),
+                  ),
+                  const SizedBox(width: 8),
+                  TextButton.icon(
+                    onPressed: _page < _totalPages && !_loading
+                        ? () {
+                            setState(() {
+                              _page += 1;
+                            });
+                            _loadSubscriptions();
+                          }
+                        : null,
+                    icon: const Icon(Icons.chevron_right),
+                    label: const Text('Next'),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ],
@@ -1461,8 +1465,6 @@ class _AiCreditPacksTabState extends State<AiCreditPacksTab> {
     final priceSilverController = TextEditingController(text: (pack?['priceSilver'] ?? 0).toString());
     final priceGoldController = TextEditingController(text: (pack?['priceGold'] ?? 0).toString());
     final pricePlatinumController = TextEditingController(text: (pack?['pricePlatinum'] ?? 0).toString());
-    final sortOrderController = TextEditingController(text: (pack?['sortOrder'] ?? 0).toString());
-    bool isActive = pack?['isActive'] as bool? ?? true;
     String? selectedCategory = pack?['category'] as String? ?? 'all';
     if (selectedCategory != 'all' && !categories.any((c) => c['value'] == selectedCategory)) {
       selectedCategory = 'all';
@@ -1591,30 +1593,6 @@ class _AiCreditPacksTabState extends State<AiCreditPacksTab> {
                     ),
                     keyboardType: TextInputType.number,
                   ),
-                  const SizedBox(height: 14),
-                  Text('Display order & status', style: sectionStyle),
-                  const SizedBox(height: 6),
-                  TextField(
-                    controller: sortOrderController,
-                    decoration: InputDecoration(
-                      labelText: 'Sort Order',
-                      hintText: 'e.g. 0',
-                      helperText: 'Lower number appears first in list',
-                      helperStyle: mutedStyle,
-                      helperMaxLines: 1,
-                      isDense: true,
-                    ),
-                    keyboardType: TextInputType.number,
-                  ),
-                  const SizedBox(height: 8),
-                  CheckboxListTile(
-                    title: const Text('Active'),
-                    subtitle: Text('Inactive packs are hidden from shopkeepers', style: mutedStyle),
-                    value: isActive,
-                    onChanged: (v) => setDialogState(() => isActive = v ?? true),
-                    controlAffinity: ListTileControlAffinity.leading,
-                    contentPadding: EdgeInsets.zero,
-                  ),
                 ],
               ),
             ),
@@ -1680,8 +1658,6 @@ class _AiCreditPacksTabState extends State<AiCreditPacksTab> {
           priceSilver: double.tryParse(priceSilverController.text.trim()),
           priceGold: double.tryParse(priceGoldController.text.trim()),
           pricePlatinum: double.tryParse(pricePlatinumController.text.trim()),
-          sortOrder: int.tryParse(sortOrderController.text.trim()),
-          isActive: isActive,
         );
         DialogHelper.showSuccessSnackBar(context, 'Pack updated successfully');
       } else {
@@ -1692,8 +1668,6 @@ class _AiCreditPacksTabState extends State<AiCreditPacksTab> {
           priceSilver: double.tryParse(priceSilverController.text.trim()) ?? 0,
           priceGold: double.tryParse(priceGoldController.text.trim()) ?? 0,
           pricePlatinum: double.tryParse(pricePlatinumController.text.trim()) ?? 0,
-          sortOrder: int.tryParse(sortOrderController.text.trim()) ?? 0,
-          isActive: isActive,
         );
         DialogHelper.showSuccessSnackBar(context, 'Pack created successfully');
       }
@@ -1738,11 +1712,26 @@ class _SubscriptionAnalyticsTabState extends State<SubscriptionAnalyticsTab> {
   bool _loading = true;
   Map<String, dynamic>? _dashboardData;
   Map<String, dynamic>? _revenueData;
+  Map<String, dynamic>? _metricsData;
+
+  bool _metricsLoading = false;
+  final TextEditingController _pincodeFilterController =
+      TextEditingController(text: '');
+  final TextEditingController _cityFilterController =
+      TextEditingController(text: '');
+  String _statusFilter = 'active';
 
   @override
   void initState() {
     super.initState();
     _loadAnalytics();
+  }
+
+  @override
+  void dispose() {
+    _pincodeFilterController.dispose();
+    _cityFilterController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadAnalytics() async {
@@ -1751,13 +1740,24 @@ class _SubscriptionAnalyticsTabState extends State<SubscriptionAnalyticsTab> {
       final results = await Future.wait([
         SubscriptionService.instance.getMonitoringDashboard(),
         SubscriptionService.instance.getRevenueIntelligence(),
+        SubscriptionService.instance.getSubscriptionMetrics(
+          status: _statusFilter,
+          pincode: _pincodeFilterController.text.trim().isEmpty
+              ? null
+              : _pincodeFilterController.text.trim(),
+          city: _cityFilterController.text.trim().isEmpty
+              ? null
+              : _cityFilterController.text.trim(),
+        ),
       ]);
 
       if (!mounted) return;
       setState(() {
         _dashboardData = results[0];
         _revenueData = results[1];
+        _metricsData = results[2];
         _loading = false;
+        _metricsLoading = false;
       });
     } catch (e) {
       if (!mounted) return;
@@ -1765,6 +1765,37 @@ class _SubscriptionAnalyticsTabState extends State<SubscriptionAnalyticsTab> {
       DialogHelper.showErrorSnackBar(
         context,
         'Failed to load analytics: $e',
+      );
+    }
+  }
+
+  Future<void> _reloadMetrics() async {
+    setState(() {
+      _metricsLoading = true;
+    });
+    try {
+      final data = await SubscriptionService.instance.getSubscriptionMetrics(
+        status: _statusFilter,
+        pincode: _pincodeFilterController.text.trim().isEmpty
+            ? null
+            : _pincodeFilterController.text.trim(),
+        city: _cityFilterController.text.trim().isEmpty
+            ? null
+            : _cityFilterController.text.trim(),
+      );
+      if (!mounted) return;
+      setState(() {
+        _metricsData = data;
+        _metricsLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _metricsLoading = false;
+      });
+      DialogHelper.showErrorSnackBar(
+        context,
+        'Failed to load subscription metrics: $e',
       );
     }
   }
@@ -1785,6 +1816,9 @@ class _SubscriptionAnalyticsTabState extends State<SubscriptionAnalyticsTab> {
 
     final planDistribution =
         _revenueData?['planDistribution'] as List<dynamic>? ?? [];
+
+    final tiersTotals = _metricsData?['totals']?['byTier'] as Map? ?? {};
+    final totalFiltered = _metricsData?['totals']?['total'] ?? 0;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -1905,6 +1939,91 @@ class _SubscriptionAnalyticsTabState extends State<SubscriptionAnalyticsTab> {
           ),
           const SizedBox(height: 24),
           Text(
+            'Subscription Metrics (filters)',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'See how many shops are subscribed by pincode / city and tier.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 12),
+          // Filters stacked vertically to avoid layout issues on small screens
+          TextField(
+            controller: _pincodeFilterController,
+            decoration: const InputDecoration(
+              labelText: 'Pincode (optional)',
+              hintText: 'e.g. 411001',
+              isDense: true,
+            ),
+            keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _cityFilterController,
+            decoration: const InputDecoration(
+              labelText: 'City (optional)',
+              hintText: 'e.g. Pune',
+              isDense: true,
+            ),
+          ),
+          const SizedBox(height: 8),
+          DropdownButtonFormField<String>(
+            value: _statusFilter,
+            decoration: const InputDecoration(
+              labelText: 'Status',
+              isDense: true,
+            ),
+            items: const [
+              DropdownMenuItem(value: 'active', child: Text('Active')),
+              DropdownMenuItem(value: 'expired', child: Text('Expired')),
+              DropdownMenuItem(value: 'cancelled', child: Text('Cancelled')),
+              DropdownMenuItem(value: 'all', child: Text('All')),
+            ],
+            onChanged: (value) {
+              if (value == null) return;
+              setState(() {
+                _statusFilter = value;
+              });
+            },
+          ),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: ElevatedButton.icon(
+              onPressed: _metricsLoading ? null : _reloadMetrics,
+              icon: _metricsLoading
+                  ? const SizedBox(
+                      height: 16,
+                      width: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.refresh_rounded, size: 18),
+              label: const Text('Apply'),
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (_metricsData == null)
+            const Card(
+              child: Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Text('No metrics loaded yet'),
+              ),
+            )
+          else
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _buildMetricCard('Total', '$totalFiltered'),
+                _buildMetricCard('Silver', '${tiersTotals['silver'] ?? 0}'),
+                _buildMetricCard('Gold', '${tiersTotals['gold'] ?? 0}'),
+                _buildMetricCard(
+                    'Platinum', '${tiersTotals['platinum'] ?? 0}'),
+              ],
+            ),
+          const SizedBox(height: 24),
+          Text(
             'Plan Distribution',
             style: Theme.of(context).textTheme.titleLarge,
           ),
@@ -2002,6 +2121,30 @@ class _SubscriptionAnalyticsTabState extends State<SubscriptionAnalyticsTab> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMetricCard(String label, String value) {
+    return SizedBox(
+      width: 150,
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              Text(label),
+              const SizedBox(height: 4),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

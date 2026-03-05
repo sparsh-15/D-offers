@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_design_tokens.dart';
@@ -30,6 +31,7 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
   late int _likesCount;
   bool _isToggling = false;
   bool _termsExpanded = false;
+  bool _isSubmittingCallback = false;
 
   late AnimationController _heartController;
   late Animation<double> _heartScale;
@@ -214,6 +216,147 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
     );
   }
 
+  void _shareOffer() {
+    final offer = widget.offer;
+    final shopName =
+        offer.shopName?.trim().isNotEmpty == true ? offer.shopName! : 'Local shop';
+    final dynamic rawDiscount = offer.discountValue;
+    final num? discountVal = rawDiscount is num
+        ? rawDiscount
+        : num.tryParse(rawDiscount?.toString() ?? '');
+
+    String discountText;
+    if (offer.discountType == 'percentage' && discountVal != null) {
+      final decimals = discountVal % 1 == 0 ? 0 : 1;
+      discountText = '${discountVal.toStringAsFixed(decimals)}% OFF';
+    } else if (offer.discountType == 'fixed' && discountVal != null) {
+      final decimals = discountVal % 1 == 0 ? 0 : 1;
+      discountText = '₹${discountVal.toStringAsFixed(decimals)} OFF';
+    } else {
+      discountText = 'Exclusive offer';
+    }
+
+    const appLink = 'https://doffers.app/download';
+
+    final text = StringBuffer()
+      ..writeln('${offer.title} — $discountText')
+      ..writeln('at $shopName on D\'Offers')
+      ..writeln()
+      ..writeln('Download the app: $appLink');
+
+    Share.share(text.toString());
+  }
+
+  Future<void> _showCallbackSheet() async {
+    final controller = TextEditingController();
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.cardBackground,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppTokens.radiusLG)),
+      ),
+      builder: (ctx) {
+        final mediaQuery = MediaQuery.of(ctx);
+        return Padding(
+          padding: EdgeInsets.fromLTRB(
+            AppTokens.spaceLG,
+            AppTokens.spaceLG,
+            AppTokens.spaceLG,
+            mediaQuery.viewInsets.bottom + AppTokens.space2XL,
+          ),
+          child: StatefulBuilder(
+            builder: (context, setSheetState) => Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Request a callback',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: AppTokens.spaceXS),
+                Text(
+                  widget.offer.shopName?.isNotEmpty == true
+                      ? widget.offer.shopName!
+                      : 'Shop',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                ),
+                const SizedBox(height: AppTokens.spaceMD),
+                TextField(
+                  controller: controller,
+                  maxLines: 3,
+                  maxLength: 200,
+                  decoration: const InputDecoration(
+                    hintText: 'Add a short note for the shop (optional)',
+                  ),
+                ),
+                const SizedBox(height: AppTokens.spaceMD),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('Cancel'),
+                    ),
+                    const SizedBox(width: AppTokens.spaceSM),
+                    ElevatedButton(
+                      onPressed: _isSubmittingCallback
+                          ? null
+                          : () async {
+                              setState(() => _isSubmittingCallback = true);
+                              setSheetState(() {});
+                              try {
+                                await AuthService.instance.requestOfferCallback(
+                                  widget.offer.id,
+                                  message: controller.text,
+                                );
+                                if (mounted) {
+                                  Navigator.of(context).pop();
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Callback request sent to the shop',
+                                      ),
+                                    ),
+                                  );
+                                }
+                              } catch (e) {
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        e.toString().replaceFirst('Exception: ', ''),
+                                      ),
+                                    ),
+                                  );
+                                }
+                              } finally {
+                                if (mounted) {
+                                  setState(() => _isSubmittingCallback = false);
+                                  setSheetState(() {});
+                                }
+                              }
+                            },
+                      child: _isSubmittingCallback
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text('Send'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   void _showOverflowMenu() {
     showModalBottomSheet(
       context: context,
@@ -231,8 +374,7 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
               title: const Text('Share offer'),
               onTap: () {
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context)
-                    .showSnackBar(const SnackBar(content: Text('Sharing…')));
+                _shareOffer();
               },
             ),
             ListTile(
@@ -240,8 +382,7 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
               title: const Text('Request callback'),
               onTap: () {
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context)
-                    .showSnackBar(const SnackBar(content: Text('Callback requested')));
+                _showCallbackSheet();
               },
             ),
             if (widget.onChatPressed != null)
@@ -282,10 +423,16 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
         offer.shopName?.trim().isNotEmpty == true ? offer.shopName! : 'Local Shop';
 
     String discountText;
-    if (offer.discountType == 'percentage' && offer.discountValue != null) {
-      discountText = '${offer.discountValue!.toStringAsFixed(offer.discountValue! % 1 == 0 ? 0 : 1)}% OFF';
-    } else if (offer.discountType == 'fixed' && offer.discountValue != null) {
-      discountText = '₹${offer.discountValue!.toStringAsFixed(offer.discountValue! % 1 == 0 ? 0 : 1)} OFF';
+    final dynamic rawDiscount = offer.discountValue;
+    final num? discountVal = rawDiscount is num
+        ? rawDiscount
+        : num.tryParse(rawDiscount?.toString() ?? '');
+    if (offer.discountType == 'percentage' && discountVal != null) {
+      final decimals = discountVal % 1 == 0 ? 0 : 1;
+      discountText = '${discountVal.toStringAsFixed(decimals)}% OFF';
+    } else if (offer.discountType == 'fixed' && discountVal != null) {
+      final decimals = discountVal % 1 == 0 ? 0 : 1;
+      discountText = '₹${discountVal.toStringAsFixed(decimals)} OFF';
     } else {
       discountText = 'Exclusive Offer';
     }

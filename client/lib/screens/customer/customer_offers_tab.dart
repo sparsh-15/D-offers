@@ -440,6 +440,14 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
                     onPressed: () => _showFilterDialog(context),
                     icon: const Icon(Icons.tune_rounded),
                     label: const Text('Filters'),
+                    // Prevent infinite-width constraints when used inside Row.
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(0, 40),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                    ),
                   ),
                 ],
               ),

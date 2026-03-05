@@ -330,8 +330,9 @@ class _OtpScreenState extends State<OtpScreen> {
         phone: widget.phoneNumber,
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('OTP sent successfully')),
+      DialogHelper.showSuccessSnackBar(
+        context,
+        'OTP sent successfully',
       );
     } catch (e) {
       if (!mounted) return;
