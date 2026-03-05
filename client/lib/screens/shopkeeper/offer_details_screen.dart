@@ -565,385 +565,394 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
       body: SafeArea(
         child: Form(
           key: _formKey,
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              return SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    minWidth: constraints.maxWidth,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-            _buildSubscriptionSummary(context),
-            TextFormField(
-              controller: _titleController,
-              decoration: const InputDecoration(
-                labelText: 'Title *',
-                border: OutlineInputBorder(),
-              ),
-              validator: (v) =>
-                  v == null || v.trim().isEmpty ? 'Required' : null,
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _descriptionController,
-              decoration: const InputDecoration(
-                labelText: 'Description',
-                border: OutlineInputBorder(),
-              ),
-              maxLines: 3,
-            ),
-            const SizedBox(height: 16),
-            if (_loadingCategories)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 8),
-                child: LinearProgressIndicator(),
-              )
-            else
-              DropdownButtonFormField<String>(
-                initialValue: _selectedCategory,
-                decoration: const InputDecoration(
-                  labelText: 'Category',
-                  border: OutlineInputBorder(),
-                  hintText: 'Select a category',
-                ),
-                isExpanded: true,
-                items: _categories.map((category) {
-                  return DropdownMenuItem<String>(
-                    value: category['value'],
-                    child: Text(category['label']),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _selectedCategory = value;
-                    _categoryController.text = value ?? '';
-                  });
-                },
-              ),
-            const SizedBox(height: 16),
-            Row(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Expanded(
-                  flex: 2,
-                  child: DropdownButtonFormField<String>(
-                    initialValue: _discountType,
+                _buildSubscriptionSummary(context),
+                TextFormField(
+                  controller: _titleController,
+                  decoration: const InputDecoration(
+                    labelText: 'Title *',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (v) =>
+                      v == null || v.trim().isEmpty ? 'Required' : null,
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _descriptionController,
+                  decoration: const InputDecoration(
+                    labelText: 'Description',
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLines: 3,
+                ),
+                const SizedBox(height: 16),
+                if (_loadingCategories)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8),
+                    child: LinearProgressIndicator(),
+                  )
+                else
+                  DropdownButtonFormField<String>(
+                    initialValue: _selectedCategory,
                     decoration: const InputDecoration(
-                      labelText: 'Type',
+                      labelText: 'Category',
                       border: OutlineInputBorder(),
-                      contentPadding:
-                          EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                      hintText: 'Select a category',
+                    ),
+                    isExpanded: true,
+                    items: _categories.map((category) {
+                      return DropdownMenuItem<String>(
+                        value: category['value'],
+                        child: Text(category['label']),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedCategory = value;
+                        _categoryController.text = value ?? '';
+                      });
+                    },
+                  ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: DropdownButtonFormField<String>(
+                        initialValue: _discountType,
+                        decoration: const InputDecoration(
+                          labelText: 'Type',
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 16),
+                        ),
+                        items: const [
+                          DropdownMenuItem(value: 'percentage', child: Text('%')),
+                          DropdownMenuItem(value: 'fixed', child: Text('Rs')),
+                        ],
+                        onChanged: (v) => setState(() => _discountType = v!),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 3,
+                      child: TextFormField(
+                        controller: _discountValueController,
+                        decoration: InputDecoration(
+                          labelText: 'Value',
+                          border: const OutlineInputBorder(),
+                          suffixText:
+                              _discountType == 'percentage' ? '%' : 'Rs',
+                        ),
+                        keyboardType: TextInputType.number,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                if (widget.offer != null)
+                  DropdownButtonFormField<String>(
+                    initialValue: _status,
+                    decoration: const InputDecoration(
+                      labelText: 'Status',
+                      border: OutlineInputBorder(),
                     ),
                     items: const [
-                      DropdownMenuItem(value: 'percentage', child: Text('%')),
-                      DropdownMenuItem(value: 'fixed', child: Text('Rs')),
+                      DropdownMenuItem(value: 'active', child: Text('Active')),
+                      DropdownMenuItem(
+                          value: 'inactive', child: Text('Inactive')),
+                      DropdownMenuItem(value: 'expired', child: Text('Expired')),
                     ],
-                    onChanged: (v) => setState(() => _discountType = v!),
+                    onChanged: (v) => setState(() => _status = v!),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  flex: 3,
-                  child: TextFormField(
-                    controller: _discountValueController,
-                    decoration: InputDecoration(
-                      labelText: 'Value',
-                      border: const OutlineInputBorder(),
-                      suffixText: _discountType == 'percentage' ? '%' : 'Rs',
-                    ),
-                    keyboardType: TextInputType.number,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            if (widget.offer != null)
-              DropdownButtonFormField<String>(
-                initialValue: _status,
-                decoration: const InputDecoration(
-                  labelText: 'Status',
-                  border: OutlineInputBorder(),
-                ),
-                items: const [
-                  DropdownMenuItem(value: 'active', child: Text('Active')),
-                  DropdownMenuItem(value: 'inactive', child: Text('Inactive')),
-                  DropdownMenuItem(value: 'expired', child: Text('Expired')),
-                ],
-                onChanged: (v) => setState(() => _status = v!),
-              ),
-            if (widget.offer != null) const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: ListTile(
-                    title: const Text('Valid From'),
-                    subtitle:
-                        Text(_validFrom?.toString().split(' ')[0] ?? 'Not set'),
-                    trailing: const Icon(Icons.calendar_today),
-                    onTap: () async {
-                      final date = await showDatePicker(
-                        context: context,
-                        initialDate: _validFrom ?? DateTime.now(),
-                        firstDate: DateTime(2020),
-                        lastDate: DateTime(2030),
-                      );
-                      if (date != null) setState(() => _validFrom = date);
-                    },
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      side: BorderSide(
-                        color: isDark ? AppColors.grey700 : AppColors.grey300,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ListTile(
-                    title: const Text('Valid To'),
-                    subtitle:
-                        Text(_validTo?.toString().split(' ')[0] ?? 'Not set'),
-                    trailing: const Icon(Icons.calendar_today),
-                    onTap: () async {
-                      final date = await showDatePicker(
-                        context: context,
-                        initialDate: _validTo ??
-                            DateTime.now().add(const Duration(days: 30)),
-                        firstDate: DateTime(2020),
-                        lastDate: DateTime(2030),
-                      );
-                      if (date != null) setState(() => _validTo = date);
-                    },
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      side: BorderSide(
-                        color: isDark ? AppColors.grey700 : AppColors.grey300,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _termsController,
-              decoration: const InputDecoration(
-                labelText: 'Terms & Conditions',
-                border: OutlineInputBorder(),
-                hintText: 'Enter any terms or conditions for this offer',
-              ),
-              maxLines: 4,
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Photos',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _showPhotoSourceDialog,
-                    icon: const Icon(Icons.add_photo_alternate),
-                    label: const Text('Add Photos'),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _isGeneratingBanner
-                        ? null
-                        : () async {
-                            if (_titleController.text.trim().isEmpty) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                      'Add a title before generating an AI banner.'),
-                                  duration: Duration(seconds: 2),
-                                ),
-                              );
-                              return;
-                            }
-                            if (_discountValueController.text.trim().isEmpty) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                      'Add a discount value before generating an AI banner.'),
-                                  duration: Duration(seconds: 2),
-                                ),
-                              );
-                              return;
-                            }
-                            setState(() => _isGeneratingBanner = true);
-                            try {
-                              final discountValue =
-                                  num.tryParse(_discountValueController.text.trim());
-                              final imageUrl =
-                                  await ShopkeeperAiService.instance.generateBannerImageUrl(
-                                title: _titleController.text.trim(),
-                                description: _descriptionController.text.trim(),
-                                category: _categoryController.text.trim(),
-                                discountType: _discountType,
-                                discountValue: discountValue,
-                              );
-                              if (!mounted) return;
-                              setState(() {
-                                _photoUrls.add(imageUrl);
-                              });
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('AI banner added as a photo'),
-                                  duration: Duration(seconds: 2),
-                                ),
-                              );
-                            } catch (e) {
-                              if (!mounted) return;
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    e.toString().replaceFirst('Exception: ', ''),
-                                  ),
-                                  duration: const Duration(seconds: 3),
-                                ),
-                              );
-                            } finally {
-                              if (mounted) {
-                                setState(() => _isGeneratingBanner = false);
-                              }
-                            }
-                          },
-                    icon: _isGeneratingBanner
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.auto_awesome),
-                    label: const Text('Generate AI Banner'),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: _photoUrlController,
-                    decoration: const InputDecoration(
-                      labelText: 'Or add Photo URL',
-                      border: OutlineInputBorder(),
-                      hintText: 'https://example.com/image.jpg',
-                    ),
-                    onFieldSubmitted: (_) => _addPhotoUrl(),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Padding(
-                  padding: const EdgeInsets.only(top: 8.0),
-                  child: ElevatedButton.icon(
-                    onPressed: _addPhotoUrl,
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add'),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 16),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            if (_photoUrls.isEmpty && _localPhotos.isEmpty)
-              Container(
-                height: 120,
-                decoration: BoxDecoration(
-                  color: isDark ? AppColors.grey800 : AppColors.grey200,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: isDark ? AppColors.grey700 : AppColors.grey300,
-                    style: BorderStyle.solid,
-                    width: 2,
-                  ),
-                ),
-                child: const Center(
-                  child: Text('No photos added yet'),
-                ),
-              )
-            else
-              SizedBox(
-                height: 120,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: _photoUrls.length + _localPhotos.length,
-                  itemBuilder: (context, index) {
-                    final isUrl = index < _photoUrls.length;
-                    return Stack(
-                      children: [
-                        Container(
-                          width: 120,
-                          margin: const EdgeInsets.only(right: 8),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            color: AppColors.grey300,
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: isUrl
-                                ? Image.network(
-                                    _photoUrls[index],
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) =>
-                                        const Icon(Icons.broken_image),
-                                  )
-                                : Image.file(
-                                    _localPhotos[index - _photoUrls.length],
-                                    fit: BoxFit.cover,
-                                  ),
+                if (widget.offer != null) const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ListTile(
+                        title: const Text('Valid From'),
+                        subtitle: Text(
+                            _validFrom?.toString().split(' ')[0] ?? 'Not set'),
+                        trailing: const Icon(Icons.calendar_today),
+                        onTap: () async {
+                          final date = await showDatePicker(
+                            context: context,
+                            initialDate: _validFrom ?? DateTime.now(),
+                            firstDate: DateTime(2020),
+                            lastDate: DateTime(2030),
+                          );
+                          if (date != null) setState(() => _validFrom = date);
+                        },
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          side: BorderSide(
+                            color: isDark
+                                ? AppColors.grey700
+                                : AppColors.grey300,
                           ),
                         ),
-                        Positioned(
-                          top: 4,
-                          right: 12,
-                          child: IconButton(
-                            icon:
-                                const Icon(Icons.close, color: AppColors.white),
-                            style: IconButton.styleFrom(
-                              backgroundColor: AppColors.black54,
-                              padding: const EdgeInsets.all(4),
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                if (isUrl) {
-                                  _photoUrls.removeAt(index);
-                                } else {
-                                  _localPhotos
-                                      .removeAt(index - _photoUrls.length);
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ListTile(
+                        title: const Text('Valid To'),
+                        subtitle: Text(
+                            _validTo?.toString().split(' ')[0] ?? 'Not set'),
+                        trailing: const Icon(Icons.calendar_today),
+                        onTap: () async {
+                          final date = await showDatePicker(
+                            context: context,
+                            initialDate: _validTo ??
+                                DateTime.now().add(const Duration(days: 30)),
+                            firstDate: DateTime(2020),
+                            lastDate: DateTime(2030),
+                          );
+                          if (date != null) setState(() => _validTo = date);
+                        },
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          side: BorderSide(
+                            color: isDark
+                                ? AppColors.grey700
+                                : AppColors.grey300,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _termsController,
+                  decoration: const InputDecoration(
+                    labelText: 'Terms & Conditions',
+                    border: OutlineInputBorder(),
+                    hintText: 'Enter any terms or conditions for this offer',
+                  ),
+                  maxLines: 4,
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  'Photos',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _showPhotoSourceDialog,
+                        icon: const Icon(Icons.add_photo_alternate),
+                        label: const Text('Add Photos'),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _isGeneratingBanner
+                            ? null
+                            : () async {
+                                if (_titleController.text.trim().isEmpty) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                          'Add a title before generating an AI banner.'),
+                                      duration: Duration(seconds: 2),
+                                    ),
+                                  );
+                                  return;
                                 }
-                              });
-                            },
-                          ),
+                                if (_discountValueController.text
+                                    .trim()
+                                    .isEmpty) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                          'Add a discount value before generating an AI banner.'),
+                                      duration: Duration(seconds: 2),
+                                    ),
+                                  );
+                                  return;
+                                }
+                                setState(() => _isGeneratingBanner = true);
+                                try {
+                                  final discountValue = num.tryParse(
+                                      _discountValueController.text.trim());
+                                  final imageUrl = await ShopkeeperAiService
+                                      .instance
+                                      .generateBannerImageUrl(
+                                    title: _titleController.text.trim(),
+                                    description:
+                                        _descriptionController.text.trim(),
+                                    category: _categoryController.text.trim(),
+                                    discountType: _discountType,
+                                    discountValue: discountValue,
+                                  );
+                                  if (!mounted) return;
+                                  setState(() {
+                                    _photoUrls.add(imageUrl);
+                                  });
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content:
+                                          Text('AI banner added as a photo'),
+                                      duration: Duration(seconds: 2),
+                                    ),
+                                  );
+                                } catch (e) {
+                                  if (!mounted) return;
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        e
+                                            .toString()
+                                            .replaceFirst('Exception: ', ''),
+                                      ),
+                                      duration:
+                                          const Duration(seconds: 3),
+                                    ),
+                                  );
+                                } finally {
+                                  if (mounted) {
+                                    setState(
+                                        () => _isGeneratingBanner = false);
+                                  }
+                                }
+                              },
+                        icon: _isGeneratingBanner
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.auto_awesome),
+                        label: const Text('Generate AI Banner'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
                         ),
-                      ],
-                    );
-                  },
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-          ],
+                const SizedBox(height: 12),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _photoUrlController,
+                        decoration: const InputDecoration(
+                          labelText: 'Or add Photo URL',
+                          border: OutlineInputBorder(),
+                          hintText: 'https://example.com/image.jpg',
+                        ),
+                        onFieldSubmitted: (_) => _addPhotoUrl(),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8.0),
+                      child: ElevatedButton.icon(
+                        onPressed: _addPhotoUrl,
+                        icon: const Icon(Icons.add),
+                        label: const Text('Add'),
+                        style: ElevatedButton.styleFrom(
+                          minimumSize: const Size(0, 52),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 16),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                if (_photoUrls.isEmpty && _localPhotos.isEmpty)
+                  Container(
+                    height: 120,
+                    decoration: BoxDecoration(
+                      color: isDark ? AppColors.grey800 : AppColors.grey200,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isDark ? AppColors.grey700 : AppColors.grey300,
+                        style: BorderStyle.solid,
+                        width: 2,
+                      ),
+                    ),
+                    child: const Center(
+                      child: Text('No photos added yet'),
+                    ),
+                  )
+                else
+                  SizedBox(
+                    height: 120,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: _photoUrls.length + _localPhotos.length,
+                      itemBuilder: (context, index) {
+                        final isUrl = index < _photoUrls.length;
+                        return Stack(
+                          children: [
+                            Container(
+                              width: 120,
+                              margin: const EdgeInsets.only(right: 8),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(12),
+                                color: AppColors.grey300,
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: isUrl
+                                    ? Image.network(
+                                        _photoUrls[index],
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) =>
+                                            const Icon(Icons.broken_image),
+                                      )
+                                    : Image.file(
+                                        _localPhotos[
+                                            index - _photoUrls.length],
+                                        fit: BoxFit.cover,
+                                      ),
+                              ),
+                            ),
+                            Positioned(
+                              top: 4,
+                              right: 12,
+                              child: IconButton(
+                                icon: const Icon(Icons.close,
+                                    color: AppColors.white),
+                                style: IconButton.styleFrom(
+                                  backgroundColor: AppColors.black54,
+                                  padding: const EdgeInsets.all(4),
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    if (isUrl) {
+                                      _photoUrls.removeAt(index);
+                                    } else {
+                                      _localPhotos.removeAt(
+                                          index - _photoUrls.length);
+                                    }
+                                  });
+                                },
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
                   ),
-                ),
-              );
-            },
+              ],
+            ),
           ),
         ),
       ),

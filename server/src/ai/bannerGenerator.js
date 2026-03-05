@@ -1,7 +1,9 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const cloudinary = require('../config/cloudinary');
 
-const IMAGE_MODEL_NAME = 'imagegeneration';
+// Use a valid Gemini image model; allow override via env
+const IMAGE_MODEL_NAME =
+  process.env.GEMINI_IMAGE_MODEL || 'imagen-3.0-fast';
 
 let imageModel;
 

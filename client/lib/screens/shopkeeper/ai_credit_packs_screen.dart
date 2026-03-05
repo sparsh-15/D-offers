@@ -5,6 +5,7 @@ import '../../core/utils/theme_helper.dart';
 import '../../core/utils/dialog_helper.dart';
 import '../../services/subscription_service.dart';
 import '../../widgets/data_state_wrapper.dart';
+import 'ai_credit_payment_screen.dart';
 
 class AiCreditPacksScreen extends StatefulWidget {
   const AiCreditPacksScreen({super.key});
@@ -17,7 +18,6 @@ class _AiCreditPacksScreenState extends State<AiCreditPacksScreen> {
   List<Map<String, dynamic>> _packs = [];
   bool _loading = true;
   String? _error;
-  String? _purchasingSku;
 
   @override
   void initState() {
@@ -42,26 +42,6 @@ class _AiCreditPacksScreenState extends State<AiCreditPacksScreen> {
         _loading = false;
       });
       DialogHelper.showErrorSnackBar(context, e.toString());
-    }
-  }
-
-  Future<void> _purchasePack(Map<String, dynamic> pack) async {
-    final sku = pack['sku'] as String? ?? '';
-    setState(() => _purchasingSku = sku);
-    try {
-      await SubscriptionService.instance.purchaseAiCreditPack(
-        packSku: sku,
-        paymentMethod: 'upi',
-        transactionId: 'txn_${DateTime.now().millisecondsSinceEpoch}',
-      );
-      if (!mounted) return;
-      DialogHelper.showSuccessSnackBar(context, 'Pack purchased successfully');
-      Navigator.of(context).pop(true);
-    } catch (e) {
-      if (!mounted) return;
-      DialogHelper.showErrorSnackBar(context, e.toString());
-    } finally {
-      if (mounted) setState(() => _purchasingSku = null);
     }
   }
 
@@ -97,8 +77,6 @@ class _AiCreditPacksScreenState extends State<AiCreditPacksScreen> {
     final displayName = pack['displayName'] ?? pack['sku'] ?? 'Pack';
     final credits = pack['credits'] ?? 0;
     final price = pack['price'] ?? 0;
-    final sku = pack['sku'] ?? '';
-    final isPurchasing = _purchasingSku == sku;
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       child: Padding(
@@ -136,12 +114,28 @@ class _AiCreditPacksScreenState extends State<AiCreditPacksScreen> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: isPurchasing ? null : () => _purchasePack(pack),
+                onPressed: () {
+                  final outerContext = context;
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => AiCreditPaymentScreen(
+                        pack: pack,
+                        onPaymentSuccess: () {
+                          DialogHelper.showSuccessSnackBar(
+                            outerContext,
+                            'Pack purchased successfully',
+                          );
+                          Navigator.of(outerContext).pop(true);
+                        },
+                      ),
+                    ),
+                  );
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.accent,
                   foregroundColor: AppColors.black,
                 ),
-                child: isPurchasing ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Buy Now'),
+                child: const Text('Buy Now'),
               ),
             ),
           ],
