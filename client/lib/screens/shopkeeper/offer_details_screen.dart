@@ -5,6 +5,7 @@ import '../../models/offer_model.dart';
 import '../../services/auth_service.dart';
 import '../../services/subscription_service.dart';
 import '../../services/upload_service.dart';
+import '../../services/shopkeeper_ai_service.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/dialog_helper.dart';
 
@@ -45,6 +46,7 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
   bool _loadingCategories = false;
   List<Map<String, dynamic>> _categories = [];
   String? _selectedCategory;
+  bool _isGeneratingBanner = false;
 
   @override
   void initState() {
@@ -748,6 +750,83 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
                     icon: const Icon(Icons.add_photo_alternate),
                     label: const Text('Add Photos'),
                     style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _isGeneratingBanner
+                        ? null
+                        : () async {
+                            if (_titleController.text.trim().isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                      'Add a title before generating an AI banner.'),
+                                  duration: Duration(seconds: 2),
+                                ),
+                              );
+                              return;
+                            }
+                            if (_discountValueController.text.trim().isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                      'Add a discount value before generating an AI banner.'),
+                                  duration: Duration(seconds: 2),
+                                ),
+                              );
+                              return;
+                            }
+                            setState(() => _isGeneratingBanner = true);
+                            try {
+                              final discountValue =
+                                  num.tryParse(_discountValueController.text.trim());
+                              final imageUrl =
+                                  await ShopkeeperAiService.instance.generateBannerImageUrl(
+                                title: _titleController.text.trim(),
+                                description: _descriptionController.text.trim(),
+                                category: _categoryController.text.trim(),
+                                discountType: _discountType,
+                                discountValue: discountValue,
+                              );
+                              if (!mounted) return;
+                              setState(() {
+                                _photoUrls.add(imageUrl);
+                              });
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('AI banner added as a photo'),
+                                  duration: Duration(seconds: 2),
+                                ),
+                              );
+                            } catch (e) {
+                              if (!mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    e.toString().replaceFirst('Exception: ', ''),
+                                  ),
+                                  duration: const Duration(seconds: 3),
+                                ),
+                              );
+                            } finally {
+                              if (mounted) {
+                                setState(() => _isGeneratingBanner = false);
+                              }
+                            }
+                          },
+                    icon: _isGeneratingBanner
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.auto_awesome),
+                    label: const Text('Generate AI Banner'),
+                    style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                     ),
                   ),

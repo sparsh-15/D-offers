@@ -376,6 +376,31 @@ class AuthService {
     };
   }
 
+  Future<void> requestOfferCallback(
+    String offerId, {
+    String? message,
+  }) async {
+    final token = AuthStore.token;
+    if (token == null) throw Exception('Not authenticated');
+    final uri = Uri.parse('${ApiConfig.baseUrl}/customer/callbacks');
+    final body = <String, dynamic>{
+      'offerId': offerId,
+      if (message != null && message.trim().isNotEmpty)
+        'message': message.trim(),
+    };
+    final resp = await _makeRequest(
+      () => _client.post(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(body),
+      ),
+    );
+    _handleResponse(resp);
+  }
+
   Future<List<OfferModel>> getLikedOffers() async {
     final token = AuthStore.token;
     if (token == null) throw Exception('Not authenticated');
