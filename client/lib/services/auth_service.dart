@@ -246,6 +246,30 @@ class AuthService {
     );
   }
 
+  // Public shop profile for customers (by shopkeeperId)
+  Future<ShopkeeperProfileModel?> getPublicShopProfile(
+    String shopkeeperId,
+  ) async {
+    final token = AuthStore.token;
+    if (token == null) throw Exception('Not authenticated');
+    final uri = Uri.parse(
+      '${ApiConfig.baseUrl}/customer/shops/$shopkeeperId/profile',
+    );
+    final resp = await _client.get(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (resp.statusCode == 404) {
+      return null;
+    }
+    final data = _handleResponse(resp) as Map<String, dynamic>;
+    return ShopkeeperProfileModel.fromJson(
+      data['profile'] as Map<String, dynamic>,
+    );
+  }
+
   Future<ShopkeeperProfileModel> upsertShopkeeperProfile({
     required String shopName,
     String? address,

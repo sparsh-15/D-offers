@@ -53,6 +53,8 @@ class _ShopProfileBodyState extends State<ShopProfileBody> {
         : (AuthStore.currentUser?.name.isNotEmpty == true
             ? AuthStore.currentUser!.name
             : 'My Shop');
+    final ownerName = AuthStore.currentUser?.name ?? '';
+    final ownerPhone = AuthStore.currentUser?.phone ?? '';
 
     return Column(
       children: [
@@ -79,12 +81,78 @@ class _ShopProfileBodyState extends State<ShopProfileBody> {
             _profile!.category,
             style: Theme.of(context).textTheme.bodyMedium,
           ),
-        const SizedBox(height: 32),
+        const SizedBox(height: 24),
         Expanded(
           child: _loading
               ? const Center(child: CircularProgressIndicator())
               : ListView(
                   children: [
+                    if (_profile != null) Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: AppColors.elevated,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.borderSubtle),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Shop details',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleMedium
+                                  ?.copyWith(
+                                    color: AppColors.textPrimary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                            ),
+                            const SizedBox(height: 8),
+                            if (ownerName.isNotEmpty)
+                              _DetailRow(
+                                icon: Icons.person_rounded,
+                                label: 'Owner',
+                                value: ownerName,
+                              ),
+                            if (ownerPhone.isNotEmpty)
+                              _DetailRow(
+                                icon: Icons.phone_rounded,
+                                label: 'Contact',
+                                value: '+91 $ownerPhone',
+                              ),
+                            if (_profile!.address.isNotEmpty)
+                              _DetailRow(
+                                icon: Icons.location_on_rounded,
+                                label: 'Address',
+                                value: _profile!.address,
+                              ),
+                            if (_profile!.city.isNotEmpty ||
+                                _profile!.pincode.isNotEmpty)
+                              _DetailRow(
+                                icon: Icons.map_rounded,
+                                label: 'Area',
+                                value: [
+                                  if (_profile!.city.isNotEmpty) _profile!.city,
+                                  if (_profile!.pincode.isNotEmpty)
+                                    _profile!.pincode,
+                                ].join(', '),
+                              ),
+                            if (_profile!.description.isNotEmpty)
+                              _DetailRow(
+                                icon: Icons.info_outline_rounded,
+                                label: 'Description',
+                                value: _profile!.description,
+                                maxLines: 3,
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
                     const ThemeToggle(),
                     ProfileOptionTile(
                       icon: Icons.edit_rounded,
@@ -433,6 +501,58 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
           child: const Text('Save'),
         ),
       ],
+    );
+  }
+}
+
+class _DetailRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final int maxLines;
+
+  const _DetailRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.maxLines = 2,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 18, color: AppColors.textMuted),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppColors.textMuted,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  maxLines: maxLines,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

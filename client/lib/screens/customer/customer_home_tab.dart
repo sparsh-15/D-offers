@@ -34,6 +34,7 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
   String? _currentCity;
   String? _currentState;
   String? _selectedCategory;
+   String _sortBy = 'newest';
   List<Map<String, dynamic>> _categories = [];
 
   @override
@@ -128,7 +129,7 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
         state: state,
         q: q,
         category: category,
-        sort: 'newest',
+        sort: _sortBy,
         limit: 20,
       ),
     ]);
@@ -224,6 +225,30 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
     final firstName = (user?.name ?? '').trim().split(' ').first;
     final displayName = firstName.isEmpty ? 'there' : firstName;
 
+    // Compute location summary for hero header
+    String locationLine;
+    if (_useCurrentLocation && (_currentLocationText ?? '').isNotEmpty) {
+      locationLine = _currentLocationText!;
+    } else {
+      final parts = <String>[];
+      final city = (user?.city ?? '').trim();
+      final pincode = (user?.pincode ?? '').trim();
+      if (city.isNotEmpty) parts.add(city);
+      if (pincode.isNotEmpty) parts.add(pincode);
+      locationLine =
+          parts.isNotEmpty ? parts.join(', ') : 'Set your area for better deals';
+    }
+
+    final totalDeals = _featuredDeals.length + _allPreviewDeals.length;
+    String dealsLine;
+    if (_isLoadingDeals) {
+      dealsLine = 'Finding the best deals near you...';
+    } else if (totalDeals <= 0) {
+      dealsLine = 'No deals near you yet – try another category or area.';
+    } else {
+      dealsLine = '$totalDeals deals near you';
+    }
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: RefreshIndicator(
@@ -235,7 +260,7 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
             parent: AlwaysScrollableScrollPhysics(),
           ),
           slivers: [
-            // ── App bar ──────────────────────────────────────────────────────
+            // ── App bar (compact) ────────────────────────────────────────────
             SliverAppBar(
               floating: true,
               snap: true,
@@ -254,7 +279,7 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                   ),
                   Text(
                     'Explore deals',
-                    style: theme.textTheme.headlineMedium,
+                    style: theme.textTheme.titleLarge,
                   ),
                 ],
               ),
@@ -324,6 +349,64 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // ── Hero summary under app bar ─────────────────────────────
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppTokens.spaceMD,
+                      AppTokens.spaceSM,
+                      AppTokens.spaceMD,
+                      0,
+                    ),
+                    child: Container(
+                      padding: const EdgeInsets.all(AppTokens.spaceSM),
+                      decoration: BoxDecoration(
+                        color: AppColors.elevated,
+                        borderRadius:
+                            BorderRadius.circular(AppTokens.radiusLG),
+                        border: Border.all(
+                          color: AppColors.borderSubtle,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.place_rounded,
+                            size: AppTokens.iconMD,
+                            color: AppColors.accentDim,
+                          ),
+                          const SizedBox(width: AppTokens.spaceSM),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  locationLine,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style:
+                                      theme.textTheme.bodySmall?.copyWith(
+                                    color: AppColors.textSecondary,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  dealsLine,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style:
+                                      theme.textTheme.bodySmall?.copyWith(
+                                    color: AppColors.textMuted,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
                   // ── Search bar ─────────────────────────────────────────────
                   Padding(
                     padding: const EdgeInsets.fromLTRB(
@@ -370,17 +453,60 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                   const SizedBox(height: AppTokens.spaceMD),
                   if (_categories.isNotEmpty)
                     SizedBox(
-                      height: 36,
+                      height: 34,
                       child: ListView.separated(
                         padding: const EdgeInsets.symmetric(
                           horizontal: AppTokens.spaceMD,
                         ),
                         scrollDirection: Axis.horizontal,
-                        itemCount: _categories.length,
+                        itemCount: _categories.length + 1,
                         separatorBuilder: (_, __) =>
                             const SizedBox(width: AppTokens.spaceSM),
                         itemBuilder: (ctx, i) {
-                          final cat = _categories[i];
+                          if (i == 0) {
+                            final bool isSelected = _selectedCategory == null;
+                            return GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _selectedCategory = null;
+                                });
+                                _refresh();
+                              },
+                              child: AnimatedContainer(
+                                duration: AppTokens.durationFast,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: AppTokens.spaceMD,
+                                  vertical: AppTokens.spaceXS,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? AppColors.accentDim
+                                          .withValues(alpha: 0.25)
+                                      : AppColors.elevated,
+                                  borderRadius: BorderRadius.circular(
+                                      AppTokens.radiusFull),
+                                  border: Border.all(
+                                    color: isSelected
+                                        ? AppColors.accentDim
+                                        : AppColors.borderSubtle,
+                                  ),
+                                ),
+                                child: Text(
+                                  'All',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: isSelected
+                                        ? AppColors.accent
+                                        : AppColors.textSecondary,
+                                    fontWeight: isSelected
+                                        ? FontWeight.w600
+                                        : FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            );
+                          }
+
+                          final cat = _categories[i - 1];
                           final value = cat['value']?.toString() ?? '';
                           final label = cat['label']?.toString() ?? value;
                           final isSelected = _selectedCategory == value;
@@ -564,9 +690,68 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                     padding: const EdgeInsets.symmetric(
                       horizontal: AppTokens.spaceMD,
                     ),
-                    child: Text(
-                      'All deals',
-                      style: theme.textTheme.headlineMedium,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _sortBy == 'most_liked'
+                                    ? 'Trending deals near you'
+                                    : 'All deals near you',
+                                style: theme.textTheme.headlineMedium,
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Based on your location and category filters',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: AppColors.textMuted,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: AppTokens.spaceMD),
+                        Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            color:
+                                AppColors.elevated.withValues(alpha: 0.9),
+                            borderRadius: BorderRadius.circular(
+                              AppTokens.radiusFull,
+                            ),
+                            border: Border.all(
+                              color: AppColors.borderSubtle,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _SortPill(
+                                label: 'Newest',
+                                isSelected: _sortBy == 'newest',
+                                onTap: () {
+                                  if (_sortBy == 'newest') return;
+                                  setState(() => _sortBy = 'newest');
+                                  _refresh();
+                                },
+                              ),
+                              _SortPill(
+                                label: 'Trending',
+                                isSelected: _sortBy == 'most_liked',
+                                onTap: () {
+                                  if (_sortBy == 'most_liked') return;
+                                  setState(() => _sortBy = 'most_liked');
+                                  _refresh();
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: AppTokens.spaceMD),
@@ -586,7 +771,13 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                       }
 
                       final preview = _allPreviewDeals;
-                      if (preview.isEmpty) return const SizedBox.shrink();
+                      if (preview.isEmpty) {
+                        return _EmptyState(
+                          message:
+                              'No more deals match your filters here.\nTry changing category or pincode, or browse all offers.',
+                          onBrowseAll: widget.onViewAllOffers,
+                        );
+                      }
 
                       return ListView.separated(
                         shrinkWrap: true,
@@ -635,6 +826,46 @@ class _HomeDeals {
   });
 }
 
+class _SortPill extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _SortPill({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: AppTokens.durationFast,
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppTokens.spaceSM,
+          vertical: 4,
+        ),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppColors.accentDim.withValues(alpha: 0.25)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(AppTokens.radiusFull),
+        ),
+        child: Text(
+          label,
+          style: theme.textTheme.labelSmall?.copyWith(
+            color: isSelected ? AppColors.accent : AppColors.textSecondary,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _EmptyState extends StatelessWidget {
   final String message;
   final VoidCallback? onBrowseAll;
@@ -656,7 +887,7 @@ class _EmptyState extends StatelessWidget {
             color: AppColors.textMuted,
             size: 48,
           ),
-          const SizedBox(height: AppTokens.spaceMD),
+          const SizedBox(height: AppTokens.spaceSM),
           Text(
             message,
             style: theme.textTheme.titleMedium?.copyWith(
@@ -666,9 +897,13 @@ class _EmptyState extends StatelessWidget {
           ),
           if (onBrowseAll != null) ...[
             const SizedBox(height: AppTokens.spaceMD),
-            TextButton(
+            TextButton.icon(
               onPressed: onBrowseAll,
-              child: const Text('Browse all deals'),
+              icon: const Icon(
+                Icons.local_offer_outlined,
+                color: AppColors.accentDim,
+              ),
+              label: const Text('Browse all offers'),
             ),
           ],
         ],

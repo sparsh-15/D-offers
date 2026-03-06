@@ -6,6 +6,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_design_tokens.dart';
 import '../../models/offer_model.dart';
+import '../../models/shopkeeper_profile_model.dart';
 import '../../services/auth_service.dart';
 
 /// Premium offer detail screen — full-bleed header, bottom-pinned CTA.
@@ -34,6 +35,9 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
   bool _isToggling = false;
   bool _termsExpanded = false;
   bool _isSubmittingCallback = false;
+  bool _isLoadingShop = false;
+  String? _shopError;
+  ShopkeeperProfileModel? _shopProfile;
 
   late AnimationController _heartController;
   late Animation<double> _heartScale;
@@ -52,6 +56,8 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
       TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.25), weight: 50),
       TweenSequenceItem(tween: Tween(begin: 1.25, end: 1.0), weight: 50),
     ]).animate(CurvedAnimation(parent: _heartController, curve: Curves.easeInOut));
+
+    _loadShopDetails();
   }
 
   @override
@@ -92,6 +98,28 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
           _isToggling = false;
         });
       }
+    }
+  }
+
+  Future<void> _loadShopDetails() async {
+    setState(() {
+      _isLoadingShop = true;
+      _shopError = null;
+    });
+    try {
+      final profile = await AuthService.instance
+          .getPublicShopProfile(widget.offer.shopkeeperId);
+      if (!mounted) return;
+      setState(() {
+        _shopProfile = profile;
+        _isLoadingShop = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoadingShop = false;
+        _shopError = e.toString();
+      });
     }
   }
 
@@ -559,6 +587,85 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                         ],
                       ),
 
+                      // Shop details (address, owner, etc.)
+                      if (_isLoadingShop) ...[
+                        const SizedBox(height: AppTokens.spaceMD),
+                        const LinearProgressIndicator(
+                          color: AppColors.accentDim,
+                          minHeight: 2,
+                        ),
+                      ] else if (_shopProfile != null) ...[
+                        const SizedBox(height: AppTokens.spaceMD),
+                        Container(
+                          padding: const EdgeInsets.all(AppTokens.spaceMD),
+                          decoration: BoxDecoration(
+                            color: AppColors.elevated,
+                            borderRadius:
+                                BorderRadius.circular(AppTokens.radiusMD),
+                            border: Border.all(color: AppColors.borderSubtle),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Shop details',
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  color: AppColors.textPrimary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: AppTokens.spaceSM),
+                              if ((_shopProfile!.ownerName ?? '').isNotEmpty)
+                                _ShopDetailRow(
+                                  icon: Icons.person_rounded,
+                                  label: 'Owner',
+                                  value: _shopProfile!.ownerName!,
+                                ),
+                              if ((_shopProfile!.ownerPhone ?? '').isNotEmpty)
+                                _ShopDetailRow(
+                                  icon: Icons.phone_rounded,
+                                  label: 'Contact',
+                                  value: '+91 ${_shopProfile!.ownerPhone}',
+                                ),
+                              if (_shopProfile!.address.isNotEmpty)
+                                _ShopDetailRow(
+                                  icon: Icons.location_on_rounded,
+                                  label: 'Address',
+                                  value: _shopProfile!.address,
+                                  maxLines: 3,
+                                ),
+                              if (_shopProfile!.city.isNotEmpty ||
+                                  _shopProfile!.pincode.isNotEmpty)
+                                _ShopDetailRow(
+                                  icon: Icons.map_rounded,
+                                  label: 'Area',
+                                  value: [
+                                    if (_shopProfile!.city.isNotEmpty)
+                                      _shopProfile!.city,
+                                    if (_shopProfile!.pincode.isNotEmpty)
+                                      _shopProfile!.pincode,
+                                  ].join(', '),
+                                ),
+                              if (_shopProfile!.description.isNotEmpty)
+                                _ShopDetailRow(
+                                  icon: Icons.info_outline_rounded,
+                                  label: 'About shop',
+                                  value: _shopProfile!.description,
+                                  maxLines: 4,
+                                ),
+                            ],
+                          ),
+                        ),
+                      ] else if (_shopError != null) ...[
+                        const SizedBox(height: AppTokens.spaceSM),
+                        Text(
+                          'Could not load shop details',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                      ],
+
                       // Validity
                       if (offer.validFrom != null || offer.validTo != null) ...[
                         const SizedBox(height: AppTokens.spaceMD),
@@ -904,6 +1011,58 @@ class _ValidityColumn extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _ShopDetailRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final int maxLines;
+
+  const _ShopDetailRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.maxLines = 2,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 18, color: AppColors.textMuted),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppColors.textMuted,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  maxLines: maxLines,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

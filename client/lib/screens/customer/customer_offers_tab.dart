@@ -47,6 +47,7 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
   bool _locationFromCurrent = false;
   final _cityController = TextEditingController();
   final _pincodeController = TextEditingController();
+  final _stateController = TextEditingController();
   final _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   Timer? _searchDebounce;
@@ -54,6 +55,7 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
   static const int _pageSize = 30;
   bool _isInitialLoading = true;
   bool _isLoadingMore = false;
+  bool _isFilterPincodeLoading = false;
   String? _errorText;
   String? _nextCursor;
   bool _hasMore = true;
@@ -65,6 +67,7 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
   void dispose() {
     _cityController.dispose();
     _pincodeController.dispose();
+    _stateController.dispose();
     _searchController.dispose();
     _scrollController.dispose();
     _searchDebounce?.cancel();
@@ -119,6 +122,40 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
       _errorText = null;
     });
     await _fetchPage();
+  }
+
+  Future<void> _lookupFilterPincode(String pincode) async {
+    setState(() {
+      _isFilterPincodeLoading = true;
+    });
+    try {
+      final result = await AuthService.instance.lookupPincode(pincode);
+      if (!mounted) return;
+      final state = result['state']?.toString() ?? '';
+      final district = result['district']?.toString() ?? '';
+
+      setState(() {
+        _pincodeFilter = pincode;
+        _cityController.text = district;
+        _stateController.text = state;
+        _cityFilter = district.isNotEmpty ? district : null;
+        _stateFilter = state.isNotEmpty ? state : null;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _cityController.clear();
+        _stateController.clear();
+        _cityFilter = null;
+        _stateFilter = null;
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isFilterPincodeLoading = false;
+        });
+      }
+    }
   }
 
   Future<void> _fetchPage() async {
@@ -638,6 +675,11 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
     final defaultPincode = user?.pincode ?? '';
     final categoryOptions = _availableCategories;
 
+    // Pre-fill controllers from current filters
+    _cityController.text = _cityFilter ?? '';
+    _pincodeController.text = _pincodeFilter ?? defaultPincode;
+    _stateController.text = _stateFilter ?? '';
+
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -681,29 +723,14 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
                   },
                 ),
                 const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  value: ['Karnataka', 'Delhi', 'Maharashtra']
-                          .contains(_stateFilter)
-                      ? _stateFilter
-                      : null,
+                TextField(
+                  controller: _stateController,
+                  readOnly: true,
                   decoration: const InputDecoration(
-                    labelText: 'State',
+                    labelText: 'State (auto)',
                     prefixIcon: Icon(Icons.map_rounded),
                     isDense: true,
                   ),
-                  items: const [
-                    DropdownMenuItem(value: null, child: Text('All States')),
-                    DropdownMenuItem(
-                        value: 'Karnataka', child: Text('Karnataka')),
-                    DropdownMenuItem(value: 'Delhi', child: Text('Delhi')),
-                    DropdownMenuItem(
-                        value: 'Maharashtra', child: Text('Maharashtra')),
-                  ],
-                  onChanged: (value) {
-                    setDialogState(() {
-                      _stateFilter = value;
-                    });
-                  },
                 ),
                 const SizedBox(height: 16),
                 TextField(
@@ -724,7 +751,29 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
                     hintText: defaultPincode.isNotEmpty ? defaultPincode : null,
                     isDense: true,
                   ),
+                  onChanged: (value) {
+                    final trimmed = value.trim();
+                    if (trimmed.length == 6) {
+                      // Trigger pincode lookup to auto-fill city/state
+                      _lookupFilterPincode(trimmed);
+                    } else {
+                      setState(() {
+                        _cityController.clear();
+                        _stateController.clear();
+                        _cityFilter = null;
+                        _stateFilter = null;
+                        _pincodeFilter = null;
+                      });
+                    }
+                  },
                 ),
+                if (_isFilterPincodeLoading) ...[
+                  const SizedBox(height: 8),
+                  const LinearProgressIndicator(
+                    minHeight: 2,
+                    color: AppColors.primary,
+                  ),
+                ],
                 const SizedBox(height: 24),
                 // Row 1: Clear + Cancel
                 Row(
@@ -756,6 +805,9 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
                   child: ElevatedButton(
                     onPressed: () {
                       setState(() {
+                        _stateFilter = _stateController.text.trim().isEmpty
+                            ? null
+                            : _stateController.text.trim();
                         _cityFilter = _cityController.text.trim().isEmpty
                             ? null
                             : _cityController.text.trim();

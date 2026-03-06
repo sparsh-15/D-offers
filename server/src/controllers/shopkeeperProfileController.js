@@ -100,4 +100,49 @@ async function getDashboard(req, res, next) {
   }
 }
 
-module.exports = { getProfile, upsertProfile, getDashboard };
+// Public shop profile for customers – basic shop + owner info
+async function getPublicProfile(req, res, next) {
+  try {
+    const shopkeeperId = req.params.shopkeeperId;
+    const pgUserId = await resolvePgId('users', shopkeeperId);
+    if (!pgUserId) {
+      const err = new Error('Shop not found');
+      err.statusCode = 404;
+      return next(err);
+    }
+
+    const profile = await prisma.shopkeeperProfile.findUnique({
+      where: { userId: pgUserId },
+    });
+    if (!profile) {
+      const err = new Error('Shop profile not found');
+      err.statusCode = 404;
+      return next(err);
+    }
+
+    const owner = await prisma.user.findUnique({
+      where: { id: pgUserId },
+      select: { name: true, phone: true },
+    });
+
+    res.status(200).json({
+      success: true,
+      profile: {
+        id: profile.id,
+        userId: profile.userId,
+        shopName: profile.shopName,
+        address: profile.address || '',
+        pincode: profile.pincode || '',
+        city: profile.city || '',
+        category: profile.category || '',
+        description: profile.description || '',
+        ownerName: owner?.name || null,
+        ownerPhone: owner?.phone || null,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { getProfile, upsertProfile, getDashboard, getPublicProfile };

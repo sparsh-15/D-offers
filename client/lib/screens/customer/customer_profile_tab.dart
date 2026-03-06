@@ -10,6 +10,7 @@ import '../common/settings_page.dart';
 import '../common/help_support_page.dart';
 import '../common/about_page.dart';
 import '../customer/become_ssa_onboarding_screen.dart';
+import '../ssa/ssa_dashboard.dart';
 import '../../services/auth_service.dart';
 import '../../services/auth_store.dart';
 import '../../models/user_model.dart';
@@ -85,7 +86,88 @@ class _CustomerProfileTabState extends State<CustomerProfileTab> {
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                 ],
-                const SizedBox(height: 32),
+                const SizedBox(height: 24),
+                if (user != null && user.role == UserRole.ssa) ...[
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.elevated,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.borderSubtle),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Customer view',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium
+                                    ?.copyWith(
+                                      color: AppColors.textPrimary,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Switch to SSA dashboard',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(
+                                      color: AppColors.textSecondary,
+                                    ),
+                              ),
+                            ],
+                          ),
+                          Theme(
+                            data: Theme.of(context).copyWith(
+                              switchTheme: SwitchThemeData(
+                                thumbColor:
+                                    WidgetStateProperty.resolveWith((states) {
+                                  if (states.contains(WidgetState.selected)) {
+                                    return AppColors.accent;
+                                  }
+                                  return AppColors.textMuted;
+                                }),
+                                trackColor:
+                                    WidgetStateProperty.resolveWith((states) {
+                                  if (states.contains(WidgetState.selected)) {
+                                    return AppColors.accent
+                                        .withValues(alpha: 0.4);
+                                  }
+                                  return AppColors.elevated;
+                                }),
+                              ),
+                            ),
+                            child: Switch.adaptive(
+                              value: true,
+                              onChanged: (_) {
+                                Navigator.pushAndRemoveUntil(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const SsaDashboard(),
+                                  ),
+                                  (route) => false,
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                const SizedBox(height: 16),
                 Expanded(
                   child: ListView(
                     children: [

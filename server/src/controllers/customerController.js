@@ -52,20 +52,36 @@ async function listOffers(req, res, next) {
     if (ci(state))
       locationFilter.state = { equals: ci(state), mode: 'insensitive' };
 
-    // First try with location filters, then fall back to all visible shopkeepers
-    let visibleShopkeepers = await prisma.user.findMany({
+    // Start with visible shopkeepers filtered by user location fields
+    const visibleShopkeepers = await prisma.user.findMany({
       where: { ...baseUserFilter, ...locationFilter },
       select: { id: true },
     });
 
-    if (!visibleShopkeepers.length && Object.keys(locationFilter).length > 0) {
-      visibleShopkeepers = await prisma.user.findMany({
+    let shopkeeperIds = visibleShopkeepers.map((u) => u.id);
+
+    // If a pincode is provided, also include any shopkeepers whose profile has that pincode,
+    // even if their user row doesn't have the pincode synced yet.
+    if (ci(pincode)) {
+      const profileMatches = await prisma.shopkeeperProfile.findMany({
+        where: {
+          pincode: ci(pincode),
+        },
+        select: { userId: true },
+      });
+      const extraIds = profileMatches.map((p) => p.userId);
+      shopkeeperIds = Array.from(new Set([...shopkeeperIds, ...extraIds]));
+    }
+
+    // If no specific location matched, fall back to all visible shopkeepers
+    if (!shopkeeperIds.length) {
+      const allVisible = await prisma.user.findMany({
         where: baseUserFilter,
         select: { id: true },
       });
+      shopkeeperIds = allVisible.map((u) => u.id);
     }
 
-    const shopkeeperIds = visibleShopkeepers.map((u) => u.id);
     if (!shopkeeperIds.length) {
       return res.status(200).json({ success: true, offers: [] });
     }

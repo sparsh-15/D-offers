@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/dialog_helper.dart';
-import '../../models/role_enum.dart';
-import '../../services/auth_store.dart';
-import '../ssa/ssa_dashboard.dart';
 import 'customer_home_tab.dart';
 import 'customer_offers_tab.dart';
 import 'customer_favorites_tab.dart';
@@ -40,18 +37,8 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     ];
   }
 
-  void _switchToSsaView() {
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (_) => const SsaDashboard()),
-      (route) => false,
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    final isSsa = AuthStore.currentUser?.role == UserRole.ssa;
-
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
@@ -62,56 +49,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
         }
       },
       child: Scaffold(
-        appBar: isSsa
-            ? AppBar(
-                toolbarHeight: 48,
-                backgroundColor: AppColors.surface,
-                elevation: 0,
-                surfaceTintColor: AppColors.transparent,
-                title: Text(
-                  'Customer',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: AppColors.textPrimary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                ),
-                actions: [
-                  Padding(
-                    padding: const EdgeInsets.only(right: 12),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'SSA',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: AppColors.textSecondary,
-                              ),
-                        ),
-                        const SizedBox(width: 6),
-                        Theme(
-                          data: Theme.of(context).copyWith(
-                            switchTheme: SwitchThemeData(
-                              thumbColor: WidgetStateProperty.resolveWith((s) =>
-                                  s.contains(WidgetState.selected)
-                                      ? AppColors.accent
-                                      : AppColors.textMuted),
-                              trackColor: WidgetStateProperty.resolveWith((s) =>
-                                  s.contains(WidgetState.selected)
-                                      ? AppColors.accent.withValues(alpha: 0.4)
-                                      : AppColors.elevated),
-                            ),
-                          ),
-                          child: Switch.adaptive(
-                            value: false,
-                            onChanged: (_) => _switchToSsaView(),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              )
-            : null,
+        appBar: null,
         body: IndexedStack(
           index: _selectedIndex,
           children: _screens,

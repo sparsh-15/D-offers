@@ -7,6 +7,8 @@ class ShopkeeperProfileModel {
   final String city;
   final String category;
   final String description;
+  final String? ownerName;
+  final String? ownerPhone;
 
   ShopkeeperProfileModel({
     required this.id,
@@ -17,6 +19,8 @@ class ShopkeeperProfileModel {
     required this.city,
     required this.category,
     required this.description,
+    this.ownerName,
+    this.ownerPhone,
   });
 
   factory ShopkeeperProfileModel.fromJson(Map<String, dynamic> json) {
@@ -29,6 +33,8 @@ class ShopkeeperProfileModel {
       city: json['city']?.toString() ?? '',
       category: json['category']?.toString() ?? '',
       description: json['description']?.toString() ?? '',
+      ownerName: json['ownerName']?.toString(),
+      ownerPhone: json['ownerPhone']?.toString(),
     );
   }
 }
