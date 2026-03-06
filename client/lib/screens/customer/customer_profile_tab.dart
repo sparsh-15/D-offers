@@ -9,9 +9,12 @@ import '../common/addresses_page.dart';
 import '../common/settings_page.dart';
 import '../common/help_support_page.dart';
 import '../common/about_page.dart';
+import '../customer/become_ssa_onboarding_screen.dart';
 import '../../services/auth_service.dart';
 import '../../services/auth_store.dart';
 import '../../models/user_model.dart';
+import '../../models/role_enum.dart';
+import '../../core/constants/app_strings.dart';
 import '../../core/utils/theme_helper.dart';
 
 class CustomerProfileTab extends StatefulWidget {
@@ -114,6 +117,20 @@ class _CustomerProfileTabState extends State<CustomerProfileTab> {
                           if (mounted) _reload();
                         },
                       ),
+                      if (user != null && user.role == UserRole.customer)
+                        ProfileOptionTile(
+                          icon: Icons.headset_mic_rounded,
+                          title: AppStrings.becomeSsa,
+                          onTap: () async {
+                            await Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    const BecomeSSAOnboardingScreen(),
+                              ),
+                            );
+                            if (mounted) _reload();
+                          },
+                        ),
                       ProfileOptionTile(
                         icon: Icons.settings_rounded,
                         title: 'Settings',

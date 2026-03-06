@@ -191,6 +191,41 @@ class AuthService {
     return user;
   }
 
+  /// Customer becomes SSA. Requires current user to be customer. Returns updated user.
+  Future<UserModel> becomeSSA({
+    String? email,
+    required String pincode,
+    String? city,
+    String? state,
+    String? region,
+    int? maxCouponDiscountPercent,
+  }) async {
+    final token = AuthStore.token;
+    if (token == null) throw Exception('Not authenticated');
+    final uri = Uri.parse('${ApiConfig.baseUrl}/customer/become-ssa');
+    final body = <String, dynamic>{
+      'pincode': pincode.trim(),
+      if (email != null && email.trim().isNotEmpty) 'email': email.trim(),
+      if (city != null && city.trim().isNotEmpty) 'city': city.trim(),
+      if (state != null && state.trim().isNotEmpty) 'state': state.trim(),
+      if (region != null && region.trim().isNotEmpty) 'region': region.trim(),
+      if (maxCouponDiscountPercent != null)
+        'maxCouponDiscountPercent': maxCouponDiscountPercent,
+    };
+    final resp = await _client.post(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode(body),
+    );
+    final data = _handleResponse(resp) as Map<String, dynamic>;
+    final user = UserModel.fromJson(data['user'] as Map<String, dynamic>);
+    AuthStore.currentUser = user;
+    return user;
+  }
+
   // Shopkeeper profile
   Future<ShopkeeperProfileModel?> getShopkeeperProfile() async {
     final token = AuthStore.token;

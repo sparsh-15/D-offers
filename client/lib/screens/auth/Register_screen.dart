@@ -119,7 +119,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
       case UserRole.companySalesAgent:
         return 'Sales Agent Signup';
       case UserRole.ssa:
-        return 'Service Sales Agent Signup';
       case UserRole.admin:
         return 'Restricted Signup';
     }

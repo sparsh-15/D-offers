@@ -376,8 +376,10 @@ class _OtpScreenState extends State<OtpScreen> {
         destination = const ShopDashboard();
         break;
       case UserRole.admin:
-      case UserRole.ssa:
         destination = const AdminDashboard();
+        break;
+      case UserRole.ssa:
+        destination = const CustomerDashboard();
         break;
       case UserRole.companySalesAgent:
         destination = const CSADashboard();

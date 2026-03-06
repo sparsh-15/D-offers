@@ -33,13 +33,6 @@ class RoleSelectionScreen extends StatelessWidget {
         role: UserRole.companySalesAgent,
         tint: AppColors.accent,
       ),
-      _SignupRole(
-        title: AppStrings.ssaRole,
-        description: AppStrings.ssaDesc,
-        icon: Icons.headset_mic_rounded,
-        role: UserRole.ssa,
-        tint: AppColors.accentDim,
-      ),
     ];
 
     return Scaffold(

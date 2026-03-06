@@ -15,6 +15,11 @@ class AppStrings {
   static const String salesAgentDesc = "Manage sales operations and coupons";
   static const String ssaDesc = "Handle service support and activations";
   static const String adminDesc = "Platform administration";
+  static const String becomeSsa = "Become a service sales agent";
+  static const String becomeSsaOnboardingTitle = "Become a Service Sales Agent";
+  static const String becomeSsaOnboardingDesc =
+      "Any customer can become a Service Sales Agent. Fill in the details below.";
+  static const String goToSsaDashboard = "Go to SSA Dashboard";
 
   // Auth
   static const String welcomeBack = "Welcome Back!";
