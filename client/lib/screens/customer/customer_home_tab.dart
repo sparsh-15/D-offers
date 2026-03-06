@@ -7,6 +7,7 @@ import '../../services/location_service.dart';
 import '../../models/offer_model.dart';
 import '../../widgets/offer_card.dart';
 import '../../core/utils/dialog_helper.dart';
+import '../../services/subscription_service.dart';
 import 'dart:async';
 
 class CustomerHomeTab extends StatefulWidget {
@@ -33,14 +34,12 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
   String? _currentCity;
   String? _currentState;
   String? _selectedCategory;
-
-  static const List<String> _categories = [
-    'Grocery', 'Fashion', 'Electronics', 'Food', 'Pharmacy', 'Services',
-  ];
+  List<Map<String, dynamic>> _categories = [];
 
   @override
   void initState() {
     super.initState();
+    _loadCategories();
     _loadDeals();
   }
 
@@ -74,6 +73,18 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
         _dealsError = e.toString();
         _isLoadingDeals = false;
       });
+    }
+  }
+
+  Future<void> _loadCategories() async {
+    try {
+      final list = await SubscriptionService.instance.getCategories();
+      if (!mounted) return;
+      setState(() {
+        _categories = list;
+      });
+    } catch (_) {
+      // Ignore failures; category chips are optional.
     }
   }
 
@@ -357,59 +368,65 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
 
                   // ── Category chips ─────────────────────────────────────────
                   const SizedBox(height: AppTokens.spaceMD),
-                  SizedBox(
-                    height: 36,
-                    child: ListView.separated(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppTokens.spaceMD,
-                      ),
-                      scrollDirection: Axis.horizontal,
-                      itemCount: _categories.length,
-                      separatorBuilder: (_, __) =>
-                          const SizedBox(width: AppTokens.spaceSM),
-                      itemBuilder: (ctx, i) {
-                        final cat = _categories[i];
-                        final isSelected = _selectedCategory == cat;
-                        return GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _selectedCategory = isSelected ? null : cat;
-                            });
-                            _refresh();
-                          },
-                          child: AnimatedContainer(
-                            duration: AppTokens.durationFast,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: AppTokens.spaceMD,
-                              vertical: AppTokens.spaceXS,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? AppColors.accentDim.withValues(alpha: 0.25)
-                                  : AppColors.elevated,
-                              borderRadius: BorderRadius.circular(AppTokens.radiusFull),
-                              border: Border.all(
+                  if (_categories.isNotEmpty)
+                    SizedBox(
+                      height: 36,
+                      child: ListView.separated(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppTokens.spaceMD,
+                        ),
+                        scrollDirection: Axis.horizontal,
+                        itemCount: _categories.length,
+                        separatorBuilder: (_, __) =>
+                            const SizedBox(width: AppTokens.spaceSM),
+                        itemBuilder: (ctx, i) {
+                          final cat = _categories[i];
+                          final value = cat['value']?.toString() ?? '';
+                          final label = cat['label']?.toString() ?? value;
+                          final isSelected = _selectedCategory == value;
+                          return GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _selectedCategory =
+                                    isSelected ? null : value;
+                              });
+                              _refresh();
+                            },
+                            child: AnimatedContainer(
+                              duration: AppTokens.durationFast,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: AppTokens.spaceMD,
+                                vertical: AppTokens.spaceXS,
+                              ),
+                              decoration: BoxDecoration(
                                 color: isSelected
                                     ? AppColors.accentDim
-                                    : AppColors.borderSubtle,
+                                        .withValues(alpha: 0.25)
+                                    : AppColors.elevated,
+                                borderRadius:
+                                    BorderRadius.circular(AppTokens.radiusFull),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? AppColors.accentDim
+                                      : AppColors.borderSubtle,
+                                ),
+                              ),
+                              child: Text(
+                                label,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: isSelected
+                                      ? AppColors.accent
+                                      : AppColors.textSecondary,
+                                  fontWeight: isSelected
+                                      ? FontWeight.w600
+                                      : FontWeight.w500,
+                                ),
                               ),
                             ),
-                            child: Text(
-                              cat,
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: isSelected
-                                    ? AppColors.accent
-                                    : AppColors.textSecondary,
-                                fontWeight: isSelected
-                                    ? FontWeight.w600
-                                    : FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                        );
-                      },
+                          );
+                        },
+                      ),
                     ),
-                  ),
 
                   const SizedBox(height: AppTokens.spaceLG),
 

@@ -44,6 +44,21 @@ async function upsertProfile(req, res, next) {
       category: category != null ? String(category).trim() : undefined,
       description: description != null ? String(description).trim() : undefined,
     });
+
+    // Keep core user location fields in sync so customer pincode/city filters work correctly.
+    const pgUserId = await resolvePgId('users', req.user.userId);
+    if (pgUserId) {
+      const data = {};
+      if (pincode != null) data.pincode = String(pincode).trim();
+      if (city != null) data.city = String(city).trim();
+      if (Object.keys(data).length > 0) {
+        await prisma.user.update({
+          where: { id: pgUserId },
+          data,
+        });
+      }
+    }
+
     res.status(200).json({ success: true, profile });
   } catch (err) {
     next(err);

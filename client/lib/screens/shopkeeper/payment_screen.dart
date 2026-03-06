@@ -28,6 +28,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
   final _cardHolderController = TextEditingController();
   final _expiryController = TextEditingController();
   final _cvvController = TextEditingController();
+  final _couponController = TextEditingController();
 
   @override
   void dispose() {
@@ -36,6 +37,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
     _cardHolderController.dispose();
     _expiryController.dispose();
     _cvvController.dispose();
+    _couponController.dispose();
     super.dispose();
   }
 
@@ -144,6 +146,24 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     ],
                   ),
                 ),
+              ),
+              const SizedBox(height: 32),
+
+              // Coupon code (optional)
+              Text(
+                'Have a coupon code?',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _couponController,
+                decoration: const InputDecoration(
+                  labelText: 'Coupon code (optional)',
+                  prefixIcon: Icon(Iconsax.ticket_discount),
+                ),
+                textCapitalization: TextCapitalization.characters,
               ),
               const SizedBox(height: 32),
 
@@ -607,6 +627,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
         durationMonths: durationMonths,
         paymentMethod: _selectedPaymentMethod,
         transactionId: 'dummy-${DateTime.now().millisecondsSinceEpoch}',
+        couponCode: _couponController.text.trim().isEmpty
+            ? null
+            : _couponController.text.trim(),
       );
       if (!mounted) return;
       setState(() => _isProcessing = false);

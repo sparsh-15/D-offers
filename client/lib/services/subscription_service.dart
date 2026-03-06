@@ -636,6 +636,7 @@ class SubscriptionService {
     required int durationMonths,
     required String paymentMethod,
     String? transactionId,
+    String? couponCode,
   }) async {
     try {
       final uri = Uri.parse('${ApiConfig.baseUrl}/subscription/activate');
@@ -646,6 +647,8 @@ class SubscriptionService {
         'durationMonths': durationMonths,
         'paymentMethod': paymentMethod,
         if (transactionId != null) 'transactionId': transactionId,
+        if (couponCode != null && couponCode.trim().isNotEmpty)
+          'couponCode': couponCode.trim(),
       };
 
       final response = await _client.post(

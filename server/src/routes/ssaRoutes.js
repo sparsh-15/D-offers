@@ -11,5 +11,8 @@ router.use(requireRole('ssa'));
 
 router.get('/stats', ssaController.getStats);
 router.get('/shopkeepers', ssaController.getShopkeepers);
+router.get('/coupons', ssaController.getCoupons);
+router.get('/leads', ssaController.getLeads);
+router.post('/leads', ssaController.createLead);
 
 module.exports = router;

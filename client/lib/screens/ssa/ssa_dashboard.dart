@@ -15,6 +15,8 @@ import '../common/help_support_page.dart';
 import '../common/about_page.dart';
 import '../../models/user_model.dart';
 import '../../services/ssa_service.dart';
+import '../../models/ssa_lead_model.dart';
+import 'ssa_create_lead_screen.dart';
 
 class SsaDashboard extends StatefulWidget {
   const SsaDashboard({super.key});
@@ -303,16 +305,19 @@ class SsaShopkeepersTab extends StatefulWidget {
 
 class _SsaShopkeepersTabState extends State<SsaShopkeepersTab> {
   late Future<List<dynamic>> _shopkeepersFuture;
+  late Future<List<SsaLead>> _leadsFuture;
 
   @override
   void initState() {
     super.initState();
     _shopkeepersFuture = SsaService.instance.getShopkeepers();
+    _leadsFuture = SsaService.instance.getLeads();
   }
 
   Future<void> _reload() async {
     setState(() {
       _shopkeepersFuture = SsaService.instance.getShopkeepers();
+      _leadsFuture = SsaService.instance.getLeads();
     });
   }
 
@@ -336,13 +341,13 @@ class _SsaShopkeepersTabState extends State<SsaShopkeepersTab> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Assigned Shopkeepers',
+                        'Leads & Shops',
                         style: theme.textTheme.headlineMedium
                             ?.copyWith(color: AppColors.textPrimary),
                       ),
                       const SizedBox(height: AppTokens.spaceXS),
                       Text(
-                        'Shops you have onboarded',
+                        'Track leads and onboarded shops',
                         style: theme.textTheme.bodyMedium
                             ?.copyWith(color: AppColors.textSecondary),
                       ),
@@ -357,83 +362,288 @@ class _SsaShopkeepersTabState extends State<SsaShopkeepersTab> {
               ),
             ),
             Expanded(
-              child: FutureBuilder<List<dynamic>>(
-                future: _shopkeepersFuture,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(
-                      child: CircularProgressIndicator(
-                        color: AppColors.accent,
-                        strokeWidth: 2,
-                      ),
-                    );
-                  }
-                  if (snapshot.hasError) {
-                    return Center(
-                      child: Text(
-                        'Unable to load shopkeepers',
-                        style: theme.textTheme.bodyMedium
-                            ?.copyWith(color: AppColors.textSecondary),
-                      ),
-                    );
-                  }
-                  final list = snapshot.data ?? [];
-                  if (list.isEmpty) {
-                    return Center(
-                      child: Text(
-                        'No assigned shopkeepers yet',
-                        style: theme.textTheme.bodyMedium
-                            ?.copyWith(color: AppColors.textSecondary),
-                      ),
-                    );
-                  }
-                  return RefreshIndicator(
-                    onRefresh: _reload,
-                    color: AppColors.accent,
-                    child: ListView.builder(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppTokens.spaceMD,
-                      ),
-                      itemCount: list.length,
-                      itemBuilder: (context, index) {
-                        final item =
-                            list[index] as Map<String, dynamic>? ?? {};
-                        return Card(
-                          margin: const EdgeInsets.only(bottom: AppTokens.spaceSM),
-                          color: AppColors.cardBackground,
-                          child: ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor: AppColors.accent.withValues(alpha: 0.2),
-                              child: const Icon(
-                                Icons.store_rounded,
-                                color: AppColors.accent,
-                              ),
-                            ),
-                            title: Text(
-                              item['shopName']?.toString() ??
-                                  item['name']?.toString() ??
-                                  'Shop',
-                              style: theme.textTheme.titleMedium
-                                  ?.copyWith(color: AppColors.textPrimary),
-                            ),
-                            subtitle: Text(
-                              item['phone']?.toString() ??
-                                  item['city']?.toString() ??
-                                  '',
-                              style: theme.textTheme.bodySmall
-                                  ?.copyWith(color: AppColors.textSecondary),
-                            ),
-                          ),
-                        );
-                      },
+              child: RefreshIndicator(
+                onRefresh: _reload,
+                color: AppColors.accent,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: AppTokens.spaceMD),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        FutureBuilder<List<SsaLead>>(
+                          future: _leadsFuture,
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState ==
+                                ConnectionState.waiting) {
+                              return const Padding(
+                                padding: EdgeInsets.symmetric(
+                                    vertical: AppTokens.spaceLG),
+                                child: Center(
+                                  child: CircularProgressIndicator(
+                                    color: AppColors.accent,
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                              );
+                            }
+                            if (snapshot.hasError) {
+                              return Padding(
+                                padding: const EdgeInsets.only(
+                                    bottom: AppTokens.spaceLG),
+                                child: Text(
+                                  'Unable to load leads',
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              );
+                            }
+                            final leads = snapshot.data ?? [];
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Leads',
+                                  style:
+                                      theme.textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: AppTokens.spaceSM),
+                                if (leads.isEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.only(
+                                        bottom: AppTokens.spaceLG),
+                                    child: Text(
+                                      'No leads yet. Tap the + button to create your first lead.',
+                                      style: theme.textTheme.bodySmall
+                                          ?.copyWith(
+                                              color: AppColors.textSecondary),
+                                    ),
+                                  )
+                                else
+                                  ...leads.map(
+                                    (lead) => Card(
+                                      margin: const EdgeInsets.only(
+                                          bottom: AppTokens.spaceSM),
+                                      color: AppColors.cardBackground,
+                                      child: ListTile(
+                                        leading: CircleAvatar(
+                                          backgroundColor: AppColors.accent
+                                              .withValues(alpha: 0.15),
+                                          child: const Icon(
+                                            Icons.storefront_rounded,
+                                            color: AppColors.accent,
+                                          ),
+                                        ),
+                                        title: Text(
+                                          lead.shopName,
+                                          style: theme.textTheme.titleMedium
+                                              ?.copyWith(
+                                                  color:
+                                                      AppColors.textPrimary),
+                                        ),
+                                        subtitle: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            if (lead.phone.isNotEmpty)
+                                              Text(
+                                                lead.phone,
+                                                style: theme
+                                                    .textTheme.bodySmall
+                                                    ?.copyWith(
+                                                  color:
+                                                      AppColors.textSecondary,
+                                                ),
+                                              ),
+                                            if (lead.couponCode != null &&
+                                                lead.couponCode!
+                                                    .trim()
+                                                    .isNotEmpty)
+                                              Text(
+                                                'Coupon: ${lead.couponCode}',
+                                                style: theme
+                                                    .textTheme.bodySmall
+                                                    ?.copyWith(
+                                                  color: AppColors.success,
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                        trailing: _buildLeadStatusChip(
+                                            context, lead.status),
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            );
+                          },
+                        ),
+                        const SizedBox(height: AppTokens.spaceLG),
+                        FutureBuilder<List<dynamic>>(
+                          future: _shopkeepersFuture,
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState ==
+                                ConnectionState.waiting) {
+                              return const Padding(
+                                padding: EdgeInsets.symmetric(
+                                    vertical: AppTokens.spaceLG),
+                                child: Center(
+                                  child: CircularProgressIndicator(
+                                    color: AppColors.accent,
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                              );
+                            }
+                            if (snapshot.hasError) {
+                              return Padding(
+                                padding: const EdgeInsets.only(
+                                    bottom: AppTokens.spaceLG),
+                                child: Text(
+                                  'Unable to load shops',
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              );
+                            }
+                            final list = snapshot.data ?? [];
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Shops',
+                                  style:
+                                      theme.textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: AppTokens.spaceSM),
+                                if (list.isEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.only(
+                                        bottom: AppTokens.spaceLG),
+                                    child: Text(
+                                      'No onboarded shops yet.',
+                                      style: theme.textTheme.bodySmall
+                                          ?.copyWith(
+                                              color: AppColors.textSecondary),
+                                    ),
+                                  )
+                                else
+                                  ...list.map((raw) {
+                                    final item =
+                                        raw as Map<String, dynamic>? ?? {};
+                                    return Card(
+                                      margin: const EdgeInsets.only(
+                                          bottom: AppTokens.spaceSM),
+                                      color: AppColors.cardBackground,
+                                      child: ListTile(
+                                        leading: CircleAvatar(
+                                          backgroundColor: AppColors.accent
+                                              .withValues(alpha: 0.2),
+                                          child: const Icon(
+                                            Icons.store_rounded,
+                                            color: AppColors.accent,
+                                          ),
+                                        ),
+                                        title: Text(
+                                          item['shopName']?.toString() ??
+                                              item['name']?.toString() ??
+                                              'Shop',
+                                          style: theme.textTheme.titleMedium
+                                              ?.copyWith(
+                                            color: AppColors.textPrimary,
+                                          ),
+                                        ),
+                                        subtitle: Text(
+                                          item['phone']?.toString() ??
+                                              item['city']?.toString() ??
+                                              '',
+                                          style: theme.textTheme.bodySmall
+                                              ?.copyWith(
+                                            color: AppColors.textSecondary,
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                              ],
+                            );
+                          },
+                        ),
+                        const SizedBox(height: AppTokens.space3XL),
+                      ],
                     ),
-                  );
-                },
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(
+                right: AppTokens.spaceMD,
+                bottom: AppTokens.spaceLG,
+              ),
+              child: Align(
+                alignment: Alignment.bottomRight,
+                child: FloatingActionButton.extended(
+                  onPressed: () async {
+                    final created = await Navigator.of(context).push<bool>(
+                      MaterialPageRoute(
+                        builder: (_) => const SsaCreateLeadScreen(),
+                      ),
+                    );
+                    if (created == true && mounted) {
+                      _reload();
+                    }
+                  },
+                  icon: const Icon(Icons.add_rounded),
+                  label: const Text('New Lead'),
+                ),
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildLeadStatusChip(BuildContext context, String status) {
+    final theme = Theme.of(context);
+    final normalized = status.toLowerCase();
+    Color color;
+    String label;
+    switch (normalized) {
+      case 'contacted':
+        color = AppColors.info;
+        label = 'CONTACTED';
+        break;
+      case 'converted':
+        color = AppColors.success;
+        label = 'CONVERTED';
+        break;
+      case 'lost':
+        color = AppColors.error;
+        label = 'LOST';
+        break;
+      default:
+        color = AppColors.accent;
+        label = 'OPEN';
+    }
+    return Chip(
+      label: Text(
+        label,
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: AppColors.white,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      backgroundColor: color,
     );
   }
 }

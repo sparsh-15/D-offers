@@ -131,6 +131,7 @@ model User {
   planPriceChanges       SubscriptionPlanPriceHistory[] @relation("PriceChangedBy")
   aiWallet               AiWallet?
   aiCreditPurchases      AiCreditPurchase[]
+  shopLeads               ShopLead[]
 
   @@index([role, approvalStatus, createdAt(sort: Desc)], map: "idx_users_role_approval_created_desc")
   @@index([role, isActive, createdAt(sort: Desc)], map: "idx_users_role_active_created_desc")
@@ -433,4 +434,27 @@ model CallbackRequest {
   @@index([customerId, createdAt(sort: Desc)], map: "idx_callback_requests_customer_created_desc")
   @@map("callback_requests")
 }
+
+model ShopLead {
+  id         String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  ssaId      String   @map("ssa_id") @db.Uuid
+  shopName   String   @map("shop_name")
+  ownerName  String?  @map("owner_name")
+  phone      String
+  pincode    String? 
+  city       String?
+  category   String?
+  notes      String?
+  couponCode String?  @map("coupon_code")
+  status     String   @default("open")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  ssa User @relation(fields: [ssaId], references: [id])
+
+  @@index([ssaId, status], map: "idx_shop_leads_ssa_status")
+  @@index([couponCode], map: "idx_shop_leads_coupon_code")
+  @@map("shop_leads")
+}
+
 

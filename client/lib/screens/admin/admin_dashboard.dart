@@ -1230,6 +1230,9 @@ class _UsersManagementTabState extends State<UsersManagementTab> {
   Widget _buildFilterChip(String value, String label, IconData icon) {
     final isSelected = _selectedRole == value;
     return FilterChip(
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      visualDensity: const VisualDensity(horizontal: -2, vertical: -3),
+      labelPadding: const EdgeInsets.symmetric(horizontal: 8),
       selected: isSelected,
       label: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1251,6 +1254,7 @@ class _UsersManagementTabState extends State<UsersManagementTab> {
       labelStyle: TextStyle(
         color: isSelected ? AppColors.accent : null,
         fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+        fontSize: 12,
       ),
     );
   }

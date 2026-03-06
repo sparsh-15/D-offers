@@ -4,6 +4,7 @@ import '../../core/constants/app_colors.dart';
 import '../../services/auth_service.dart';
 import '../../services/auth_store.dart';
 import '../../services/location_service.dart';
+import '../../services/subscription_service.dart';
 import '../../models/offer_model.dart';
 import '../../widgets/offer_card.dart';
 import '../../core/utils/theme_helper.dart';
@@ -58,6 +59,7 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
   bool _hasMore = true;
   final List<OfferModel> _items = [];
   static const String _allKey = 'all';
+  List<Map<String, dynamic>> _categories = [];
 
   @override
   void dispose() {
@@ -73,6 +75,7 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    _loadCategories();
     _loadInitial();
   }
 
@@ -95,6 +98,18 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
       _items.clear();
     });
     await _fetchPage();
+  }
+
+  Future<void> _loadCategories() async {
+    try {
+      final list = await SubscriptionService.instance.getCategories();
+      if (!mounted) return;
+      setState(() {
+        _categories = list;
+      });
+    } catch (_) {
+      // If categories fail to load, we just fall back to "All"
+    }
   }
 
   Future<void> _loadMore() async {
@@ -225,17 +240,27 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
   }
 
   List<String> get _availableCategories {
-    final set = _items
-        .map((o) => o.category.trim().toLowerCase())
-        .where((c) => c.isNotEmpty)
-        .toSet()
-      ..remove(_allKey);
+    if (_categories.isEmpty) {
+      return const [_allKey];
+    }
+    final set = _categories
+        .map((c) => (c['value'] ?? '').toString().trim())
+        .where((v) => v.isNotEmpty)
+        .toSet();
     final categories = set.toList()..sort();
     return [_allKey, ...categories];
   }
 
   String _displayLabel(String value) {
     if (value == _allKey) return 'All';
+    final lower = value.trim().toLowerCase();
+    final match = _categories.firstWhere(
+      (c) => (c['value'] ?? '').toString().trim().toLowerCase() == lower,
+      orElse: () => const {},
+    );
+    final label = match['label']?.toString();
+    if (label != null && label.isNotEmpty) return label;
+
     final words = value.split(' ');
     return words
         .map((w) => w.isEmpty ? w : '${w[0].toUpperCase()}${w.substring(1)}')
@@ -448,7 +473,6 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
             ],
           ),
         ),
-        _buildActiveFilters(context),
         Expanded(
           child: RefreshIndicator(
             onRefresh: _loadInitial,
@@ -606,72 +630,6 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
           ),
         );
       },
-    );
-  }
-
-  Widget _buildActiveFilters(BuildContext context) {
-    if (!_hasActiveFilters) return const SizedBox.shrink();
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 4,
-        children: [
-          if (_categoryFilter != _allKey)
-            Chip(
-              avatar: const Icon(Icons.category_rounded, size: 16),
-              label: Text('Category: ${_displayLabel(_categoryFilter)}'),
-              onDeleted: () {
-                setState(() {
-                  _categoryFilter = _allKey;
-                });
-                _loadInitial();
-              },
-            ),
-          if (!_useCurrentLocation &&
-              _stateFilter != null &&
-              _stateFilter!.isNotEmpty)
-            Chip(
-              avatar: const Icon(Icons.map_rounded, size: 16),
-              label: Text('State: $_stateFilter'),
-              onDeleted: () {
-                setState(() {
-                  _stateFilter = null;
-                });
-                _loadInitial();
-              },
-            ),
-          if (!_useCurrentLocation &&
-              _cityFilter != null &&
-              _cityFilter!.isNotEmpty)
-            Chip(
-              avatar: const Icon(Icons.location_city_rounded, size: 16),
-              label: Text('City: $_cityFilter'),
-              onDeleted: () {
-                setState(() {
-                  _cityFilter = null;
-                  _cityController.clear();
-                });
-                _loadInitial();
-              },
-            ),
-          if (!_useCurrentLocation &&
-              _pincodeFilter != null &&
-              _pincodeFilter!.isNotEmpty)
-            Chip(
-              avatar: const Icon(Icons.pin_drop_rounded, size: 16),
-              label: Text('Pincode: $_pincodeFilter'),
-              onDeleted: () {
-                setState(() {
-                  _pincodeFilter = null;
-                  _pincodeController.clear();
-                });
-                _loadInitial();
-              },
-            ),
-        ],
-      ),
     );
   }
 

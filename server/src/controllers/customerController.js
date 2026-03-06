@@ -73,7 +73,8 @@ async function listOffers(req, res, next) {
 
     const categoryCi = ci(category);
     if (categoryCi) {
-      where.category = { equals: categoryCi, mode: 'insensitive' };
+      // Match both canonical codes and human labels (e.g. "clothing" vs "Clothing & Fashion")
+      where.category = { contains: categoryCi, mode: 'insensitive' };
     }
 
     const [offersRaw, subscriptions, profiles] = await Promise.all([
