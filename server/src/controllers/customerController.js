@@ -20,7 +20,19 @@ function normalizeAgentMaxDiscount(value) {
 
 async function listOffers(req, res, next) {
   try {
-    const { status, limit, skip, pincode, city, state } = req.query;
+    const {
+      status,
+      limit,
+      skip,
+      pincode,
+      city,
+      state,
+      q,
+      category,
+      sort,
+      segment,
+    } = req.query;
+
     const limitNum = Math.min(Math.max(parseInt(limit, 10) || 100, 1), 200);
     const skipNum = Math.max(parseInt(skip, 10) || 0, 0);
 
@@ -54,10 +66,17 @@ async function listOffers(req, res, next) {
     }
 
     const shopkeeperIds = visibleShopkeepers.map((u) => u.id);
-    if (!shopkeeperIds.length) return res.status(200).json({ success: true, offers: [] });
+    if (!shopkeeperIds.length) {
+      return res.status(200).json({ success: true, offers: [] });
+    }
     where.shopkeeperId = { in: shopkeeperIds };
 
-    const [offersRaw, subscriptions] = await Promise.all([
+    const categoryCi = ci(category);
+    if (categoryCi) {
+      where.category = { equals: categoryCi, mode: 'insensitive' };
+    }
+
+    const [offersRaw, subscriptions, profiles] = await Promise.all([
       prisma.offer.findMany({
         where,
         orderBy: { createdAt: 'desc' },
@@ -67,51 +86,115 @@ async function listOffers(req, res, next) {
         orderBy: { createdAt: 'desc' },
         select: { shopkeeperId: true, planSnapshot: true },
       }),
+      prisma.shopkeeperProfile.findMany({
+        where: { userId: { in: shopkeeperIds } },
+        select: { userId: true, shopName: true },
+      }),
     ]);
 
-    const tierOrder = { top3: 3, priority: 2, normal: 1 };
-    const tierByShop = {};
-    subscriptions.forEach((s) => {
-      if (!tierByShop[s.shopkeeperId]) {
-        const tier = (s.planSnapshot && s.planSnapshot.rankingTier) ? s.planSnapshot.rankingTier : 'normal';
-        tierByShop[s.shopkeeperId] = tierOrder[tier] ?? 1;
-      }
-    });
-
-    const offers = offersRaw
-      .map((o) => ({
-        ...o,
-        _tierScore: tierByShop[o.shopkeeperId] ?? 1,
-      }))
-      .sort((a, b) => {
-        if (b._tierScore !== a._tierScore) return b._tierScore - a._tierScore;
-        if ((b.likesCount || 0) !== (a.likesCount || 0)) return (b.likesCount || 0) - (a.likesCount || 0);
-        return new Date(b.createdAt) - new Date(a.createdAt);
-      })
-      .slice(skipNum, skipNum + limitNum);
-
-    const profiles = await prisma.shopkeeperProfile.findMany({
-      where: { userId: { in: shopkeeperIds } },
-      select: { userId: true, shopName: true },
-    });
     const shopNameByUserId = {};
     profiles.forEach((p) => {
       shopNameByUserId[p.userId] = p.shopName || 'Shop';
     });
 
-    const pgUserId = await resolvePgId('users', req.user.userId);
+    const tierOrder = { top3: 3, priority: 2, normal: 1 };
+    const tierByShop = {};
+    subscriptions.forEach((s) => {
+      if (!tierByShop[s.shopkeeperId]) {
+        const tier =
+          s.planSnapshot && s.planSnapshot.rankingTier
+            ? s.planSnapshot.rankingTier
+            : 'normal';
+        tierByShop[s.shopkeeperId] = tierOrder[tier] ?? 1;
+      }
+    });
+
+    const qCi = ci(q).toLowerCase();
+    const hasQuery = !!qCi;
+
+    const featuredOnly =
+      typeof segment === 'string' &&
+      ['featured', 'true', '1'].includes(segment.trim().toLowerCase());
+
+    let offersWithMeta = offersRaw
+      .map((o) => {
+        const shopName = shopNameByUserId[o.shopkeeperId] || 'Shop';
+        const tierScore = tierByShop[o.shopkeeperId] ?? 1;
+
+        let matchesQuery = true;
+        if (hasQuery) {
+          const haystack = (
+            (o.title || '') +
+            ' ' +
+            (o.description || '') +
+            ' ' +
+            (o.category || '') +
+            ' ' +
+            shopName
+          )
+            .toString()
+            .toLowerCase();
+          matchesQuery = haystack.includes(qCi);
+        }
+
+        return {
+          ...o,
+          _tierScore: tierScore,
+          _shopName: shopName,
+          _matchesQuery: matchesQuery,
+        };
+      })
+      .filter((o) => o._matchesQuery);
+
+    if (featuredOnly) {
+      offersWithMeta = offersWithMeta.filter((o) => o._tierScore > 1);
+    }
+
+    const sortMode = (sort || '').toString().toLowerCase();
+
+    offersWithMeta.sort((a, b) => {
+      // Higher subscription tier first for all modes
+      if (b._tierScore !== a._tierScore) {
+        return b._tierScore - a._tierScore;
+      }
+
+      if (sortMode === 'most_liked') {
+        if ((b.likesCount || 0) !== (a.likesCount || 0)) {
+          return (b.likesCount || 0) - (a.likesCount || 0);
+        }
+      } else if (sortMode === 'discount_high_to_low') {
+        const aVal = a.discountValue ? Number(a.discountValue) : 0;
+        const bVal = b.discountValue ? Number(b.discountValue) : 0;
+        if (bVal !== aVal) return bVal - aVal;
+      } else if (sortMode === 'discount_low_to_high') {
+        const aVal = a.discountValue ? Number(a.discountValue) : 0;
+        const bVal = b.discountValue ? Number(b.discountValue) : 0;
+        if (aVal !== bVal) return aVal - bVal;
+      } else {
+        // newest (default): fall through to createdAt below
+      }
+
+      const aDate = a.createdAt || new Date(0);
+      const bDate = b.createdAt || new Date(0);
+      return bDate - aDate;
+    });
+
+    const sliced = offersWithMeta.slice(skipNum, skipNum + limitNum);
+
+    const pgUserId =
+      (await resolvePgId('users', req.user.userId)) || req.user.userId;
     const likes = await prisma.offerLike.findMany({
-      where: { userId: pgUserId, offerId: { in: offers.map((o) => o.id) } },
+      where: { userId: pgUserId, offerId: { in: sliced.map((o) => o.id) } },
       select: { offerId: true },
     });
     const likedOfferIds = new Set(likes.map((l) => l.offerId));
 
     res.status(200).json({
       success: true,
-      offers: offers.map((o) => ({
+      offers: sliced.map((o) => ({
         id: o.id,
         shopkeeperId: o.shopkeeperId,
-        shopName: shopNameByUserId[o.shopkeeperId] || null,
+        shopName: o._shopName || null,
         title: o.title || '',
         description: o.description || '',
         photos: o.photos || [],

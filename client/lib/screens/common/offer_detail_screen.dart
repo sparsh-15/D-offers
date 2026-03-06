@@ -14,11 +14,13 @@ class OfferDetailScreen extends StatefulWidget {
     super.key,
     required this.offer,
     this.onLikeChanged,
+    this.onOfferUpdated,
     this.onChatPressed,
   });
 
   final OfferModel offer;
   final VoidCallback? onLikeChanged;
+  final ValueChanged<OfferModel>? onOfferUpdated;
   final VoidCallback? onChatPressed;
 
   @override
@@ -74,6 +76,12 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
           _likesCount = result['likesCount'] as int;
           _isToggling = false;
         });
+        widget.onOfferUpdated?.call(
+          widget.offer.copyWith(
+            isLiked: _isLiked,
+            likesCount: _likesCount,
+          ),
+        );
         widget.onLikeChanged?.call();
       }
     } catch (_) {

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:animate_do/animate_do.dart';
 import 'package:iconsax/iconsax.dart';
 import '../../core/constants/app_colors.dart';
 import '../../services/auth_service.dart';
@@ -9,6 +8,7 @@ import '../../models/offer_model.dart';
 import '../../widgets/offer_card.dart';
 import '../../core/utils/theme_helper.dart';
 import '../../core/utils/dialog_helper.dart';
+import 'dart:async';
 
 class CustomerOffersTab extends StatelessWidget {
   const CustomerOffersTab({super.key});
@@ -34,16 +34,12 @@ class CustomerOffersBody extends StatefulWidget {
 }
 
 class _CustomerOffersBodyState extends State<CustomerOffersBody> {
-  late Future<List<OfferModel>> _future;
   String? _stateFilter;
   String? _cityFilter;
   String? _pincodeFilter;
   String _categoryFilter = 'all';
-  String _genderFilter = 'all';
-  String _ageGroupFilter = 'all';
   String _searchQuery = '';
   String _sortBy = 'newest';
-  double _minRating = 0.0;
   bool _useCurrentLocation = false;
   bool _isLoadingLocation = false;
   String? _currentLocationText;
@@ -51,44 +47,100 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
   final _cityController = TextEditingController();
   final _pincodeController = TextEditingController();
   final _searchController = TextEditingController();
-  List<OfferModel> _allOffers = [];
+  final ScrollController _scrollController = ScrollController();
+  Timer? _searchDebounce;
+
+  static const int _pageSize = 30;
+  bool _isInitialLoading = true;
+  bool _isLoadingMore = false;
+  String? _errorText;
+  String? _nextCursor;
+  bool _hasMore = true;
+  final List<OfferModel> _items = [];
   static const String _allKey = 'all';
-  static const List<String> _genderOptions = [
-    _allKey,
-    'men',
-    'women',
-    'unisex',
-  ];
-  static const List<String> _ageGroupOptions = [
-    _allKey,
-    'kids',
-    'teens',
-    'adults',
-    'seniors',
-  ];
 
   @override
   void dispose() {
     _cityController.dispose();
     _pincodeController.dispose();
     _searchController.dispose();
+    _scrollController.dispose();
+    _searchDebounce?.cancel();
     super.dispose();
   }
 
   @override
   void initState() {
     super.initState();
-    _future = AuthService.instance.getCustomerOffers();
+    _scrollController.addListener(_onScroll);
+    _loadInitial();
   }
 
-  Future<void> _refresh() async {
+  void _onScroll() {
+    if (!_hasMore || _isLoadingMore || _isInitialLoading) return;
+    final position = _scrollController.position;
+    if (!position.hasPixels) return;
+    if (position.maxScrollExtent - position.pixels < 350) {
+      _loadMore();
+    }
+  }
+
+  Future<void> _loadInitial() async {
     setState(() {
-      _future = AuthService.instance.getCustomerOffers(
+      _isInitialLoading = true;
+      _isLoadingMore = false;
+      _errorText = null;
+      _nextCursor = null;
+      _hasMore = true;
+      _items.clear();
+    });
+    await _fetchPage();
+  }
+
+  Future<void> _loadMore() async {
+    if (!_hasMore || _isLoadingMore) return;
+    setState(() {
+      _isLoadingMore = true;
+      _errorText = null;
+    });
+    await _fetchPage();
+  }
+
+  Future<void> _fetchPage() async {
+    try {
+      final page = await AuthService.instance.getCustomerOffersPage(
         state: _stateFilter,
         city: _cityFilter,
         pincode: _pincodeFilter,
+        q: _searchQuery.trim().isEmpty ? null : _searchQuery.trim(),
+        category: _categoryFilter == _allKey ? null : _categoryFilter,
+        sort: _sortBy,
+        limit: _pageSize,
+        cursor: _nextCursor,
       );
-    });
+      final offers = page['offers'] as List<OfferModel>;
+      final pageInfo = (page['pageInfo'] as Map<String, dynamic>?) ?? const {};
+      final nextCursor = pageInfo['nextCursor']?.toString();
+      final hasMore = pageInfo['hasMore'] == true;
+
+      if (!mounted) return;
+      setState(() {
+        _items.addAll(offers);
+        _nextCursor = (nextCursor != null && nextCursor.isNotEmpty)
+            ? nextCursor
+            : null;
+        _hasMore = hasMore && _nextCursor != null;
+        _isInitialLoading = false;
+        _isLoadingMore = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorText = e.toString();
+        _isInitialLoading = false;
+        _isLoadingMore = false;
+      });
+    }
   }
 
   Future<void> _getCurrentLocation() async {
@@ -124,7 +176,7 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
       if (city != null) _cityController.text = city;
 
       // Refresh offers with new location
-      _refresh();
+      _loadInitial();
 
       DialogHelper.showSuccessSnackBar(
         context,
@@ -165,137 +217,15 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
           _locationFromCurrent = false;
         }
       });
-      _refresh();
+      _loadInitial();
     } else {
       // Get current location
       _getCurrentLocation();
     }
   }
 
-  List<OfferModel> _filterAndSortOffers(List<OfferModel> offers) {
-    var filtered = offers;
-
-    if (_searchQuery.isNotEmpty) {
-      final query = _searchQuery.toLowerCase();
-      filtered = filtered.where((offer) {
-        return offer.title.toLowerCase().contains(query) ||
-            offer.description.toLowerCase().contains(query) ||
-            offer.category.toLowerCase().contains(query);
-      }).toList();
-    }
-
-    if (_categoryFilter != _allKey) {
-      filtered = filtered
-          .where((offer) => offer.category.toLowerCase() == _categoryFilter)
-          .toList();
-    }
-
-    if (_genderFilter != _allKey) {
-      filtered = filtered
-          .where((offer) => _matchesGender(offer, _genderFilter))
-          .toList();
-    }
-
-    if (_ageGroupFilter != _allKey) {
-      filtered = filtered
-          .where((offer) => _matchesAgeGroup(offer, _ageGroupFilter))
-          .toList();
-    }
-
-    switch (_sortBy) {
-      case 'newest':
-        filtered.sort((a, b) {
-          final aDate = a.createdAt ?? DateTime(1970);
-          final bDate = b.createdAt ?? DateTime(1970);
-          return bDate.compareTo(aDate);
-        });
-        break;
-      case 'most_liked':
-        filtered.sort((a, b) => b.likesCount.compareTo(a.likesCount));
-        break;
-      case 'nearest':
-        // Sort by nearest - for now using a placeholder
-        // In production, this would use actual distance calculation
-        filtered.sort((a, b) => 0);
-        break;
-      case 'discount_high_to_low':
-        filtered.sort((a, b) {
-          final aValue = _getDiscountValue(a);
-          final bValue = _getDiscountValue(b);
-          return bValue.compareTo(aValue);
-        });
-        break;
-      case 'discount_low_to_high':
-        filtered.sort((a, b) {
-          final aValue = _getDiscountValue(a);
-          final bValue = _getDiscountValue(b);
-          return aValue.compareTo(bValue);
-        });
-        break;
-    }
-
-    return filtered;
-  }
-
-  bool _matchesGender(OfferModel offer, String filter) {
-    final haystack = _normalizedText(offer);
-    switch (filter) {
-      case 'men':
-        return _containsAny(
-            haystack, const [' men ', ' male', 'gents', 'boys']);
-      case 'women':
-        return _containsAny(
-            haystack, const [' women ', ' female', 'ladies', 'girls']);
-      case 'unisex':
-        return _containsAny(haystack, const ['unisex', 'all genders']);
-      default:
-        return true;
-    }
-  }
-
-  bool _matchesAgeGroup(OfferModel offer, String filter) {
-    final haystack = _normalizedText(offer);
-    switch (filter) {
-      case 'kids':
-        return _containsAny(
-            haystack, const ['kids', 'kid', 'children', 'child', 'toddler']);
-      case 'teens':
-        return _containsAny(haystack, const ['teen', 'teenager', 'youth']);
-      case 'adults':
-        return _containsAny(
-            haystack, const ['adult', 'men', 'women', 'working']);
-      case 'seniors':
-        return _containsAny(
-            haystack, const ['senior', 'elderly', 'aged', 'retired']);
-      default:
-        return true;
-    }
-  }
-
-  String _normalizedText(OfferModel offer) {
-    final text =
-        '${offer.title} ${offer.description} ${offer.category}'.toLowerCase();
-    return ' $text ';
-  }
-
-  bool _containsAny(String text, List<String> keywords) {
-    for (final keyword in keywords) {
-      if (text.contains(keyword)) return true;
-    }
-    return false;
-  }
-
-  double _getDiscountValue(OfferModel offer) {
-    if (offer.discountType == 'percentage' && offer.discountValue != null) {
-      return (offer.discountValue as num).toDouble();
-    } else if (offer.discountType == 'fixed' && offer.discountValue != null) {
-      return (offer.discountValue as num).toDouble();
-    }
-    return 0;
-  }
-
   List<String> get _availableCategories {
-    final set = _allOffers
+    final set = _items
         .map((o) => o.category.trim().toLowerCase())
         .where((c) => c.isNotEmpty)
         .toSet()
@@ -318,10 +248,7 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
 
     return _searchQuery.isNotEmpty ||
         (!_useCurrentLocation && hasLocationFilters) ||
-        _categoryFilter != _allKey ||
-        _genderFilter != _allKey ||
-        _ageGroupFilter != _allKey ||
-        _minRating > 0.0;
+        _categoryFilter != _allKey;
   }
 
   void _clearAllFilters() {
@@ -332,13 +259,10 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
       _cityFilter = null;
       _pincodeFilter = null;
       _categoryFilter = _allKey;
-      _genderFilter = _allKey;
-      _ageGroupFilter = _allKey;
-      _minRating = 0.0;
       _cityController.clear();
       _pincodeController.clear();
     });
-    _refresh();
+    _loadInitial();
   }
 
   @override
@@ -390,9 +314,12 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
                         : null,
                   ),
                   onChanged: (value) {
-                    setState(() {
-                      _searchQuery = value;
-                    });
+                    setState(() => _searchQuery = value);
+                    _searchDebounce?.cancel();
+                    _searchDebounce = Timer(
+                      const Duration(milliseconds: 350),
+                      _loadInitial,
+                    );
                   },
                 ),
               ),
@@ -400,6 +327,7 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
               Row(
                 children: [
                   Expanded(
+                    flex: 3,
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       decoration: BoxDecoration(
@@ -416,8 +344,6 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
                             DropdownMenuItem(
                                 value: 'most_liked', child: Text('Most Liked')),
                             DropdownMenuItem(
-                                value: 'nearest', child: Text('Nearest')),
-                            DropdownMenuItem(
                                 value: 'discount_high_to_low',
                                 child: Text('Discount High to Low')),
                             DropdownMenuItem(
@@ -429,6 +355,7 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
                               setState(() {
                                 _sortBy = value;
                               });
+                              _loadInitial();
                             }
                           },
                         ),
@@ -436,16 +363,41 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  OutlinedButton.icon(
-                    onPressed: () => _showFilterDialog(context),
-                    icon: const Icon(Icons.tune_rounded),
-                    label: const Text('Filters'),
-                    // Prevent infinite-width constraints when used inside Row.
-                    style: OutlinedButton.styleFrom(
-                      minimumSize: const Size(0, 40),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
+                  Expanded(
+                    flex: 2,
+                    child: OutlinedButton.icon(
+                      onPressed: () => _showFilterDialog(context),
+                      icon: Icon(
+                        Icons.tune_rounded,
+                        color: _hasActiveFilters
+                            ? AppColors.primary
+                            : Theme.of(context).iconTheme.color,
+                      ),
+                      label: Text(
+                        'Filters',
+                        style: TextStyle(
+                          color: _hasActiveFilters
+                              ? AppColors.primary
+                              : Theme.of(context).textTheme.labelLarge?.color,
+                          fontWeight:
+                              _hasActiveFilters ? FontWeight.w600 : null,
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(0, 40),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        side: BorderSide(
+                          color: _hasActiveFilters
+                              ? AppColors.primary
+                              : AppColors.grey400,
+                          width: _hasActiveFilters ? 1.5 : 1,
+                        ),
+                        backgroundColor: _hasActiveFilters
+                            ? AppColors.primary.withValues(alpha: 0.06)
+                            : null,
                       ),
                     ),
                   ),
@@ -498,136 +450,162 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
         ),
         _buildActiveFilters(context),
         Expanded(
-          child: FutureBuilder<List<OfferModel>>(
-            future: _future,
-            builder: (context, snapshot) {
-              if (snapshot.hasData) {
-                _allOffers = snapshot.data ?? [];
-              }
-
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: 5,
-                  itemBuilder: (context, index) {
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      height: 120,
-                      decoration: BoxDecoration(
-                        color: ThemeHelper.getSurfaceColor(context),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Center(
-                        child: CircularProgressIndicator(),
-                      ),
-                    );
-                  },
-                );
-              }
-              if (snapshot.hasError) {
-                return Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.error_outline_rounded,
-                          size: 64,
-                          color: AppColors.error,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Failed to load offers',
-                          style: Theme.of(context).textTheme.titleMedium,
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          '${snapshot.error}',
-                          style: Theme.of(context).textTheme.bodySmall,
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 24),
-                        ElevatedButton.icon(
-                          onPressed: _refresh,
-                          icon: const Icon(Icons.refresh_rounded),
-                          label: const Text('Retry'),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }
-              final offers = _filterAndSortOffers(_allOffers);
-              if (offers.isEmpty) {
-                return Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          _hasActiveFilters
-                              ? Icons.search_off_rounded
-                              : Icons.local_offer_outlined,
-                          size: 64,
-                          color: Theme.of(context)
-                              .colorScheme
-                              .primary
-                              .withValues(alpha: 0.5),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          _hasActiveFilters
-                              ? 'No offers match your filters'
-                              : 'No offers available',
-                          style: Theme.of(context).textTheme.titleMedium,
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          _hasActiveFilters
-                              ? 'Try adjusting your filters or search query'
-                              : 'Check back later for new offers',
-                          style: Theme.of(context).textTheme.bodySmall,
-                          textAlign: TextAlign.center,
-                        ),
-                        if (_hasActiveFilters)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 16),
-                            child: TextButton.icon(
-                              onPressed: _clearAllFilters,
-                              icon: const Icon(Icons.clear_all_rounded),
-                              label: const Text('Clear all filters'),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                );
-              }
-              return RefreshIndicator(
-                onRefresh: _refresh,
-                child: ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: offers.length,
-                  itemBuilder: (context, index) {
-                    final o = offers[index];
-                    return FadeInUp(
-                      delay: Duration(milliseconds: 50 * index),
-                      child: OfferCard(
-                        offer: o,
-                        onLikeChanged: _refresh,
-                      ),
-                    );
-                  },
-                ),
-              );
-            },
+          child: RefreshIndicator(
+            onRefresh: _loadInitial,
+            child: _buildList(context),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildList(BuildContext context) {
+    if (_isInitialLoading) {
+      return ListView.builder(
+        controller: _scrollController,
+        padding: const EdgeInsets.all(16),
+        itemCount: 6,
+        itemBuilder: (context, index) => Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          height: 120,
+          decoration: BoxDecoration(
+            color: ThemeHelper.getSurfaceColor(context),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+
+    if (_errorText != null && _items.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.error_outline_rounded,
+                size: 64,
+                color: AppColors.error,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Failed to load offers',
+                style: Theme.of(context).textTheme.titleMedium,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _errorText!,
+                style: Theme.of(context).textTheme.bodySmall,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: _loadInitial,
+                icon: const Icon(Icons.refresh_rounded),
+                label: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_items.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                _hasActiveFilters
+                    ? Icons.search_off_rounded
+                    : Icons.local_offer_outlined,
+                size: 64,
+                color: Theme.of(context).colorScheme.primary.withValues(
+                      alpha: 0.5,
+                    ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                _hasActiveFilters
+                    ? 'No offers match your filters'
+                    : 'No offers available',
+                style: Theme.of(context).textTheme.titleMedium,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _hasActiveFilters
+                    ? 'Try adjusting your filters or search query'
+                    : 'Check back later for new offers',
+                style: Theme.of(context).textTheme.bodySmall,
+                textAlign: TextAlign.center,
+              ),
+              if (_hasActiveFilters)
+                Padding(
+                  padding: const EdgeInsets.only(top: 16),
+                  child: TextButton.icon(
+                    onPressed: _clearAllFilters,
+                    icon: const Icon(Icons.clear_all_rounded),
+                    label: const Text('Clear all filters'),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      controller: _scrollController,
+      padding: const EdgeInsets.all(16),
+      itemCount: _items.length + 1,
+      itemBuilder: (context, index) {
+        if (index == _items.length) {
+          if (_isLoadingMore) {
+            return const Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+            );
+          }
+          if (!_hasMore) {
+            return const Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: Center(child: Text('You’ve reached the end')),
+            );
+          }
+          if (_errorText != null) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Center(
+                child: TextButton.icon(
+                  onPressed: _loadMore,
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('Tap to retry'),
+                ),
+              ),
+            );
+          }
+          return const SizedBox.shrink();
+        }
+
+        final o = _items[index];
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: OfferCard(
+            offer: o,
+            onOfferUpdated: (updated) {
+              final idx = _items.indexWhere((x) => x.id == updated.id);
+              if (idx < 0) return;
+              setState(() => _items[idx] = updated);
+            },
+          ),
+        );
+      },
     );
   }
 
@@ -648,26 +626,7 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
                 setState(() {
                   _categoryFilter = _allKey;
                 });
-              },
-            ),
-          if (_genderFilter != _allKey)
-            Chip(
-              avatar: const Icon(Icons.wc_rounded, size: 16),
-              label: Text('Gender: ${_displayLabel(_genderFilter)}'),
-              onDeleted: () {
-                setState(() {
-                  _genderFilter = _allKey;
-                });
-              },
-            ),
-          if (_ageGroupFilter != _allKey)
-            Chip(
-              avatar: const Icon(Icons.cake_rounded, size: 16),
-              label: Text('Age: ${_displayLabel(_ageGroupFilter)}'),
-              onDeleted: () {
-                setState(() {
-                  _ageGroupFilter = _allKey;
-                });
+                _loadInitial();
               },
             ),
           if (!_useCurrentLocation &&
@@ -679,8 +638,8 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
               onDeleted: () {
                 setState(() {
                   _stateFilter = null;
-                  _refresh();
                 });
+                _loadInitial();
               },
             ),
           if (!_useCurrentLocation &&
@@ -693,8 +652,8 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
                 setState(() {
                   _cityFilter = null;
                   _cityController.clear();
-                  _refresh();
                 });
+                _loadInitial();
               },
             ),
           if (!_useCurrentLocation &&
@@ -707,18 +666,8 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
                 setState(() {
                   _pincodeFilter = null;
                   _pincodeController.clear();
-                  _refresh();
                 });
-              },
-            ),
-          if (_minRating > 0.0)
-            Chip(
-              avatar: const Icon(Icons.star_rounded, size: 16),
-              label: Text('Rating: ${_minRating.toStringAsFixed(1)}+'),
-              onDeleted: () {
-                setState(() {
-                  _minRating = 0.0;
-                });
+                _loadInitial();
               },
             ),
         ],
@@ -735,7 +684,15 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Filter Offers'),
+          title: Text(
+            'Filter Offers',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: _hasActiveFilters
+                      ? AppColors.primary
+                      : Theme.of(context).textTheme.titleMedium?.color,
+                ),
+          ),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -762,58 +719,6 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
                   onChanged: (value) {
                     setDialogState(() {
                       _categoryFilter = value ?? _allKey;
-                    });
-                  },
-                ),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  initialValue: _genderFilter,
-                  decoration: const InputDecoration(
-                    labelText: 'Gender',
-                    prefixIcon: Icon(Icons.wc_rounded),
-                    isDense: true,
-                  ),
-                  items: _genderOptions
-                      .map(
-                        (value) => DropdownMenuItem(
-                          value: value,
-                          child: Text(
-                            value == _allKey
-                                ? 'All Genders'
-                                : _displayLabel(value),
-                          ),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (value) {
-                    setDialogState(() {
-                      _genderFilter = value ?? _allKey;
-                    });
-                  },
-                ),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  initialValue: _ageGroupFilter,
-                  decoration: const InputDecoration(
-                    labelText: 'Age Group',
-                    prefixIcon: Icon(Icons.cake_rounded),
-                    isDense: true,
-                  ),
-                  items: _ageGroupOptions
-                      .map(
-                        (value) => DropdownMenuItem(
-                          value: value,
-                          child: Text(
-                            value == _allKey
-                                ? 'All Ages'
-                                : _displayLabel(value),
-                          ),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (value) {
-                    setDialogState(() {
-                      _ageGroupFilter = value ?? _allKey;
                     });
                   },
                 ),
@@ -862,74 +767,54 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
                     isDense: true,
                   ),
                 ),
-                const SizedBox(height: 16),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                const SizedBox(height: 24),
+                // Row 1: Clear + Cancel
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.star_rounded, size: 20),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Minimum Rating: ${_minRating.toStringAsFixed(1)}',
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                      ],
-                    ),
-                    Slider(
-                      value: _minRating,
-                      min: 0.0,
-                      max: 5.0,
-                      divisions: 10,
-                      label: _minRating.toStringAsFixed(1),
-                      onChanged: (value) {
+                    TextButton(
+                      onPressed: () {
                         setDialogState(() {
-                          _minRating = value;
+                          _stateFilter = null;
+                          _cityFilter = null;
+                          _pincodeFilter = null;
+                          _categoryFilter = _allKey;
+                          _cityController.clear();
+                          _pincodeController.clear();
                         });
                       },
+                      child: const Text('Clear'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Cancel'),
                     ),
                   ],
+                ),
+                const SizedBox(height: 8),
+                // Row 2: Apply aligned right
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      setState(() {
+                        _cityFilter = _cityController.text.trim().isEmpty
+                            ? null
+                            : _cityController.text.trim();
+                        _pincodeFilter =
+                            _pincodeController.text.trim().isEmpty
+                                ? null
+                                : _pincodeController.text.trim();
+                      });
+                      _loadInitial();
+                      Navigator.pop(context);
+                    },
+                    child: const Text('Apply'),
+                  ),
                 ),
               ],
             ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                setDialogState(() {
-                  _stateFilter = null;
-                  _cityFilter = null;
-                  _pincodeFilter = null;
-                  _categoryFilter = _allKey;
-                  _genderFilter = _allKey;
-                  _ageGroupFilter = _allKey;
-                  _minRating = 0.0;
-                  _cityController.clear();
-                  _pincodeController.clear();
-                });
-              },
-              child: const Text('Clear'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                setState(() {
-                  _cityFilter = _cityController.text.trim().isEmpty
-                      ? null
-                      : _cityController.text.trim();
-                  _pincodeFilter = _pincodeController.text.trim().isEmpty
-                      ? null
-                      : _pincodeController.text.trim();
-                });
-                _refresh();
-                Navigator.pop(context);
-              },
-              child: const Text('Apply'),
-            ),
-          ],
         ),
       ),
     );

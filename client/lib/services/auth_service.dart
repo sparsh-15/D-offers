@@ -330,6 +330,37 @@ class AuthService {
     String? state,
     String? city,
     String? pincode,
+    String? q,
+    String? category,
+    String? sort,
+    String? segment,
+    int? limit,
+    String? cursor,
+  }) async {
+    final page = await getCustomerOffersPage(
+      state: state,
+      city: city,
+      pincode: pincode,
+      q: q,
+      category: category,
+      sort: sort,
+      segment: segment,
+      limit: limit,
+      cursor: cursor,
+    );
+    return page['offers'] as List<OfferModel>;
+  }
+
+  Future<Map<String, dynamic>> getCustomerOffersPage({
+    String? state,
+    String? city,
+    String? pincode,
+    String? q,
+    String? category,
+    String? sort,
+    String? segment,
+    int? limit,
+    String? cursor,
   }) async {
     final token = AuthStore.token;
     if (token == null) throw Exception('Not authenticated');
@@ -340,11 +371,17 @@ class AuthService {
       if (city != null && city.isNotEmpty) params['city'] = city;
       if (state != null && state.isNotEmpty) params['state'] = state;
     }
+    if (q != null && q.trim().isNotEmpty) params['q'] = q.trim();
+    if (category != null && category.trim().isNotEmpty)
+      params['category'] = category.trim();
+    if (sort != null && sort.trim().isNotEmpty) params['sort'] = sort.trim();
+    if (segment != null && segment.trim().isNotEmpty)
+      params['segment'] = segment.trim();
+    if (limit != null && limit > 0) params['limit'] = limit.toString();
+    if (cursor != null && cursor.trim().isNotEmpty)
+      params['cursor'] = cursor.trim();
     final uri = Uri.parse('${ApiConfig.baseUrl}/customer/offers')
         .replace(queryParameters: params.isEmpty ? null : params);
-
-    print(
-        '[CUSTOMER_OFFERS] Fetching offers - URL: $uri, Filters: ${params.isEmpty ? 'none' : params}');
 
     try {
       final resp = await _makeRequest(() => _client.get(
@@ -355,40 +392,23 @@ class AuthService {
           ));
 
       if (resp.statusCode == 429) {
-        print('[CUSTOMER_OFFERS] Rate limit exceeded (429)');
         throw Exception(
             'Too many requests. Please wait a moment and try again.');
       }
 
-      print('[CUSTOMER_OFFERS] Response status: ${resp.statusCode}');
-      print('[CUSTOMER_OFFERS] Response body: ${resp.body}');
-
       final data = _handleResponse(resp) as Map<String, dynamic>;
-      print('[CUSTOMER_OFFERS] Parsed data keys: ${data.keys.toList()}');
-      print('[CUSTOMER_OFFERS] Data content: $data');
 
       final list = (data['offers'] as List<dynamic>? ?? []);
-      print('[CUSTOMER_OFFERS] Received ${list.length} offers');
+      final offers = list
+          .map((e) => OfferModel.fromJson(e as Map<String, dynamic>))
+          .toList();
 
-      if (list.isNotEmpty) {
-        print('[CUSTOMER_OFFERS] First offer sample: ${list[0]}');
-      }
-
-      final offers = list.map((e) {
-        try {
-          print('[CUSTOMER_OFFERS] Parsing offer: $e');
-          return OfferModel.fromJson(e as Map<String, dynamic>);
-        } catch (parseError) {
-          print('[CUSTOMER_OFFERS] Error parsing offer: $parseError, Data: $e');
-          rethrow;
-        }
-      }).toList();
-
-      print('[CUSTOMER_OFFERS] Successfully parsed ${offers.length} offers');
-      return offers;
+      final pageInfo = (data['pageInfo'] as Map<String, dynamic>?) ?? const {};
+      return {
+        'offers': offers,
+        'pageInfo': pageInfo,
+      };
     } catch (e) {
-      print('[CUSTOMER_OFFERS] Error fetching offers: $e');
-      print('[CUSTOMER_OFFERS] Error stack: ${StackTrace.current}');
       rethrow;
     }
   }

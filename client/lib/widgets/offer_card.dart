@@ -16,6 +16,7 @@ class OfferCard extends StatefulWidget {
   final Widget? trailing;
   final bool showLikes;
   final VoidCallback? onLikeChanged;
+  final ValueChanged<OfferModel>? onOfferUpdated;
   final bool openDetailOnTap;
 
   const OfferCard({
@@ -25,6 +26,7 @@ class OfferCard extends StatefulWidget {
     this.trailing,
     this.showLikes = true,
     this.onLikeChanged,
+    this.onOfferUpdated,
     this.openDetailOnTap = true,
   });
 
@@ -90,6 +92,12 @@ class _OfferCardState extends State<OfferCard>
         _likesCount = result['likesCount'] as int;
         _isToggling = false;
       });
+      widget.onOfferUpdated?.call(
+        widget.offer.copyWith(
+          isLiked: _isLiked,
+          likesCount: _likesCount,
+        ),
+      );
       widget.onLikeChanged?.call();
     } catch (e) {
       setState(() {
@@ -114,6 +122,7 @@ class _OfferCardState extends State<OfferCard>
           builder: (_) => OfferDetailScreen(
             offer: widget.offer,
             onLikeChanged: widget.onLikeChanged,
+            onOfferUpdated: widget.onOfferUpdated,
             onChatPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute(
@@ -137,9 +146,9 @@ class _OfferCardState extends State<OfferCard>
             ? widget.offer.shopName!
             : 'Shop';
 
-    // Optional: badge for higher subscription tier.
-    // Currently not wired to backend; leave null until metadata is added.
-    const String? tierLabel = null;
+    final String? tierLabel = widget.offer.isFeatured
+        ? (widget.offer.shopRankingTier == 'top3' ? 'Top Deal' : 'Featured')
+        : null;
 
     String discountLabel;
     final dynamic rawDiscount = widget.offer.discountValue;
@@ -223,13 +232,28 @@ class _OfferCardState extends State<OfferCard>
                           overflow: TextOverflow.ellipsis,
                         ),
                         if (tierLabel != null && tierLabel.isNotEmpty) ...[
-                          const SizedBox(height: 2),
-                          Text(
-                            tierLabel,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: AppColors.highlight,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.4,
+                          const SizedBox(height: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.accentDim.withValues(alpha: 0.18),
+                              borderRadius:
+                                  BorderRadius.circular(AppTokens.radiusFull),
+                              border: Border.all(
+                                color: AppColors.accentDim.withValues(alpha: 0.5),
+                              ),
+                            ),
+                            child: Text(
+                              tierLabel.toUpperCase(),
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: AppColors.accentDim,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.6,
+                                fontSize: 10,
+                              ),
                             ),
                           ),
                         ],

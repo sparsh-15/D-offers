@@ -7,6 +7,7 @@ import '../../services/location_service.dart';
 import '../../models/offer_model.dart';
 import '../../widgets/offer_card.dart';
 import '../../core/utils/dialog_helper.dart';
+import 'dart:async';
 
 class CustomerHomeTab extends StatefulWidget {
   const CustomerHomeTab({super.key, this.onViewAllOffers});
@@ -18,8 +19,12 @@ class CustomerHomeTab extends StatefulWidget {
 }
 
 class _CustomerHomeTabState extends State<CustomerHomeTab> {
-  late Future<List<OfferModel>> _offersFuture;
+  bool _isLoadingDeals = true;
+  String? _dealsError;
+  List<OfferModel> _featuredDeals = const [];
+  List<OfferModel> _allPreviewDeals = const [];
   final TextEditingController _searchController = TextEditingController();
+  Timer? _searchDebounce;
   String _searchQuery = '';
   bool _useCurrentLocation = false;
   bool _isLoadingLocation = false;
@@ -36,46 +41,91 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
   @override
   void initState() {
     super.initState();
-    _offersFuture = _fetchOffers();
+    _loadDeals();
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _searchDebounce?.cancel();
     super.dispose();
   }
 
   Future<void> _refresh() async {
-    setState(() => _offersFuture = _fetchOffers());
+    await _loadDeals();
   }
 
-  Future<List<OfferModel>> _fetchOffers() async {
-    if (_useCurrentLocation && _currentPincode != null) {
-      final offers = await AuthService.instance.getCustomerOffers(
-        pincode: _currentPincode,
-        city: _currentCity,
-        state: _currentState,
-      );
-      if (offers.isNotEmpty) return offers;
-      return AuthService.instance.getCustomerOffers();
+  Future<void> _loadDeals() async {
+    setState(() {
+      _isLoadingDeals = true;
+      _dealsError = null;
+    });
+    try {
+      final deals = await _fetchDeals();
+      if (!mounted) return;
+      setState(() {
+        _featuredDeals = deals.featured;
+        _allPreviewDeals = deals.allPreview;
+        _isLoadingDeals = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _dealsError = e.toString();
+        _isLoadingDeals = false;
+      });
     }
+  }
 
-    final user = AuthStore.currentUser;
-    if (user != null) {
-      final pincode = user.pincode.trim();
-      final city = user.city.trim();
-      final state = user.state.trim();
-      if (pincode.isNotEmpty || city.isNotEmpty || state.isNotEmpty) {
-        final offers = await AuthService.instance.getCustomerOffers(
-          pincode: pincode.isEmpty ? null : pincode,
-          city: city.isEmpty ? null : city,
-          state: state.isEmpty ? null : state,
-        );
-        if (offers.isNotEmpty) return offers;
+  Future<_HomeDeals> _fetchDeals() async {
+    String? pincode;
+    String? city;
+    String? state;
+
+    if (_useCurrentLocation && _currentPincode != null) {
+      pincode = _currentPincode;
+      city = _currentCity;
+      state = _currentState;
+    } else {
+      final user = AuthStore.currentUser;
+      if (user != null) {
+        final p = user.pincode.trim();
+        final c = user.city.trim();
+        final s = user.state.trim();
+        pincode = p.isEmpty ? null : p;
+        city = c.isEmpty ? null : c;
+        state = s.isEmpty ? null : s;
       }
     }
 
-    return AuthService.instance.getCustomerOffers();
+    final q = _searchQuery.trim().isEmpty ? null : _searchQuery.trim();
+    final category = _selectedCategory?.trim();
+
+    final results = await Future.wait([
+      AuthService.instance.getCustomerOffers(
+        pincode: pincode,
+        city: city,
+        state: state,
+        q: q,
+        category: category,
+        segment: 'featured',
+        limit: 8,
+      ),
+      AuthService.instance.getCustomerOffers(
+        pincode: pincode,
+        city: city,
+        state: state,
+        q: q,
+        category: category,
+        sort: 'newest',
+        limit: 20,
+      ),
+    ]);
+
+    return _HomeDeals(
+      featured: results[0],
+      allPreview: results[1],
+    );
   }
 
   Future<void> _getCurrentLocation() async {
@@ -147,28 +197,6 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
     } else {
       _getCurrentLocation();
     }
-  }
-
-  List<OfferModel> _filter(List<OfferModel> offers) {
-    var result = offers;
-    if (_selectedCategory != null) {
-      result = result
-          .where((o) =>
-              o.category.toLowerCase() ==
-              _selectedCategory!.toLowerCase())
-          .toList();
-    }
-    if (_searchQuery.trim().isNotEmpty) {
-      final q = _searchQuery.toLowerCase();
-      result = result
-          .where((o) =>
-              o.title.toLowerCase().contains(q) ||
-              o.description.toLowerCase().contains(q) ||
-              o.category.toLowerCase().contains(q) ||
-              (o.shopName?.toLowerCase().contains(q) ?? false))
-          .toList();
-    }
-    return result;
   }
 
   String _greeting() {
@@ -302,17 +330,28 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                         ),
                         suffixIcon: _searchQuery.isNotEmpty
                             ? GestureDetector(
-                                onTap: () => setState(() {
-                                  _searchController.clear();
-                                  _searchQuery = '';
-                                }),
+                                onTap: () {
+                                  _searchDebounce?.cancel();
+                                  setState(() {
+                                    _searchController.clear();
+                                    _searchQuery = '';
+                                  });
+                                  _refresh();
+                                },
                                 child: const Icon(Icons.close_rounded,
                                     color: AppColors.textMuted,
                                     size: AppTokens.iconMD),
                               )
                             : null,
                       ),
-                      onChanged: (v) => setState(() => _searchQuery = v),
+                      onChanged: (v) {
+                        setState(() => _searchQuery = v);
+                        _searchDebounce?.cancel();
+                        _searchDebounce = Timer(
+                          const Duration(milliseconds: 350),
+                          _refresh,
+                        );
+                      },
                     ),
                   ),
 
@@ -332,9 +371,12 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                         final cat = _categories[i];
                         final isSelected = _selectedCategory == cat;
                         return GestureDetector(
-                          onTap: () => setState(() {
-                            _selectedCategory = isSelected ? null : cat;
-                          }),
+                          onTap: () {
+                            setState(() {
+                              _selectedCategory = isSelected ? null : cat;
+                            });
+                            _refresh();
+                          },
                           child: AnimatedContainer(
                             duration: AppTokens.durationFast,
                             padding: const EdgeInsets.symmetric(
@@ -399,10 +441,9 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                   const SizedBox(height: AppTokens.spaceMD),
 
                   // ── Offer carousel ─────────────────────────────────────────
-                  FutureBuilder<List<OfferModel>>(
-                    future: _offersFuture,
-                    builder: (ctx, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
+                  Builder(
+                    builder: (ctx) {
+                      if (_isLoadingDeals) {
                         return const SizedBox(
                           height: 240,
                           child: Center(
@@ -414,7 +455,7 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                         );
                       }
 
-                      if (snapshot.hasError) {
+                      if (_dealsError != null) {
                         return Padding(
                           padding: const EdgeInsets.all(AppTokens.spaceLG),
                           child: Column(
@@ -426,6 +467,14 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                                 'Could not load deals',
                                 style: theme.textTheme.titleMedium,
                               ),
+                              const SizedBox(height: AppTokens.spaceXS),
+                              Text(
+                                _dealsError!,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: AppColors.textMuted,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
                               const SizedBox(height: AppTokens.spaceSM),
                               TextButton(
                                 onPressed: _refresh,
@@ -436,10 +485,7 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                         );
                       }
 
-                      final all = snapshot.data ?? [];
-                      final filtered = _filter(all);
-                      final featured = filtered.take(8).toList();
-
+                      final featured = _featuredDeals;
                       if (featured.isEmpty) {
                         return _EmptyState(
                           message: _searchQuery.isNotEmpty
@@ -475,7 +521,16 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                                   width: cardWidth,
                                   child: OfferCard(
                                     offer: featured[i],
-                                    onLikeChanged: _refresh,
+                                    onOfferUpdated: (updated) {
+                                      final idx = _featuredDeals.indexWhere(
+                                          (x) => x.id == updated.id);
+                                      if (idx < 0) return;
+                                      setState(() {
+                                        final next = [..._featuredDeals];
+                                        next[idx] = updated;
+                                        _featuredDeals = next;
+                                      });
+                                    },
                                   ),
                                 ),
                               ),
@@ -499,10 +554,9 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                   ),
                   const SizedBox(height: AppTokens.spaceMD),
 
-                  FutureBuilder<List<OfferModel>>(
-                    future: _offersFuture,
-                    builder: (ctx, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
+                  Builder(
+                    builder: (ctx) {
+                      if (_isLoadingDeals) {
                         return const SizedBox(
                           height: 120,
                           child: Center(
@@ -514,12 +568,8 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                         );
                       }
 
-                      final all = snapshot.data ?? [];
-                      final filtered = _filter(all);
-
-                      if (filtered.isEmpty) {
-                        return const SizedBox.shrink();
-                      }
+                      final preview = _allPreviewDeals;
+                      if (preview.isEmpty) return const SizedBox.shrink();
 
                       return ListView.separated(
                         shrinkWrap: true,
@@ -527,12 +577,21 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                         padding: const EdgeInsets.symmetric(
                           horizontal: AppTokens.spaceMD,
                         ),
-                        itemCount: filtered.length > 20 ? 20 : filtered.length,
+                        itemCount: preview.length,
                         separatorBuilder: (_, __) =>
                             const SizedBox(height: AppTokens.spaceSM),
                         itemBuilder: (ctx2, i) => OfferCard(
-                          offer: filtered[i],
-                          onLikeChanged: _refresh,
+                          offer: preview[i],
+                          onOfferUpdated: (updated) {
+                            final idx = _allPreviewDeals
+                                .indexWhere((x) => x.id == updated.id);
+                            if (idx < 0) return;
+                            setState(() {
+                              final next = [..._allPreviewDeals];
+                              next[idx] = updated;
+                              _allPreviewDeals = next;
+                            });
+                          },
                         ),
                       );
                     },
@@ -547,6 +606,16 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
       ),
     );
   }
+}
+
+class _HomeDeals {
+  final List<OfferModel> featured;
+  final List<OfferModel> allPreview;
+
+  const _HomeDeals({
+    required this.featured,
+    required this.allPreview,
+  });
 }
 
 class _EmptyState extends StatelessWidget {

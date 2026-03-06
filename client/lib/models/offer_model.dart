@@ -14,6 +14,8 @@ class OfferModel {
   final String status;
   final int likesCount;
   final bool isLiked;
+  final String shopRankingTier;
+  final bool isFeatured;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -33,6 +35,8 @@ class OfferModel {
     required this.status,
     required this.likesCount,
     this.isLiked = false,
+    this.shopRankingTier = 'normal',
+    this.isFeatured = false,
     this.createdAt,
     this.updatedAt,
   });
@@ -53,6 +57,8 @@ class OfferModel {
     String? status,
     int? likesCount,
     bool? isLiked,
+    String? shopRankingTier,
+    bool? isFeatured,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -72,6 +78,8 @@ class OfferModel {
       status: status ?? this.status,
       likesCount: likesCount ?? this.likesCount,
       isLiked: isLiked ?? this.isLiked,
+      shopRankingTier: shopRankingTier ?? this.shopRankingTier,
+      isFeatured: isFeatured ?? this.isFeatured,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -100,6 +108,8 @@ class OfferModel {
       status: json['status']?.toString() ?? '',
       likesCount: int.tryParse(json['likesCount']?.toString() ?? '0') ?? 0,
       isLiked: json['isLiked'] as bool? ?? false,
+      shopRankingTier: json['shopRankingTier']?.toString() ?? 'normal',
+      isFeatured: json['isFeatured'] as bool? ?? false,
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'].toString())
           : null,
