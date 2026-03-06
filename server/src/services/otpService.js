@@ -107,7 +107,7 @@ async function sendOtp(phone, role, signupData = {}) {
     throw err;
   }
 
-  const signupRoles = ['customer', 'shopkeeper', 'company_sales_agent', 'ssa'];
+  const signupRoles = ['customer', 'shopkeeper', 'company_sales_agent'];
   if (!signupRoles.includes(role)) {
     const err = new Error('Cannot signup with this role. Contact administrator.');
     err.statusCode = 403;

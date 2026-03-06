@@ -1,9 +1,21 @@
 const { prisma } = require('../db/prisma');
 const offerRepository = require('../repositories/offerRepository');
+const userRepository = require('../repositories/userRepository');
 const { resolvePgId } = require('../repositories/idResolver');
+
+const DEFAULT_AGENT_MAX_DISCOUNT = 50;
+const MAX_PERCENTAGE_DISCOUNT = 99;
 
 function ci(value) {
   return String(value || '').trim();
+}
+
+function normalizeAgentMaxDiscount(value) {
+  if (value === undefined || value === null || value === '') return DEFAULT_AGENT_MAX_DISCOUNT;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || !Number.isInteger(parsed)) return null;
+  if (parsed < 1 || parsed > MAX_PERCENTAGE_DISCOUNT) return null;
+  return parsed;
 }
 
 async function listOffers(req, res, next) {
@@ -240,4 +252,74 @@ async function requestCallback(req, res, next) {
   }
 }
 
-module.exports = { listOffers, toggleLike, getLikedOffers, requestCallback };
+async function becomeSSA(req, res, next) {
+  try {
+    const user = await userRepository.findById(req.user.userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    if (user.role !== 'customer') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only customers can become a Service Sales Agent',
+      });
+    }
+
+    const { email, pincode, city, state, region, maxCouponDiscountPercent } = req.body || {};
+    const pincodeStr = ci(pincode);
+    if (!pincodeStr) {
+      return res.status(400).json({
+        success: false,
+        message: 'Pincode is required for SSA onboarding',
+      });
+    }
+
+    const normalizedMax = normalizeAgentMaxDiscount(maxCouponDiscountPercent);
+    if (normalizedMax === null) {
+      return res.status(400).json({
+        success: false,
+        message: 'maxCouponDiscountPercent must be an integer between 1 and 99',
+      });
+    }
+
+    const updates = {
+      role: 'ssa',
+      pincode: pincodeStr,
+      city: ci(city) || user.city || '',
+      state: ci(state) || user.state || '',
+      region: ci(region) || user.region || '',
+      maxCouponDiscountPercent: normalizedMax,
+    };
+    if (email !== undefined && email !== null) {
+      updates.email = ci(email) || null;
+    }
+    if (!user.email && !updates.email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email is required for SSA onboarding',
+      });
+    }
+
+    const updated = await userRepository.updateById(user.id, updates);
+    if (!updated) {
+      return res.status(500).json({ success: false, message: 'Failed to update user' });
+    }
+
+    const safeUser = {
+      id: updated.id,
+      name: updated.name,
+      phone: updated.phone,
+      role: updated.role,
+      pincode: updated.pincode,
+      city: updated.city,
+      state: updated.state,
+      address: updated.address || '',
+      approvalStatus: updated.approvalStatus,
+    };
+    res.status(200).json({ success: true, user: safeUser });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { listOffers, toggleLike, getLikedOffers, requestCallback, becomeSSA };
