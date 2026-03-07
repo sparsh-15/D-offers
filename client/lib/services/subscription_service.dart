@@ -631,6 +631,41 @@ class SubscriptionService {
     }
   }
 
+  /// Get a price quote for a plan + optional coupon (discount and attribution).
+  Future<Map<String, dynamic>> getQuote({
+    required String? planId,
+    String? planType,
+    required int durationMonths,
+    String? couponCode,
+  }) async {
+    try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}/subscription/quote');
+      final body = <String, dynamic>{
+        'durationMonths': durationMonths,
+        if (planId != null) 'planId': planId,
+        if (planType != null) 'planType': planType,
+        if (couponCode != null && couponCode.trim().isNotEmpty)
+          'couponCode': couponCode.trim(),
+      };
+      final response = await _client.post(
+        uri,
+        headers: _getHeaders(),
+        body: jsonEncode(body),
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        if (data['success'] == true && data['quote'] != null) {
+          return data['quote'] as Map<String, dynamic>;
+        }
+      }
+      final err = jsonDecode(response.body) as Map<String, dynamic>?;
+      throw Exception(err?['message'] ?? 'Failed to get quote');
+    } catch (e) {
+      print('[SUBSCRIPTION] getQuote error: $e');
+      rethrow;
+    }
+  }
+
   Future<Map<String, dynamic>> activateSubscription({
     required String planId,
     required int durationMonths,

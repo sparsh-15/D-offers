@@ -11,6 +11,7 @@ router.use(requireRole('shopkeeper'));
 
 router.get('/', subscriptionController.getSubscription);
 router.get('/plans', subscriptionController.getPlans);
+router.post('/quote', subscriptionController.getQuote);
 router.post('/trial', subscriptionController.activateTrial);
 router.post('/activate', subscriptionController.createSubscription);
 router.post('/cancel', subscriptionController.cancelSubscription);

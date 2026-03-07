@@ -46,6 +46,7 @@ class UserModel {
   final String approvalStatus; // legacy: pending | approved | rejected
   final String statusLabel; // derived: subscribed | active | inactive | setup_pending
   final String category; // optional: from shopkeeperProfile.category for shopkeepers
+  final String? signupCouponCode; // optional referral coupon captured at registration (shopkeeper)
 
   const UserModel({
     required this.id,
@@ -59,6 +60,7 @@ class UserModel {
     required this.approvalStatus,
     required this.statusLabel,
     this.category = '',
+    this.signupCouponCode,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -80,6 +82,7 @@ class UserModel {
               '')
           .toLowerCase(),
       category: categoryFromProfile,
+      signupCouponCode: json['signupCouponCode']?.toString(),
     );
   }
 

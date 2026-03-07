@@ -48,19 +48,24 @@ class AuthService {
     required String pincode,
     String? city,
     String? address,
+    String? couponCode,
   }) async {
     final uri = Uri.parse('${ApiConfig.authUrl}/signup');
+    final body = <String, dynamic>{
+      'role': roleToString(role),
+      'phone': phone,
+      'name': name,
+      'pincode': pincode,
+      'city': city ?? '',
+      'address': address ?? '',
+    };
+    if (couponCode != null && couponCode.trim().isNotEmpty) {
+      body['couponCode'] = couponCode.trim();
+    }
     final resp = await _client.post(
       uri,
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'role': roleToString(role),
-        'phone': phone,
-        'name': name,
-        'pincode': pincode,
-        'city': city ?? '',
-        'address': address ?? '',
-      }),
+      body: jsonEncode(body),
     );
     _handleResponse(resp);
   }

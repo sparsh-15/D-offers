@@ -5,6 +5,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_design_tokens.dart';
 import '../../core/utils/theme_helper.dart';
 import '../../services/company_sales_service.dart';
+import 'csa_create_lead_screen.dart';
 
 class CSADashboard extends StatefulWidget {
   const CSADashboard({super.key});
@@ -440,10 +441,28 @@ class _CSAShopsTabState extends State<CSAShopsTab> {
                       ),
                     ],
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.refresh_rounded,
-                        color: AppColors.textSecondary),
-                    onPressed: _reload,
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.add_rounded,
+                            color: AppColors.accent),
+                        tooltip: 'Add lead',
+                        onPressed: () async {
+                          final created = await Navigator.of(context).push<bool>(
+                            MaterialPageRoute(
+                              builder: (_) => const CsaCreateLeadScreen(),
+                            ),
+                          );
+                          if (created == true) _reload();
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.refresh_rounded,
+                            color: AppColors.textSecondary),
+                        onPressed: _reload,
+                      ),
+                    ],
                   ),
                 ],
               ),

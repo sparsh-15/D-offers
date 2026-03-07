@@ -122,6 +122,8 @@ model User {
   approvalStatus ApprovalStatusEnum @default(approved) @map("approval_status")
   permissions    String[]           @default([])
   isActive       Boolean            @default(true) @map("is_active")
+  signupCouponCode       String?    @map("signup_coupon_code")
+  signupCouponCapturedAt DateTime?  @map("signup_coupon_captured_at") @db.Timestamptz(6)
   createdAt      DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -138,7 +140,8 @@ model User {
   planPriceChanges       SubscriptionPlanPriceHistory[] @relation("PriceChangedBy")
   aiWallet               AiWallet?
   aiCreditPurchases      AiCreditPurchase[]
-  shopLeads               ShopLead[]
+  shopLeadsAsSsa         ShopLead[]                     @relation("ShopLeadSsa")
+  shopLeadsAsCsa         ShopLead[]                     @relation("ShopLeadCsa")
 
   @@index([role, approvalStatus, createdAt(sort: Desc)], map: "idx_users_role_approval_created_desc")
   @@index([role, isActive, createdAt(sort: Desc)], map: "idx_users_role_active_created_desc")
@@ -275,6 +278,10 @@ model Subscription {
   transactionId      String?                @map("transaction_id")
   couponCode         String?                @map("coupon_code")
   discountAmount     Decimal                @default(0) @map("discount_amount") @db.Decimal(12, 2)
+  couponAgentIdSnapshot   String?           @map("coupon_agent_id_snapshot") @db.Uuid
+  couponAgentNameSnapshot String?           @map("coupon_agent_name_snapshot")
+  couponAgentRoleSnapshot String?           @map("coupon_agent_role_snapshot")
+  couponCampaignSnapshot Json?             @map("coupon_campaign_snapshot")
   renewalCount       Int                    @default(0) @map("renewal_count")
   lastRenewalDate    DateTime?              @map("last_renewal_date") @db.Timestamptz(6)
   cancelledAt        DateTime?              @map("cancelled_at") @db.Timestamptz(6)
@@ -444,11 +451,12 @@ model CallbackRequest {
 
 model ShopLead {
   id         String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
-  ssaId      String   @map("ssa_id") @db.Uuid
+  ssaId      String?  @map("ssa_id") @db.Uuid
+  csaId      String?  @map("csa_id") @db.Uuid
   shopName   String   @map("shop_name")
   ownerName  String?  @map("owner_name")
   phone      String
-  pincode    String? 
+  pincode    String?
   city       String?
   category   String?
   notes      String?
@@ -457,9 +465,11 @@ model ShopLead {
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  ssa User @relation(fields: [ssaId], references: [id])
+  ssa User? @relation("ShopLeadSsa", fields: [ssaId], references: [id])
+  csa User? @relation("ShopLeadCsa", fields: [csaId], references: [id])
 
   @@index([ssaId, status], map: "idx_shop_leads_ssa_status")
+  @@index([csaId, status], map: "idx_shop_leads_csa_status")
   @@index([couponCode], map: "idx_shop_leads_coupon_code")
   @@map("shop_leads")
 }

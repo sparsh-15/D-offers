@@ -87,5 +87,54 @@ class CompanySalesService {
     }
     throw Exception('Failed to fetch CSA coupons');
   }
+
+  Future<List<Map<String, dynamic>>> getLeads({String? status, String? search}) async {
+    final query = <String, String>{};
+    if (status != null && status.isNotEmpty) query['status'] = status;
+    if (search != null && search.isNotEmpty) query['search'] = search;
+    final uri = Uri.parse('${ApiConfig.companySalesUrl}/leads')
+        .replace(queryParameters: query.isEmpty ? null : query);
+    final response = await _client.get(uri, headers: _headers());
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      if (data['success'] == true) {
+        final list = (data['leads'] as List<dynamic>? ?? []);
+        return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      }
+    }
+    throw Exception('Failed to fetch leads');
+  }
+
+  Future<void> createLead({
+    required String shopName,
+    required String phone,
+    String? ownerName,
+    String? pincode,
+    String? city,
+    String? category,
+    String? notes,
+    String? couponCode,
+  }) async {
+    final uri = Uri.parse('${ApiConfig.companySalesUrl}/leads');
+    final body = <String, dynamic>{
+      'shopName': shopName,
+      'phone': phone,
+      if (ownerName != null && ownerName.trim().isNotEmpty) 'ownerName': ownerName.trim(),
+      if (pincode != null && pincode.trim().isNotEmpty) 'pincode': pincode.trim(),
+      if (city != null && city.trim().isNotEmpty) 'city': city.trim(),
+      if (category != null && category.trim().isNotEmpty) 'category': category.trim(),
+      if (notes != null && notes.trim().isNotEmpty) 'notes': notes.trim(),
+      if (couponCode != null && couponCode.trim().isNotEmpty) 'couponCode': couponCode.trim(),
+    };
+    final response = await _client.post(
+      uri,
+      headers: _headers(),
+      body: jsonEncode(body),
+    );
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    if (response.statusCode < 200 || response.statusCode >= 300 || data['success'] != true) {
+      throw Exception(data['message']?.toString() ?? 'Failed to create lead');
+    }
+  }
 }
 

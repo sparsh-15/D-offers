@@ -4,6 +4,7 @@ import 'package:iconsax/iconsax.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/dialog_helper.dart';
 import '../../core/utils/theme_helper.dart';
+import '../../services/auth_store.dart';
 import '../../services/subscription_service.dart';
 
 class PaymentScreen extends StatefulWidget {
@@ -30,6 +31,19 @@ class _PaymentScreenState extends State<PaymentScreen> {
   final _cvvController = TextEditingController();
   final _couponController = TextEditingController();
 
+  Map<String, dynamic>? _quote;
+  bool _quoteLoading = false;
+  String? _quoteError;
+
+  @override
+  void initState() {
+    super.initState();
+    final signupCoupon = AuthStore.currentUser?.signupCouponCode;
+    if (signupCoupon != null && signupCoupon.trim().isNotEmpty) {
+      _couponController.text = signupCoupon.trim();
+    }
+  }
+
   @override
   void dispose() {
     _upiIdController.dispose();
@@ -41,12 +55,71 @@ class _PaymentScreenState extends State<PaymentScreen> {
     super.dispose();
   }
 
+  int get _durationMonths {
+    final durationDays = widget.plan['durationDays'] ?? 30;
+    return (durationDays / 30).round().clamp(1, 24);
+  }
+
+  double get _basePrice {
+    final monthlyPrice = (widget.plan['monthlyPrice'] ?? 0) is int
+        ? (widget.plan['monthlyPrice'] as int).toDouble()
+        : (widget.plan['monthlyPrice'] ?? 0).toDouble();
+    return monthlyPrice * _durationMonths;
+  }
+
+  double get _displayPrice {
+    if (_quote != null) {
+      final fp = _quote!['finalPrice'];
+      if (fp is num) return fp.toDouble();
+    }
+    return _basePrice;
+  }
+
+  Future<void> _applyCoupon() async {
+    final code = _couponController.text.trim();
+    if (code.isEmpty) {
+      setState(() {
+        _quote = null;
+        _quoteError = null;
+      });
+      return;
+    }
+    setState(() {
+      _quoteLoading = true;
+      _quoteError = null;
+      _quote = null;
+    });
+    try {
+      final planId = widget.plan['id']?.toString();
+      final planType = widget.plan['name']?.toString();
+      final quote = await SubscriptionService.instance.getQuote(
+        planId: planId,
+        planType: planType,
+        durationMonths: _durationMonths,
+        couponCode: code,
+      );
+      if (!mounted) return;
+      setState(() {
+        _quote = quote;
+        _quoteLoading = false;
+        _quoteError = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _quote = null;
+        _quoteLoading = false;
+        _quoteError = e.toString();
+      });
+      DialogHelper.showErrorSnackBar(context, e.toString());
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = ThemeHelper.isDarkMode(context);
     final displayName = widget.plan['displayName'] ?? widget.plan['name'];
-    final monthlyPrice = widget.plan['monthlyPrice'] ?? 0;
     final durationDays = widget.plan['durationDays'] ?? 30;
 
     return Container(
@@ -125,6 +198,40 @@ class _PaymentScreenState extends State<PaymentScreen> {
                       const SizedBox(height: 16),
                       const Divider(),
                       const SizedBox(height: 16),
+                      if (_quote != null && (_quote!['discountAmount'] as num?) != null && (_quote!['discountAmount'] as num) > 0) ...[
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Subtotal',
+                              style: theme.textTheme.bodyMedium,
+                            ),
+                            Text(
+                              '₹${_basePrice.toStringAsFixed(0)}',
+                              style: theme.textTheme.bodyMedium,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Discount',
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: AppColors.success,
+                              ),
+                            ),
+                            Text(
+                              '- ₹${(_quote!['discountAmount'] as num).toStringAsFixed(0)}',
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: AppColors.success,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                      ],
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -135,7 +242,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                             ),
                           ),
                           Text(
-                            'Rs $monthlyPrice',
+                            '₹${_displayPrice.toStringAsFixed(0)}',
                             style: theme.textTheme.headlineSmall?.copyWith(
                               fontWeight: FontWeight.bold,
                               color: AppColors.primary,
@@ -147,7 +254,34 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 32),
+              if (_quote != null && _quote!['attribution'] != null) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.success.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: AppColors.success.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Iconsax.ticket_discount, color: AppColors.success, size: 24),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          _quote!['attribution']['message']?.toString() ?? 'Referral discount applied',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              const SizedBox(height: 24),
 
               // Coupon code (optional)
               Text(
@@ -157,13 +291,36 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-              TextField(
-                controller: _couponController,
-                decoration: const InputDecoration(
-                  labelText: 'Coupon code (optional)',
-                  prefixIcon: Icon(Iconsax.ticket_discount),
-                ),
-                textCapitalization: TextCapitalization.characters,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _couponController,
+                      decoration: InputDecoration(
+                        labelText: 'Coupon code (optional)',
+                        prefixIcon: const Icon(Iconsax.ticket_discount),
+                        errorText: _quoteError,
+                      ),
+                      textCapitalization: TextCapitalization.characters,
+                      onSubmitted: (_) => _applyCoupon(),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    height: 56,
+                    child: OutlinedButton(
+                      onPressed: _quoteLoading ? null : _applyCoupon,
+                      child: _quoteLoading
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text('Apply'),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 32),
 
@@ -262,7 +419,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                               const Icon(Iconsax.shield_tick),
                               const SizedBox(width: 12),
                               Text(
-                                'Pay Rs $monthlyPrice',
+                                'Pay ₹${_displayPrice.toStringAsFixed(0)}',
                                 style: const TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,

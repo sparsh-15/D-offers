@@ -120,11 +120,14 @@ async function sendOtp(phone, role, signupData = {}) {
     throw err;
   }
 
-  // On first signup, store name/pincode + auto city/state
+  // On first signup, store name/pincode + auto city/state + optional coupon (shopkeeper)
   const name = signupData.name != null ? String(signupData.name).trim() : '';
   const pincode = signupData.pincode != null ? String(signupData.pincode).trim() : '';
   const address = signupData.address != null ? String(signupData.address).trim() : '';
   const cityFromFrontend = signupData.city != null ? String(signupData.city).trim() : '';
+  const rawCoupon = signupData.couponCode != null ? String(signupData.couponCode).trim() : '';
+  const signupCouponCode = rawCoupon ? rawCoupon.toUpperCase() : null;
+  const signupCouponCapturedAt = signupCouponCode && role === 'shopkeeper' ? new Date() : null;
 
   if (!name || !pincode) {
     const err = new Error('Name and pincode are required for signup');
@@ -164,6 +167,11 @@ async function sendOtp(phone, role, signupData = {}) {
   // Manual moderation can still change approvalStatus later (e.g. to 'rejected').
   if (role === 'customer' || role === 'shopkeeper') {
     update.approvalStatus = 'approved';
+  }
+
+  if (signupCouponCode && role === 'shopkeeper') {
+    update.signupCouponCode = signupCouponCode;
+    update.signupCouponCapturedAt = signupCouponCapturedAt;
   }
 
   await userRepository.create(update);

@@ -30,6 +30,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _cityController = TextEditingController();
   final _stateController = TextEditingController();
   final _addressController = TextEditingController();
+  final _couponController = TextEditingController();
 
   bool _isLoading = false;
   bool _isLoadingPincode = false;
@@ -51,6 +52,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _cityController.dispose();
     _stateController.dispose();
     _addressController.dispose();
+    _couponController.dispose();
     super.dispose();
   }
 
@@ -234,6 +236,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       return null;
                     },
                   ),
+                  if (widget.role == UserRole.shopkeeper) ...[
+                    const SizedBox(height: 16),
+                    CustomTextField(
+                      controller: _couponController,
+                      label: 'Referral / Coupon code (optional)',
+                      hint: 'Enter code if you have one',
+                      prefixIcon: Iconsax.ticket_discount,
+                      validator: (_) => null,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'You can change this later on the payment page.',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                    ),
+                  ],
                   const SizedBox(height: 32),
                   CustomButton(
                     text: AppStrings.sendOtp,
@@ -273,6 +292,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
         address: _addressController.text.trim().isEmpty
             ? null
             : _addressController.text.trim(),
+        couponCode: widget.role == UserRole.shopkeeper
+            ? (_couponController.text.trim().isEmpty
+                ? null
+                : _couponController.text.trim())
+            : null,
       );
       if (!mounted) return;
       DialogHelper.showSuccessSnackBar(context, 'OTP sent for signup');

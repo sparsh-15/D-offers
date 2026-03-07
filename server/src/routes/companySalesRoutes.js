@@ -21,4 +21,8 @@ router.get('/reports', companySalesController.getReports);
 // Coupons (auto-created by discount combinations up to agent cap)
 router.get('/coupons', companySalesController.getCoupons);
 
+// Leads (same shape as SSA: create lead with optional coupon, list leads)
+router.get('/leads', companySalesController.getLeads);
+router.post('/leads', companySalesController.createLead);
+
 module.exports = router;

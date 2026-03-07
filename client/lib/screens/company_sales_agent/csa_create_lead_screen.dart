@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/theme_helper.dart';
 import '../../screens/common/create_lead_form.dart';
-import '../../services/ssa_service.dart';
+import '../../services/company_sales_service.dart';
 
-class SsaCreateLeadScreen extends StatelessWidget {
-  const SsaCreateLeadScreen({super.key});
+class CsaCreateLeadScreen extends StatelessWidget {
+  const CsaCreateLeadScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -27,10 +27,9 @@ class SsaCreateLeadScreen extends StatelessWidget {
             title: 'Create a new shop lead',
             subtitle: 'Capture basic shop details and optionally attach a coupon code.',
             submitButtonLabel: 'Create Lead',
-            loadCoupons: SsaService.instance.getCoupons,
+            loadCoupons: CompanySalesService.instance.getCoupons,
             createLead: ({
               required String shopName,
-              
               required String phone,
               String? ownerName,
               String? pincode,
@@ -39,7 +38,7 @@ class SsaCreateLeadScreen extends StatelessWidget {
               String? notes,
               String? couponCode,
             }) async {
-              await SsaService.instance.createLead(
+              await CompanySalesService.instance.createLead(
                 shopName: shopName,
                 phone: phone,
                 ownerName: ownerName,

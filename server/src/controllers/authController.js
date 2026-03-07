@@ -14,14 +14,14 @@ function issueToken(user) {
 
 async function signup(req, res, next) {
   try {
-    const { phone, role, name, pincode, city, address } = req.body;
+    const { phone, role, name, pincode, city, address, couponCode } = req.body;
     if (!phone || !role || !name || !pincode) {
       return res.status(400).json({
         success: false,
         message: 'Phone, role, name and pincode are required',
       });
     }
-    await otpService.sendOtp(phone.trim(), role, { name, pincode, city, address });
+    await otpService.sendOtp(phone.trim(), role, { name, pincode, city, address, couponCode });
     res.status(200).json({ success: true, message: 'Signup OTP sent' });
   } catch (err) {
     next(err);
@@ -30,7 +30,7 @@ async function signup(req, res, next) {
 
 async function sendOtp(req, res, next) {
   try {
-    const { phone, role, name, pincode, city, address } = req.body;
+    const { phone, role, name, pincode, city, address, couponCode } = req.body;
     const clientIp = req.ip || req.connection.remoteAddress;
     
     console.log(`[AUTH] sendOtp request - Role: ${role}, Phone: ${phone?.substring(0, 3)}***, IP: ${clientIp}`);
@@ -40,7 +40,7 @@ async function sendOtp(req, res, next) {
       return res.status(400).json({ success: false, message: 'Phone is required' });
     }
     
-    await otpService.sendOtp(phone.trim(), role, { name, pincode, city, address });
+    await otpService.sendOtp(phone.trim(), role, { name, pincode, city, address, couponCode });
     console.log(`[AUTH] sendOtp success - Role: ${role}, Phone: ${phone?.substring(0, 3)}***`);
     res.status(200).json({ success: true, message: 'OTP sent' });
   } catch (err) {
@@ -81,20 +81,24 @@ async function me(req, res, next) {
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
+    const responseUser = {
+      id: user.id,
+      name: user.name,
+      phone: user.phone,
+      role: user.role,
+      pincode: user.pincode,
+      city: user.city,
+      state: user.state,
+      address: user.address,
+      approvalStatus: user.approvalStatus,
+      createdAt: user.createdAt,
+    };
+    if (user.role === 'shopkeeper' && user.signupCouponCode) {
+      responseUser.signupCouponCode = user.signupCouponCode;
+    }
     res.status(200).json({
       success: true,
-      user: {
-        id: user.id,
-        name: user.name,
-        phone: user.phone,
-        role: user.role,
-        pincode: user.pincode,
-        city: user.city,
-        state: user.state,
-        address: user.address,
-        approvalStatus: user.approvalStatus,
-        createdAt: user.createdAt,
-      },
+      user: responseUser,
     });
   } catch (err) {
     next(err);

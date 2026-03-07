@@ -1,8 +1,9 @@
 const { prisma } = require('../db/prisma');
 const { resolvePgId } = require('../repositories/idResolver');
 const subscriptionRepository = require('../repositories/subscriptionRepository');
+const auditLogRepository = require('../repositories/auditLogRepository');
 const { buildPlanSnapshot, upsertWalletForSubscription, getAvailableCredits } = require('../services/aiWalletService');
-const { prisma: prismaClient } = require('../db/prisma');
+const { validateAndComputeDiscount } = require('../services/couponValidationService');
 
 function ci(value) {
   return String(value || '').trim();
@@ -108,6 +109,58 @@ async function activateTrial(req, res, next) {
   }
 }
 
+async function getQuote(req, res, next) {
+  try {
+    const { planId, planType, durationMonths, couponCode } = req.body || {};
+    if ((!planType && !planId) || !durationMonths) {
+      return res.status(400).json({
+        success: false,
+        message: 'Plan (planId or planType) and durationMonths are required',
+      });
+    }
+    const plan = planId
+      ? await prisma.subscriptionPlan.findUnique({ where: { id: planId } })
+      : await prisma.subscriptionPlan.findFirst({ where: { name: planType } });
+    if (!plan || !plan.isActive) {
+      return res.status(400).json({
+        success: false,
+        message: 'Selected plan is not available',
+      });
+    }
+    const fullPrice = Number(plan.monthlyPrice) * parseInt(durationMonths, 10);
+    const quote = await validateAndComputeDiscount({
+      prisma,
+      couponCode: couponCode || null,
+      fullPrice,
+    });
+    if (!quote.success) {
+      return res.status(400).json({
+        success: false,
+        errorCode: quote.errorCode,
+        message: quote.message,
+      });
+    }
+    res.status(200).json({
+      success: true,
+      quote: {
+        basePrice: quote.basePrice,
+        discountAmount: quote.discountAmount,
+        finalPrice: quote.finalPrice,
+        appliedCouponCode: quote.appliedCouponCode || null,
+        attribution: quote.attribution
+          ? {
+              agentName: quote.attribution.agentName,
+              agentRole: quote.attribution.agentRole,
+              message: `Referral discount from ${quote.attribution.agentName} (${quote.attribution.agentRole})`,
+            }
+          : null,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 async function createSubscription(req, res, next) {
   try {
     const { planType, planId, durationMonths, transactionId, couponCode } =
@@ -129,70 +182,19 @@ async function createSubscription(req, res, next) {
     const endDate = new Date();
     endDate.setMonth(endDate.getMonth() + parseInt(durationMonths, 10));
     const planSnapshot = buildPlanSnapshot(plan);
+    const fullPrice = Number(plan.monthlyPrice) * parseInt(durationMonths, 10);
 
-    const fullPrice =
-      Number(plan.monthlyPrice) * parseInt(durationMonths, 10);
-    let finalPrice = fullPrice;
-    let appliedCouponCode = null;
-    let discountAmount = 0;
-
-    if (couponCode && ci(couponCode)) {
-      const code = ci(couponCode).toUpperCase();
-      const now = new Date();
-      const coupon = await prisma.coupon.findFirst({
-        where: {
-          code,
-          isActive: true,
-          OR: [{ expiryDate: null }, { expiryDate: { gt: now } }],
-        },
-        include: {
-          agent: {
-            select: { maxCouponDiscountPercent: true, role: true },
-          },
-        },
+    const quote = await validateAndComputeDiscount({
+      prisma,
+      couponCode: couponCode || null,
+      fullPrice,
+    });
+    if (!quote.success) {
+      return res.status(400).json({
+        success: false,
+        errorCode: quote.errorCode,
+        message: quote.message,
       });
-
-      if (!coupon) {
-        return res.status(400).json({
-          success: false,
-          message: 'Invalid or expired coupon code',
-        });
-      }
-
-      if (coupon.maxUses !== null && coupon.maxUses !== undefined) {
-        if (coupon.currentUses >= coupon.maxUses) {
-          return res.status(400).json({
-            success: false,
-            message: 'Coupon has reached its maximum uses',
-          });
-        }
-      }
-
-      const rawDiscount = Number(coupon.discountValue || 0);
-      if (!Number.isFinite(rawDiscount) || rawDiscount <= 0) {
-        return res.status(400).json({
-          success: false,
-          message: 'Coupon has invalid discount value',
-        });
-      }
-
-      if (coupon.discountType === 'percentage') {
-        const agentCap =
-          (coupon.agent &&
-            coupon.agent.maxCouponDiscountPercent &&
-            Number(coupon.agent.maxCouponDiscountPercent)) ||
-          50;
-        const pct = Math.min(
-          Math.max(1, Math.round(rawDiscount)),
-          Math.min(agentCap, 99),
-        );
-        discountAmount = (fullPrice * pct) / 100;
-      } else {
-        discountAmount = Math.min(rawDiscount, fullPrice);
-      }
-
-      appliedCouponCode = code;
-      finalPrice = Math.max(0, fullPrice - discountAmount);
     }
 
     const subscription = await subscriptionRepository.createSubscription({
@@ -202,21 +204,40 @@ async function createSubscription(req, res, next) {
       status: 'active',
       startDate,
       endDate,
-      actualPrice: finalPrice,
+      actualPrice: quote.finalPrice,
       autoRenew: req.body.autoRenew || false,
       paymentStatus: 'paid',
       paymentMethod: req.body.paymentMethod,
       transactionId: transactionId || null,
-      couponCode: appliedCouponCode,
-      discountAmount,
+      couponCode: quote.appliedCouponCode || null,
+      discountAmount: quote.discountAmount,
+      couponAgentIdSnapshot: quote.attribution?.agentId || null,
+      couponAgentNameSnapshot: quote.attribution?.agentName || null,
+      couponAgentRoleSnapshot: quote.attribution?.agentRole || null,
+      couponCampaignSnapshot: null,
       notes: req.body.notes || '',
     });
 
-    if (appliedCouponCode) {
+    if (quote.appliedCouponCode) {
       await prisma.coupon.updateMany({
-        where: { code: appliedCouponCode },
+        where: { code: quote.appliedCouponCode },
         data: { currentUses: { increment: 1 } },
       });
+      if (quote.attribution?.agentId) {
+        await auditLogRepository.create({
+          adminId: quote.attribution.agentId,
+          adminRole: quote.attribution.agentRole || 'ssa',
+          action: 'coupon_activated',
+          targetUserId: shopkeeperId,
+          targetUserRole: 'shopkeeper',
+          details: {
+            subscriptionId: subscription.id,
+            couponCode: quote.appliedCouponCode,
+            discountAmount: quote.discountAmount,
+            finalPrice: quote.finalPrice,
+          },
+        });
+      }
     }
     await upsertWalletForSubscription(subscription);
     await prisma.onboardingStatus.upsert({
@@ -278,4 +299,4 @@ async function getPlans(req, res, next) {
   }
 }
 
-module.exports = { getSubscription, activateTrial, createSubscription, cancelSubscription, getPlans };
+module.exports = { getSubscription, activateTrial, getQuote, createSubscription, cancelSubscription, getPlans };
