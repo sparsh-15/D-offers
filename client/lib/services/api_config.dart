@@ -6,7 +6,7 @@ class ApiConfig {
   /// Toggle between environments
   /// Set to false for local development
   /// Set to true for production/deployed backend
-  static const bool useProduction = false;
+  static const bool useProduction = true;
 
   /// Your machine's IP on the local network. Used for physical device & iOS.
   /// - Physical Android/iOS on same Wi‑Fi: use this (e.g. 192.168.29.47).

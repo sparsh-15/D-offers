@@ -4,7 +4,9 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_design_tokens.dart';
 import '../../core/utils/dialog_helper.dart';
 import '../../core/utils/theme_helper.dart';
+import '../../services/auth_service.dart';
 import '../../services/ssa_service.dart';
+import '../../widgets/pincode_location_section.dart';
 
 class SsaCreateLeadScreen extends StatefulWidget {
   const SsaCreateLeadScreen({super.key});
@@ -24,14 +26,27 @@ class _SsaCreateLeadScreenState extends State<SsaCreateLeadScreen> {
   final _notesController = TextEditingController();
   final _couponController = TextEditingController();
 
+  final _stateController = TextEditingController();
+  final _addressController = TextEditingController();
+
   bool _isSubmitting = false;
   List<Map<String, dynamic>> _coupons = const [];
   bool _loadingCoupons = true;
+
+  bool _isLoadingPincode = false;
+  List<Map<String, dynamic>> _availableAreas = [];
+  String? _selectedArea;
+
+  bool _isLoadingCategories = true;
+  List<Map<String, dynamic>> _categories = [];
+  String? _selectedCategory;
 
   @override
   void initState() {
     super.initState();
     _loadCoupons();
+    _pincodeController.addListener(_onPincodeChanged);
+    _loadCategories();
   }
 
   @override
@@ -44,6 +59,9 @@ class _SsaCreateLeadScreenState extends State<SsaCreateLeadScreen> {
     _categoryController.dispose();
     _notesController.dispose();
     _couponController.dispose();
+    _stateController.dispose();
+    _addressController.dispose();
+    _pincodeController.removeListener(_onPincodeChanged);
     super.dispose();
   }
 
@@ -125,38 +143,49 @@ class _SsaCreateLeadScreenState extends State<SsaCreateLeadScreen> {
                     },
                   ),
                   const SizedBox(height: AppTokens.spaceMD),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextFormField(
-                          controller: _pincodeController,
-                          decoration: const InputDecoration(
-                            labelText: 'Pincode',
-                            prefixIcon: Icon(Icons.pin_drop_rounded),
-                          ),
-                          keyboardType: TextInputType.number,
-                        ),
-                      ),
-                      const SizedBox(width: AppTokens.spaceSM),
-                      Expanded(
-                        child: TextFormField(
-                          controller: _cityController,
-                          decoration: const InputDecoration(
-                            labelText: 'City',
-                            prefixIcon: Icon(Icons.location_city_rounded),
-                          ),
-                        ),
-                      ),
-                    ],
+                  PincodeLocationSection(
+                    pincodeController: _pincodeController,
+                    cityController: _cityController,
+                    stateController: _stateController,
+                    addressController: _addressController,
+                    isLoadingPincode: _isLoadingPincode,
+                    availableAreas: _availableAreas,
+                    selectedArea: _selectedArea,
+                    onAreaChanged: _onAreaSelected,
+                    addressLabel: 'Shop address (optional)',
                   ),
                   const SizedBox(height: AppTokens.spaceMD),
-                  TextFormField(
-                    controller: _categoryController,
-                    decoration: const InputDecoration(
-                      labelText: 'Category (optional)',
-                      prefixIcon: Icon(Icons.category_rounded),
-                    ),
-                  ),
+                  _isLoadingCategories
+                      ? const Padding(
+                          padding:
+                              EdgeInsets.symmetric(vertical: AppTokens.spaceSM),
+                          child: Center(
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        )
+                      : DropdownButtonFormField<String>(
+                          value: _selectedCategory,
+                          decoration: const InputDecoration(
+                            labelText: 'Business category (optional)',
+                            hintText: 'Select business type',
+                            prefixIcon: Icon(Icons.category_rounded),
+                          ),
+                          isExpanded: true,
+                          items: _categories.map((category) {
+                            return DropdownMenuItem<String>(
+                              value: category['value']?.toString(),
+                              child: Text(
+                                category['label']?.toString() ?? '',
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (value) {
+                            setState(() {
+                              _selectedCategory = value;
+                              _categoryController.text = value ?? '';
+                            });
+                          },
+                        ),
                   const SizedBox(height: AppTokens.spaceMD),
                   TextFormField(
                     controller: _couponController,
@@ -190,7 +219,7 @@ class _SsaCreateLeadScreenState extends State<SsaCreateLeadScreen> {
                   TextFormField(
                     controller: _notesController,
                     decoration: const InputDecoration(
-                      labelText: 'Notes (optional)',
+                      labelText: 'Business description / notes (optional)',
                       alignLabelWithHint: true,
                     ),
                     maxLines: 3,
@@ -225,6 +254,19 @@ class _SsaCreateLeadScreenState extends State<SsaCreateLeadScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isSubmitting = true);
     try {
+      final address = _addressController.text.trim();
+      final rawNotes = _notesController.text.trim();
+      String? combinedNotes;
+      if (address.isNotEmpty && rawNotes.isNotEmpty) {
+        combinedNotes = 'Address: $address\nNotes: $rawNotes';
+      } else if (address.isNotEmpty) {
+        combinedNotes = 'Address: $address';
+      } else if (rawNotes.isNotEmpty) {
+        combinedNotes = rawNotes;
+      } else {
+        combinedNotes = null;
+      }
+
       await SsaService.instance.createLead(
         shopName: _shopNameController.text.trim(),
         phone: _phoneController.text.trim(),
@@ -240,9 +282,7 @@ class _SsaCreateLeadScreenState extends State<SsaCreateLeadScreen> {
         category: _categoryController.text.trim().isEmpty
             ? null
             : _categoryController.text.trim(),
-        notes: _notesController.text.trim().isEmpty
-            ? null
-            : _notesController.text.trim(),
+        notes: combinedNotes,
         couponCode: _couponController.text.trim().isEmpty
             ? null
             : _couponController.text.trim(),
@@ -261,6 +301,94 @@ class _SsaCreateLeadScreenState extends State<SsaCreateLeadScreen> {
         context,
         e.toString(),
       );
+    }
+  }
+
+  void _onPincodeChanged() {
+    final pincode = _pincodeController.text;
+    if (pincode.length == 6) {
+      _lookupPincode(pincode);
+    } else {
+      setState(() {
+        _availableAreas = [];
+        _selectedArea = null;
+        _isLoadingPincode = false;
+      });
+      _cityController.clear();
+      _stateController.clear();
+    }
+  }
+
+  Future<void> _lookupPincode(String pincode) async {
+    setState(() => _isLoadingPincode = true);
+    try {
+      final result = await AuthService.instance.lookupPincode(pincode);
+      if (!mounted) return;
+
+      final areas = result['areas'] as List<Map<String, dynamic>>? ?? [];
+
+      setState(() {
+        _stateController.text = result['state']?.toString() ?? '';
+        _availableAreas = areas;
+        _cityController.text = result['district']?.toString() ?? '';
+        _selectedArea =
+            areas.isNotEmpty ? areas[0]['name']?.toString() : null;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _availableAreas = [];
+        _selectedArea = null;
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingPincode = false);
+      }
+    }
+  }
+
+  void _onAreaSelected(String? areaName) {
+    if (areaName == null) return;
+    setState(() {
+      _selectedArea = areaName;
+    });
+  }
+
+  Future<void> _loadCategories() async {
+    try {
+      await Future.delayed(const Duration(milliseconds: 300));
+      if (!mounted) return;
+      setState(() {
+        _categories = [
+          {'value': 'retail', 'label': 'Retail Store'},
+          {'value': 'restaurant', 'label': 'Restaurant'},
+          {'value': 'grocery', 'label': 'Grocery Store'},
+          {'value': 'pharmacy', 'label': 'Pharmacy'},
+          {'value': 'electronics', 'label': 'Electronics'},
+          {'value': 'clothing', 'label': 'Clothing & Fashion'},
+          {'value': 'beauty_salon', 'label': 'Beauty Salon & Spa'},
+          {'value': 'gym_fitness', 'label': 'Gym & Fitness'},
+          {'value': 'education', 'label': 'Education & Training'},
+          {'value': 'healthcare', 'label': 'Healthcare'},
+          {'value': 'automotive', 'label': 'Automotive'},
+          {'value': 'home_services', 'label': 'Home Services'},
+          {'value': 'entertainment', 'label': 'Entertainment'},
+          {'value': 'food_beverage', 'label': 'Food & Beverage'},
+          {'value': 'jewelry', 'label': 'Jewelry'},
+          {'value': 'books_stationery', 'label': 'Books & Stationery'},
+          {'value': 'sports', 'label': 'Sports & Outdoors'},
+          {'value': 'pet_care', 'label': 'Pet Care'},
+          {'value': 'travel', 'label': 'Travel & Tourism'},
+          {'value': 'other', 'label': 'Other'},
+        ];
+        _isLoadingCategories = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isLoadingCategories = false;
+        _categories = [];
+      });
     }
   }
 

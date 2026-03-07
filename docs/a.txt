@@ -18,3 +18,8 @@ filtering by age pincode area
 
 
 create a proper a universal black theme error page like it can use for failed empty api call or errors or page not found create this type or error page matching the proper dark contrast form  like if api returned empty like this 
+
+
+
+check the ssa coupon code architecture and and according to the implemeent this in ssa dashboard so that it can apply its own coupon code while he is onboarding the shopkeeper and the shopkeeper form should be purely same as its in shopkeeper registration form if needed use  the same form 
+
