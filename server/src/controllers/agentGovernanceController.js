@@ -5,6 +5,16 @@ const { resolvePgId } = require('../repositories/idResolver');
 
 const MAX_PERCENTAGE_DISCOUNT = 99;
 const DEFAULT_AGENT_MAX_DISCOUNT = 50;
+const APP_SETTING_KEY_COUPON_CAP = 'max_coupon_discount_percent';
+
+async function getGlobalMaxCouponDiscountPercent() {
+  const row = await prisma.appSetting.findUnique({
+    where: { key: APP_SETTING_KEY_COUPON_CAP },
+  });
+  const value = row?.value != null ? Number(row.value) : NaN;
+  if (!Number.isFinite(value) || !Number.isInteger(value)) return DEFAULT_AGENT_MAX_DISCOUNT;
+  return Math.min(MAX_PERCENTAGE_DISCOUNT, Math.max(1, value));
+}
 
 function normalizeAgentMaxDiscount(value) {
   if (value === undefined || value === null || value === '') return DEFAULT_AGENT_MAX_DISCOUNT;
@@ -32,6 +42,8 @@ function generateRandomToken(length = 2) {
   return out;
 }
 
+const DISCOUNT_STEP = 5;
+
 async function generateCouponCodeForAgent(agent, discountSuffix) {
   const tokens = String(agent.name || '').trim().split(/\s+/).filter(Boolean);
   const first = toTwoLetters(tokens[0], 'AG');
@@ -50,6 +62,36 @@ async function generateCouponCodeForAgent(agent, discountSuffix) {
   }
 
   throw new Error('Failed to generate unique coupon code. Please retry.');
+}
+
+/**
+ * Ensures one percentage coupon exists per step (5, 10, ..., cap) for the agent.
+ * Uses global max coupon discount cap (app setting), not per-agent.
+ */
+async function ensureCouponsForAgent(agent) {
+  if (!agent || !agent.id) return;
+  const cap = await getGlobalMaxCouponDiscountPercent();
+  for (let percent = DISCOUNT_STEP; percent <= cap; percent += DISCOUNT_STEP) {
+    const existing = await prisma.coupon.findFirst({
+      where: {
+        agentId: agent.id,
+        discountType: 'percentage',
+        discountValue: percent,
+      },
+    });
+    if (existing) continue;
+    const suffix = String(percent).padStart(2, '0');
+    const code = await generateCouponCodeForAgent(agent, suffix);
+    await couponRepository.createCoupon({
+      code,
+      discountType: 'percentage',
+      discountValue: percent,
+      agentId: agent.id,
+      description: null,
+      expiryDate: null,
+      maxUses: null,
+    });
+  }
 }
 
 async function getSSAList(req, res, next) {
@@ -204,6 +246,36 @@ async function getCouponActivations(req, res, next) {
   }
 }
 
+async function getCouponCap(req, res, next) {
+  try {
+    const value = await getGlobalMaxCouponDiscountPercent();
+    res.json({ success: true, maxCouponDiscountPercent: value });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function updateCouponCap(req, res, next) {
+  try {
+    const { maxCouponDiscountPercent } = req.body || {};
+    const parsed = normalizeAgentMaxDiscount(maxCouponDiscountPercent);
+    if (parsed === null) {
+      return res.status(400).json({
+        success: false,
+        message: 'maxCouponDiscountPercent must be an integer between 1 and 99',
+      });
+    }
+    await prisma.appSetting.upsert({
+      where: { key: APP_SETTING_KEY_COUPON_CAP },
+      create: { key: APP_SETTING_KEY_COUPON_CAP, value: String(parsed) },
+      update: { value: String(parsed) },
+    });
+    res.json({ success: true, maxCouponDiscountPercent: parsed });
+  } catch (err) {
+    next(err);
+  }
+}
+
 async function getAgentGovernanceDashboard(req, res, next) {
   try {
     const [totalSSA, activeSSA, totalCSA, activeCSA, totalOnboardings, couponStats, top] = await Promise.all([
@@ -253,13 +325,43 @@ async function getAgentGovernanceDashboard(req, res, next) {
   }
 }
 
+async function getCouponCap(req, res, next) {
+  try {
+    const cap = await getGlobalMaxCouponDiscountPercent();
+    res.json({ success: true, maxCouponDiscountPercent: cap });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function updateCouponCap(req, res, next) {
+  try {
+    const { maxCouponDiscountPercent } = req.body || {};
+    const value = normalizeAgentMaxDiscount(maxCouponDiscountPercent);
+    if (value === null) {
+      return res.status(400).json({ success: false, message: 'maxCouponDiscountPercent must be an integer between 1 and 99' });
+    }
+    await prisma.appSetting.upsert({
+      where: { key: APP_SETTING_KEY_COUPON_CAP },
+      create: { key: APP_SETTING_KEY_COUPON_CAP, value: String(value) },
+      update: { value: String(value) },
+    });
+    res.json({ success: true, maxCouponDiscountPercent: value });
+  } catch (err) {
+    next(err);
+  }
+}
+
 async function createSSA(req, res, next) {
   try {
     const { name, email, phone, password, state, region, pincode, maxCouponDiscountPercent } = req.body;
     if (!name || !email || !phone || !password) {
       return res.status(400).json({ success: false, message: 'Name, email, phone, and password are required' });
     }
-    const normalizedMax = normalizeAgentMaxDiscount(maxCouponDiscountPercent);
+    const normalizedMax =
+      (maxCouponDiscountPercent !== undefined && maxCouponDiscountPercent !== null)
+        ? normalizeAgentMaxDiscount(maxCouponDiscountPercent)
+        : await getGlobalMaxCouponDiscountPercent();
     if (normalizedMax === null) {
       return res.status(400).json({ success: false, message: 'maxCouponDiscountPercent must be an integer between 1 and 99' });
     }
@@ -290,7 +392,10 @@ async function createCompanySalesAgent(req, res, next) {
     if (!name || !email || !phone || !password) {
       return res.status(400).json({ success: false, message: 'Name, email, phone, and password are required' });
     }
-    const normalizedMax = normalizeAgentMaxDiscount(maxCouponDiscountPercent);
+    const normalizedMax =
+      (maxCouponDiscountPercent !== undefined && maxCouponDiscountPercent !== null)
+        ? normalizeAgentMaxDiscount(maxCouponDiscountPercent)
+        : await getGlobalMaxCouponDiscountPercent();
     if (normalizedMax === null) {
       return res.status(400).json({ success: false, message: 'maxCouponDiscountPercent must be an integer between 1 and 99' });
     }
@@ -391,7 +496,10 @@ module.exports = {
   getCouponList,
   getCouponActivations,
   getAgentGovernanceDashboard,
+  getCouponCap,
+  updateCouponCap,
   createSSA,
   createCompanySalesAgent,
   createCoupon,
+  ensureCouponsForAgent,
 };

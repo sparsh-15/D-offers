@@ -1,5 +1,6 @@
 const { prisma } = require('../db/prisma');
 const { resolvePgId } = require('../repositories/idResolver');
+const { ensureCouponsForAgent } = require('./agentGovernanceController');
 
 function ci(value) {
   return String(value || '').trim();
@@ -131,15 +132,22 @@ async function getCoupons(req, res, next) {
   try {
     const pgSsaId =
       (await resolvePgId('users', req.user.userId)) || req.user.userId;
-    const now = new Date();
+    const agent = await prisma.user.findUnique({
+      where: { id: pgSsaId, role: 'ssa' },
+    });
+    if (!agent) {
+      return res.status(403).json({ success: false, message: 'Forbidden' });
+    }
+    await ensureCouponsForAgent(agent);
 
+    const now = new Date();
     const coupons = await prisma.coupon.findMany({
       where: {
         agentId: pgSsaId,
         isActive: true,
         OR: [{ expiryDate: null }, { expiryDate: { gt: now } }],
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { discountValue: 'asc' },
     });
 
     res.status(200).json({

@@ -196,6 +196,7 @@ class AgentGovernanceService {
     String? state,
     String? region,
     String? pincode,
+    int? maxCouponDiscountPercent,
   }) async {
     final token = AuthStore.token;
     if (token == null) throw Exception('Not authenticated');
@@ -209,6 +210,8 @@ class AgentGovernanceService {
       if (state != null) 'state': state,
       if (region != null) 'region': region,
       if (pincode != null) 'pincode': pincode,
+      if (maxCouponDiscountPercent != null)
+        'maxCouponDiscountPercent': maxCouponDiscountPercent,
     };
 
     final response = await http.post(
@@ -237,6 +240,7 @@ class AgentGovernanceService {
     String? region,
     String? territory,
     String? pincode,
+    int? maxCouponDiscountPercent,
   }) async {
     final token = AuthStore.token;
     if (token == null) throw Exception('Not authenticated');
@@ -250,6 +254,8 @@ class AgentGovernanceService {
       if (region != null) 'region': region,
       if (territory != null) 'territory': territory,
       if (pincode != null) 'pincode': pincode,
+      if (maxCouponDiscountPercent != null)
+        'maxCouponDiscountPercent': maxCouponDiscountPercent,
     };
 
     final response = await http.post(
@@ -306,5 +312,45 @@ class AgentGovernanceService {
       final error = jsonDecode(response.body);
       throw Exception(error['message'] ?? 'Failed to fetch coupon list');
     }
+  }
+
+  Future<int> getCouponCap() async {
+    final token = AuthStore.token;
+    if (token == null) throw Exception('Not authenticated');
+    final response = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}/agent-governance/settings/coupon-cap'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      if (data['success'] == true && data['maxCouponDiscountPercent'] != null) {
+        return (data['maxCouponDiscountPercent'] as num).toInt();
+      }
+    }
+    throw Exception('Failed to fetch coupon cap');
+  }
+
+  Future<int> updateCouponCap(int maxCouponDiscountPercent) async {
+    final token = AuthStore.token;
+    if (token == null) throw Exception('Not authenticated');
+    final response = await http.patch(
+      Uri.parse('${ApiConfig.baseUrl}/agent-governance/settings/coupon-cap'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({'maxCouponDiscountPercent': maxCouponDiscountPercent}),
+    );
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      if (data['success'] == true && data['maxCouponDiscountPercent'] != null) {
+        return (data['maxCouponDiscountPercent'] as num).toInt();
+      }
+    }
+    final error = jsonDecode(response.body) as Map<String, dynamic>?;
+    throw Exception(error?['message'] ?? 'Failed to update coupon cap');
   }
 }

@@ -1,5 +1,6 @@
 const { prisma } = require('../db/prisma');
 const { resolvePgId } = require('../repositories/idResolver');
+const { ensureCouponsForAgent } = require('./agentGovernanceController');
 
 function getMonthBounds(reference = new Date()) {
   const start = new Date(reference);
@@ -230,6 +231,48 @@ async function getShops(req, res, next) {
   }
 }
 
+async function getCoupons(req, res, next) {
+  try {
+    const pgAgentId =
+      (await resolvePgId('users', req.user.userId)) || req.user.userId;
+    const agent = await prisma.user.findUnique({
+      where: { id: pgAgentId, role: 'company_sales_agent' },
+    });
+    if (!agent) {
+      return res.status(403).json({ success: false, message: 'Forbidden' });
+    }
+    await ensureCouponsForAgent(agent);
+
+    const now = new Date();
+    const coupons = await prisma.coupon.findMany({
+      where: {
+        agentId: pgAgentId,
+        isActive: true,
+        OR: [{ expiryDate: null }, { expiryDate: { gt: now } }],
+      },
+      orderBy: { discountValue: 'asc' },
+    });
+
+    res.status(200).json({
+      success: true,
+      coupons: coupons.map((c) => ({
+        id: c.id,
+        code: c.code,
+        discountType: c.discountType,
+        discountValue: c.discountValue,
+        description: c.description || '',
+        expiryDate: c.expiryDate ? c.expiryDate.toISOString() : null,
+        maxUses: c.maxUses,
+        currentUses: c.currentUses,
+        isActive: c.isActive,
+        createdAt: c.createdAt.toISOString(),
+      })),
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 async function getReports(req, res, next) {
   try {
     const pgAgentId =
@@ -321,5 +364,6 @@ module.exports = {
   getStats,
   getShops,
   getReports,
+  getCoupons,
 };
 

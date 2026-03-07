@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:intl/intl.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/constants/app_design_tokens.dart';
 import '../../core/utils/theme_helper.dart';
 import '../../core/utils/dialog_helper.dart';
 import '../../widgets/gradient_card.dart';
 import '../../services/agent_governance_service.dart';
-import 'create_coupon_screen.dart';
 
 class AgentCouponGovernanceScreen extends StatefulWidget {
   const AgentCouponGovernanceScreen({super.key});
@@ -20,6 +20,9 @@ class _AgentCouponGovernanceScreenState
     extends State<AgentCouponGovernanceScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  int _couponCap = 50;
+  bool _couponCapLoading = true;
+  bool _couponCapSaving = false;
 
   @override
   void initState() {
@@ -28,6 +31,42 @@ class _AgentCouponGovernanceScreenState
     _tabController.addListener(() {
       setState(() {}); // Rebuild to show/hide FAB
     });
+    _loadCouponCap();
+  }
+
+  Future<void> _loadCouponCap() async {
+    try {
+      final cap = await AgentGovernanceService.instance.getCouponCap();
+      if (mounted) setState(() {
+        _couponCap = cap;
+        _couponCapLoading = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() {
+        _couponCap = 50;
+        _couponCapLoading = false;
+      });
+    }
+  }
+
+  Future<void> _updateCouponCap(int value) async {
+    if (_couponCapSaving) return;
+    setState(() => _couponCapSaving = true);
+    try {
+      await AgentGovernanceService.instance.updateCouponCap(value);
+      if (mounted) {
+        setState(() {
+          _couponCap = value;
+          _couponCapSaving = false;
+        });
+        DialogHelper.showSuccessSnackBar(context, 'Coupon cap updated to $value%');
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _couponCapSaving = false);
+        DialogHelper.showErrorSnackBar(context, e.toString());
+      }
+    }
   }
 
   @override
@@ -55,12 +94,19 @@ class _AgentCouponGovernanceScreenState
       body: Container(
         decoration:
             BoxDecoration(gradient: ThemeHelper.getBackgroundGradient(context)),
-        child: TabBarView(
-          controller: _tabController,
-          children: const [
-            SSAListTab(),
-            SalesAgentsTab(),
-            CouponsTab(),
+        child: Column(
+          children: [
+            _buildGlobalCouponCapBar(),
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: const [
+                  SSAListTab(),
+                  SalesAgentsTab(),
+                  CouponsTab(),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -68,32 +114,100 @@ class _AgentCouponGovernanceScreenState
     );
   }
 
-  Widget? _buildFloatingActionButton() {
-    switch (_tabController.index) {
-      case 0: // SSA Tab
-      case 1: // Sales Agents Tab
-        return null;
-      case 2: // Coupons Tab
-        return FloatingActionButton.extended(
-          onPressed: () async {
-            final result = await Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const CreateCouponScreen(),
-              ),
-            );
-            if (result == true) {
-              // Refresh will be handled by the tab
-            }
-          },
-          icon: const Icon(Icons.add_rounded),
-          label: const Text('Create Coupon'),
-          backgroundColor: AppColors.accentDim,
-          foregroundColor: AppColors.black,
-        );
-      default:
-        return null;
+  Widget _buildGlobalCouponCapBar() {
+    final theme = Theme.of(context);
+    if (_couponCapLoading) {
+      return Padding(
+        padding: const EdgeInsets.all(AppTokens.spaceMD),
+        child: Card(
+          color: AppColors.cardBackground,
+          child: Padding(
+            padding: const EdgeInsets.all(AppTokens.spaceMD),
+            child: Row(
+              children: [
+                const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                const SizedBox(width: AppTokens.spaceMD),
+                Text(
+                  'Loading coupon cap…',
+                  style: theme.textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
     }
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(AppTokens.spaceMD, AppTokens.spaceSM, AppTokens.spaceMD, 0),
+      child: Card(
+        color: AppColors.cardBackground,
+        child: Padding(
+          padding: const EdgeInsets.all(AppTokens.spaceMD),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.percent_rounded, color: AppColors.primary, size: 22),
+                  const SizedBox(width: AppTokens.spaceSM),
+                  Text(
+                    'Maximum discount cap for coupons (all agents)',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppTokens.spaceXS),
+              Text(
+                'Coupons are auto-created in steps (5%, 10%, …) up to this cap for every SSA and Sales Agent.',
+                style: theme.textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: AppTokens.spaceSM),
+              Row(
+                children: [
+                  Expanded(
+                    child: Slider(
+                      value: _couponCap.toDouble(),
+                      min: 10,
+                      max: 90,
+                      divisions: 8,
+                      label: '$_couponCap%',
+                      onChanged: _couponCapSaving
+                          ? null
+                          : (v) => setState(() => _couponCap = v.round().clamp(10, 90)),
+                      onChangeEnd: _couponCapSaving
+                          ? null
+                          : (v) => _updateCouponCap(v.round().clamp(10, 90)),
+                      activeColor: AppColors.accent,
+                    ),
+                  ),
+                  const SizedBox(width: AppTokens.spaceSM),
+                  Text(
+                    '$_couponCap%',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget? _buildFloatingActionButton() {
+    // Coupons are auto-created by discount cap per agent; no manual create.
+    return null;
   }
 }
 

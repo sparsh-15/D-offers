@@ -24,4 +24,8 @@ router.get('/coupons', agentGovernanceController.getCouponList);
 router.get('/coupons/activations', agentGovernanceController.getCouponActivations);
 router.post('/coupons', agentGovernanceController.createCoupon);
 
+// Global coupon cap (all agents)
+router.get('/settings/coupon-cap', agentGovernanceController.getCouponCap);
+router.patch('/settings/coupon-cap', agentGovernanceController.updateCouponCap);
+
 module.exports = router;

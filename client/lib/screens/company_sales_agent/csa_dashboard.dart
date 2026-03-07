@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_design_tokens.dart';
@@ -183,6 +184,127 @@ class _CSAHomeTabState extends State<CSAHomeTab> {
                                 ),
                               ),
                             ],
+                          ),
+                          const SizedBox(height: AppTokens.spaceLG),
+                          Text(
+                            'My coupons',
+                            style: theme.textTheme.titleMedium
+                                ?.copyWith(
+                                  color: AppColors.textPrimary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                          ),
+                          const SizedBox(height: AppTokens.spaceSM),
+                          FutureBuilder<List<Map<String, dynamic>>>(
+                            future: CompanySalesService.instance.getCoupons(),
+                            builder: (context, couponSnapshot) {
+                              if (couponSnapshot.connectionState ==
+                                  ConnectionState.waiting) {
+                                return const Padding(
+                                  padding: EdgeInsets.all(16),
+                                  child: Center(
+                                    child: SizedBox(
+                                      width: 24,
+                                      height: 24,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: AppColors.accent,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }
+                              final coupons =
+                                  couponSnapshot.data ?? [];
+                              if (coupons.isEmpty) {
+                                return Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Text(
+                                    'No coupons yet.',
+                                    style: theme.textTheme.bodyMedium
+                                        ?.copyWith(
+                                          color: AppColors.textSecondary,
+                                        ),
+                                  ),
+                                );
+                              }
+                              return Column(
+                                children: coupons.map((c) {
+                                  final pct = (c['discountValue'] is num)
+                                      ? (c['discountValue'] as num).toInt()
+                                      : int.tryParse(
+                                            c['discountValue']?.toString() ??
+                                                '0',
+                                          ) ??
+                                          0;
+                                  final code =
+                                      c['code']?.toString() ?? '';
+                                  return Padding(
+                                    padding: const EdgeInsets.only(
+                                        bottom: AppTokens.spaceSM),
+                                    child: InkWell(
+                                      onTap: () {
+                                        if (code.isNotEmpty) {
+                                          Clipboard.setData(
+                                            ClipboardData(text: code),
+                                          );
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                'Copied: $code',
+                                              ),
+                                              duration: const Duration(
+                                                  seconds: 2),
+                                            ),
+                                          );
+                                        }
+                                      },
+                                      borderRadius: BorderRadius.circular(
+                                          AppTokens.radiusMD),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: AppTokens.spaceMD,
+                                          vertical: AppTokens.spaceSM,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.cardBackground,
+                                          borderRadius: BorderRadius.circular(
+                                              AppTokens.radiusMD),
+                                        ),
+                                        child: Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Text(
+                                              '$pct% off',
+                                              style: theme.textTheme.titleSmall
+                                                  ?.copyWith(
+                                                    color: AppColors
+                                                        .textPrimary,
+                                                  ),
+                                            ),
+                                            SelectableText(
+                                              code,
+                                              style: theme.textTheme.bodyMedium
+                                                  ?.copyWith(
+                                                    fontFamily: 'monospace',
+                                                    color: AppColors.accent,
+                                                  ),
+                                            ),
+                                            Icon(
+                                              Icons.copy_rounded,
+                                              size: 18,
+                                              color: AppColors.textSecondary,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                              );
+                            },
                           ),
                         ],
                       ),

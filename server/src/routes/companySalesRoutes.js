@@ -18,4 +18,7 @@ router.get('/shops', companySalesController.getShops);
 // Performance reports
 router.get('/reports', companySalesController.getReports);
 
+// Coupons (auto-created by discount combinations up to agent cap)
+router.get('/coupons', companySalesController.getCoupons);
+
 module.exports = router;

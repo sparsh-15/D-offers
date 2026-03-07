@@ -71,5 +71,21 @@ class CompanySalesService {
     }
     throw Exception('Failed to fetch CSA reports');
   }
+
+  Future<List<Map<String, dynamic>>> getCoupons() async {
+    final uri = Uri.parse('${ApiConfig.companySalesUrl}/coupons');
+    final response = await _client.get(uri, headers: _headers());
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      if (data['success'] == true) {
+        final list = (data['coupons'] as List<dynamic>? ?? []);
+        return list
+            .map((e) => Map<String, dynamic>.from(e as Map))
+            .toList();
+      }
+    }
+    throw Exception('Failed to fetch CSA coupons');
+  }
 }
 
