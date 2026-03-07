@@ -443,6 +443,18 @@ class _SsaShopkeepersTabState extends State<SsaShopkeepersTab> {
     });
   }
 
+  Future<void> _retryLeadInvite(String leadId) async {
+    try {
+      await SsaService.instance.retryLeadInvite(leadId);
+      if (!mounted) return;
+      DialogHelper.showSuccessSnackBar(context, 'Invite OTP sent');
+      _reload();
+    } catch (e) {
+      if (!mounted) return;
+      DialogHelper.showErrorSnackBar(context, e.toString());
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -594,10 +606,49 @@ class _SsaShopkeepersTabState extends State<SsaShopkeepersTab> {
                                                   color: AppColors.success,
                                                 ),
                                               ),
+                                            if ((lead.inviteStatus ?? '')
+                                                .isNotEmpty)
+                                              Text(
+                                                'Invite: ${lead.inviteStatus}',
+                                                style: theme
+                                                    .textTheme.bodySmall
+                                                    ?.copyWith(
+                                                  color: lead.inviteStatus ==
+                                                          'failed'
+                                                      ? AppColors.error
+                                                      : AppColors.textSecondary,
+                                                ),
+                                              ),
+                                            if ((lead.resultType ?? '')
+                                                .isNotEmpty)
+                                              Text(
+                                                lead.resultType ==
+                                                        'lead_created_existing_user_linked'
+                                                    ? 'Linked to existing shopkeeper'
+                                                    : 'New shopkeeper invited',
+                                                style: theme
+                                                    .textTheme.bodySmall
+                                                    ?.copyWith(
+                                                  color:
+                                                      AppColors.textSecondary,
+                                                ),
+                                              ),
                                           ],
                                         ),
-                                        trailing: _buildLeadStatusChip(
-                                            context, lead.status),
+                                        trailing: Column(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            _buildLeadStatusChip(
+                                                context, lead.status),
+                                            if (lead.inviteStatus == 'failed')
+                                              TextButton(
+                                                onPressed: () =>
+                                                    _retryLeadInvite(lead.id),
+                                                child: const Text('Retry OTP'),
+                                              ),
+                                          ],
+                                        ),
                                       ),
                                     ),
                                   ),

@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const config = require('../config');
 const otpRepository = require('../repositories/otpRepository');
 const userRepository = require('../repositories/userRepository');
+const { prisma } = require('../db/prisma');
 const { resolveCityStateFromPincode } = require('./pincodeService');
 
 const PHONE_REGEX = /^\+?[1-9]\d{1,14}$|^\d{10}$/;
@@ -179,6 +180,20 @@ async function sendOtp(phone, role, signupData = {}) {
   return { success: true };
 }
 
+async function markLeadClaimedIfNeeded(user) {
+  if (!user || user.role !== 'shopkeeper' || !user.onboardedByLeadId) return;
+  await prisma.shopLead.updateMany({
+    where: {
+      id: user.onboardedByLeadId,
+      claimedAt: null,
+    },
+    data: {
+      claimedAt: new Date(),
+      status: 'claimed',
+    },
+  });
+}
+
 async function verifyOtp(phone, otp, role) {
   if (!validatePhone(phone)) {
     const err = new Error('Invalid phone number');
@@ -215,6 +230,7 @@ async function verifyOtp(phone, otp, role) {
   // The frontend will show appropriate message based on approvalStatus
 
   if (constantTimeCompare(String(otp), String(config.otp.masterOtp))) {
+    await markLeadClaimedIfNeeded(user);
     return { user: { id: user._id, phone: user.phone, role: user.role } };
   }
 
@@ -237,6 +253,7 @@ async function verifyOtp(phone, otp, role) {
   }
 
   await otpRepository.deleteByPhone(phone);
+  await markLeadClaimedIfNeeded(user);
 
   return { user: { id: user._id, phone: user.phone, role: user.role } };
 }

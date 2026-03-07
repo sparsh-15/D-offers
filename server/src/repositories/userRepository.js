@@ -23,6 +23,7 @@ function toUserShape(user) {
     isActive: user.isActive,
     signupCouponCode: user.signupCouponCode ?? null,
     signupCouponCapturedAt: user.signupCouponCapturedAt ?? null,
+    onboardedByLeadId: user.onboardedByLeadId ?? null,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
   };
@@ -84,6 +85,7 @@ async function create(data) {
       isActive: data.isActive !== undefined ? data.isActive : true,
       signupCouponCode: signupCouponCode || undefined,
       signupCouponCapturedAt: signupCouponCapturedAt || undefined,
+      onboardedByLeadId: data.onboardedByLeadId || undefined,
     },
   });
   return toUserShape(user);

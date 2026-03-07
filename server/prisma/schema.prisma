@@ -86,6 +86,11 @@ enum AuditActionEnum {
   shop_rejected
   coupon_activated
   agent_assigned
+  lead_created
+  lead_linked_existing_user
+  lead_invite_sent
+  lead_invite_failed
+  lead_conflict_rejected
 
   @@map("audit_action_enum")
 }
@@ -124,6 +129,7 @@ model User {
   isActive       Boolean            @default(true) @map("is_active")
   signupCouponCode       String?    @map("signup_coupon_code")
   signupCouponCapturedAt DateTime?  @map("signup_coupon_captured_at") @db.Timestamptz(6)
+  onboardedByLeadId      String?    @map("onboarded_by_lead_id") @db.Uuid
   createdAt      DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -142,12 +148,14 @@ model User {
   aiCreditPurchases      AiCreditPurchase[]
   shopLeadsAsSsa         ShopLead[]                     @relation("ShopLeadSsa")
   shopLeadsAsCsa         ShopLead[]                     @relation("ShopLeadCsa")
+  shopLeadsAsShopkeeper  ShopLead[]                     @relation("ShopLeadUser")
 
   @@index([role, approvalStatus, createdAt(sort: Desc)], map: "idx_users_role_approval_created_desc")
   @@index([role, isActive, createdAt(sort: Desc)], map: "idx_users_role_active_created_desc")
   @@index([pincode], map: "idx_users_pincode")
   @@index([city], map: "idx_users_city")
   @@index([state], map: "idx_users_state")
+  @@index([onboardedByLeadId], map: "idx_users_onboarded_by_lead_id")
   @@map("users")
 }
 
@@ -453,6 +461,7 @@ model ShopLead {
   id         String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
   ssaId      String?  @map("ssa_id") @db.Uuid
   csaId      String?  @map("csa_id") @db.Uuid
+  shopkeeperUserId String? @map("shopkeeper_user_id") @db.Uuid
   shopName   String   @map("shop_name")
   ownerName  String?  @map("owner_name")
   phone      String
@@ -461,15 +470,22 @@ model ShopLead {
   category   String?
   notes      String?
   couponCode String?  @map("coupon_code")
+  sourceAgentRole RoleEnum? @map("source_agent_role")
+  claimedAt  DateTime? @map("claimed_at") @db.Timestamptz(6)
+  inviteStatus String @default("pending") @map("invite_status")
+  inviteSentAt DateTime? @map("invite_sent_at") @db.Timestamptz(6)
+  inviteError String? @map("invite_error")
   status     String   @default("open")
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   ssa User? @relation("ShopLeadSsa", fields: [ssaId], references: [id])
   csa User? @relation("ShopLeadCsa", fields: [csaId], references: [id])
+  shopkeeperUser User? @relation("ShopLeadUser", fields: [shopkeeperUserId], references: [id])
 
   @@index([ssaId, status], map: "idx_shop_leads_ssa_status")
   @@index([csaId, status], map: "idx_shop_leads_csa_status")
+  @@index([shopkeeperUserId], map: "idx_shop_leads_shopkeeper_user_id")
   @@index([couponCode], map: "idx_shop_leads_coupon_code")
   @@map("shop_leads")
 }

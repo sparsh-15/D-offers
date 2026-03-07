@@ -82,7 +82,7 @@ class SsaService {
     throw Exception('Failed to fetch SSA coupons');
   }
 
-  Future<SsaLead> createLead({
+  Future<Map<String, dynamic>> createLead({
     required String shopName,
     required String phone,
     String? ownerName,
@@ -118,10 +118,31 @@ class SsaService {
     if (response.statusCode >= 200 &&
         response.statusCode < 300 &&
         data['success'] == true) {
-      return SsaLead.fromJson(data['lead'] as Map<String, dynamic>);
+      return Map<String, dynamic>.from(data['lead'] as Map);
     }
 
+    final errorCode = data['errorCode']?.toString();
+    final owner = data['owner'] as Map<String, dynamic>?;
+    final ownerMsg = owner == null
+        ? ''
+        : ' (Owner: ${owner['ownerAgentRole'] ?? 'agent'}, status: ${owner['status'] ?? 'unknown'})';
     final message = data['message']?.toString() ?? 'Failed to create lead';
+    if (errorCode != null) {
+      throw Exception('$message$ownerMsg');
+    }
+    throw Exception(message);
+  }
+
+  Future<Map<String, dynamic>> retryLeadInvite(String leadId) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/ssa/leads/$leadId/retry-invite');
+    final response = await _client.post(uri, headers: _headers());
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    if (response.statusCode >= 200 &&
+        response.statusCode < 300 &&
+        data['success'] == true) {
+      return Map<String, dynamic>.from(data['lead'] as Map);
+    }
+    final message = data['message']?.toString() ?? 'Failed to retry invite';
     throw Exception(message);
   }
 }

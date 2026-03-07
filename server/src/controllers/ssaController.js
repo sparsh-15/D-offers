@@ -1,6 +1,12 @@
 const { prisma } = require('../db/prisma');
 const { resolvePgId } = require('../repositories/idResolver');
 const { ensureCouponsForAgent } = require('./agentGovernanceController');
+const {
+  LeadConflictError,
+  createOrLinkLead,
+  retryLeadInvite,
+  mapLead,
+} = require('../services/leadOnboardingService');
 
 function ci(value) {
   return String(value || '').trim();
@@ -11,7 +17,7 @@ async function getStats(req, res, next) {
     const pgSsaId =
       (await resolvePgId('users', req.user.userId)) || req.user.userId;
 
-    const [assignedCount, shopProfiles, activeLeads, ssaCoupons] =
+    const [assignedCount, shopProfiles, activeLeads, ssaCoupons, invitesSent, invitesFailed, leadLogins] =
       await Promise.all([
         prisma.shopkeeperProfile.count({
           where: { onboardedBy: pgSsaId },
@@ -29,6 +35,15 @@ async function getStats(req, res, next) {
         prisma.coupon.findMany({
           where: { agentId: pgSsaId },
           select: { code: true },
+        }),
+        prisma.shopLead.count({
+          where: { ssaId: pgSsaId, inviteStatus: 'sent' },
+        }),
+        prisma.shopLead.count({
+          where: { ssaId: pgSsaId, inviteStatus: 'failed' },
+        }),
+        prisma.shopLead.count({
+          where: { ssaId: pgSsaId, claimedAt: { not: null } },
         }),
       ]);
 
@@ -73,6 +88,9 @@ async function getStats(req, res, next) {
         assignedShopkeepers: assignedCount,
         activeShops: activeCount,
         activeLeads,
+        leadInviteSent: invitesSent,
+        leadInviteFailed: invitesFailed,
+        leadLoggedIn: leadLogins,
         conversions,
         commission,
       },
@@ -174,7 +192,6 @@ async function createLead(req, res, next) {
   try {
     const pgSsaId =
       (await resolvePgId('users', req.user.userId)) || req.user.userId;
-
     const {
       shopName,
       ownerName,
@@ -186,77 +203,33 @@ async function createLead(req, res, next) {
       couponCode,
     } = req.body || {};
 
-    if (!ci(shopName) || !ci(phone)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Shop name and phone are required',
-      });
-    }
-
-    let normalizedCouponCode = null;
-    if (couponCode && ci(couponCode)) {
-      normalizedCouponCode = ci(couponCode).toUpperCase();
-      const now = new Date();
-
-      const coupon = await prisma.coupon.findFirst({
-        where: {
-          code: normalizedCouponCode,
-          agentId: pgSsaId,
-          isActive: true,
-          OR: [{ expiryDate: null }, { expiryDate: { gt: now } }],
-        },
-      });
-
-      if (!coupon) {
-        return res.status(400).json({
-          success: false,
-          message: 'Invalid or expired coupon code for this SSA',
-        });
-      }
-
-      if (coupon.maxUses !== null && coupon.maxUses !== undefined) {
-        if (coupon.currentUses >= coupon.maxUses) {
-          return res.status(400).json({
-            success: false,
-            message: 'Coupon has reached its maximum uses',
-          });
-        }
-      }
-    }
-
-    const lead = await prisma.shopLead.create({
-      data: {
-        ssaId: pgSsaId,
-        shopName: ci(shopName),
-        ownerName: ci(ownerName) || null,
-        phone: ci(phone),
-        pincode: ci(pincode) || null,
-        city: ci(city) || null,
-        category: ci(category) || null,
-        notes: ci(notes) || null,
-        couponCode: normalizedCouponCode,
-        status: 'open',
-      },
+    const lead = await createOrLinkLead({
+      agentId: pgSsaId,
+      agentRole: 'ssa',
+      shopName,
+      ownerName,
+      phone,
+      pincode,
+      city,
+      category,
+      notes,
+      couponCode,
+      ipAddress: req.ip || req.connection?.remoteAddress || null,
     });
 
     res.status(201).json({
       success: true,
-      lead: {
-        id: lead.id,
-        shopName: lead.shopName,
-        ownerName: lead.ownerName,
-        phone: lead.phone,
-        pincode: lead.pincode,
-        city: lead.city,
-        category: lead.category,
-        notes: lead.notes,
-        couponCode: lead.couponCode,
-        status: lead.status,
-        createdAt: lead.createdAt.toISOString(),
-        updatedAt: lead.updatedAt.toISOString(),
-      },
+      lead,
     });
   } catch (err) {
+    if (err instanceof LeadConflictError) {
+      return res.status(err.statusCode || 409).json({
+        success: false,
+        errorCode: err.code,
+        message: err.message,
+        owner: err.details?.owner || null,
+      });
+    }
     next(err);
   }
 }
@@ -287,22 +260,36 @@ async function getLeads(req, res, next) {
 
     res.status(200).json({
       success: true,
-      leads: leads.map((lead) => ({
-        id: lead.id,
-        shopName: lead.shopName,
-        ownerName: lead.ownerName,
-        phone: lead.phone,
-        pincode: lead.pincode,
-        city: lead.city,
-        category: lead.category,
-        notes: lead.notes,
-        couponCode: lead.couponCode,
-        status: lead.status,
-        createdAt: lead.createdAt.toISOString(),
-        updatedAt: lead.updatedAt.toISOString(),
-      })),
+      leads: leads.map((lead) => mapLead(lead)),
     });
   } catch (err) {
+    next(err);
+  }
+}
+
+async function retryLeadInviteOtp(req, res, next) {
+  try {
+    const pgSsaId =
+      (await resolvePgId('users', req.user.userId)) || req.user.userId;
+    const leadId = req.params?.leadId;
+    const updated = await retryLeadInvite({
+      leadId,
+      agentId: pgSsaId,
+      agentRole: 'ssa',
+      ipAddress: req.ip || req.connection?.remoteAddress || null,
+    });
+    res.status(200).json({
+      success: true,
+      lead: updated,
+    });
+  } catch (err) {
+    if (err instanceof LeadConflictError) {
+      return res.status(err.statusCode || 409).json({
+        success: false,
+        errorCode: err.code,
+        message: err.message,
+      });
+    }
     next(err);
   }
 }
@@ -313,4 +300,5 @@ module.exports = {
   getCoupons,
   createLead,
   getLeads,
+  retryLeadInviteOtp,
 };

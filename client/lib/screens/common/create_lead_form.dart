@@ -6,7 +6,7 @@ import '../../core/utils/dialog_helper.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/pincode_location_section.dart';
 
-typedef CreateLeadCallback = Future<void> Function({
+typedef CreateLeadCallback = Future<Map<String, dynamic>> Function({
   required String shopName,
   required String phone,
   String? ownerName,
@@ -176,7 +176,7 @@ class _CreateLeadFormState extends State<CreateLeadForm> {
         combinedNotes = null;
       }
 
-      await widget.createLead(
+      final lead = await widget.createLead(
         shopName: _shopNameController.text.trim(),
         phone: _phoneController.text.trim(),
         ownerName: _ownerNameController.text.trim().isEmpty ? null : _ownerNameController.text.trim(),
@@ -189,7 +189,24 @@ class _CreateLeadFormState extends State<CreateLeadForm> {
       if (!mounted) return;
       setState(() => _isSubmitting = false);
       Navigator.of(context).pop(true);
-      DialogHelper.showSuccessSnackBar(context, 'Lead created successfully');
+      final resultType = lead['resultType']?.toString();
+      final inviteStatus = lead['inviteStatus']?.toString() ?? 'pending';
+      if (inviteStatus == 'failed') {
+        DialogHelper.showErrorSnackBar(
+          context,
+          'Lead created, but invite OTP failed. You can retry from leads list.',
+        );
+      } else if (resultType == 'lead_created_existing_user_linked') {
+        DialogHelper.showSuccessSnackBar(
+          context,
+          'Lead linked to existing shopkeeper and invite OTP sent.',
+        );
+      } else {
+        DialogHelper.showSuccessSnackBar(
+          context,
+          'Lead created and invite OTP sent.',
+        );
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() => _isSubmitting = false);

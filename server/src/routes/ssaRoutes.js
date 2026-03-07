@@ -14,5 +14,6 @@ router.get('/shopkeepers', ssaController.getShopkeepers);
 router.get('/coupons', ssaController.getCoupons);
 router.get('/leads', ssaController.getLeads);
 router.post('/leads', ssaController.createLead);
+router.post('/leads/:leadId/retry-invite', ssaController.retryLeadInviteOtp);
 
 module.exports = router;

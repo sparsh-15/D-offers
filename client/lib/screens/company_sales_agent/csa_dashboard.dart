@@ -394,11 +394,13 @@ class CSAShopsTab extends StatefulWidget {
 class _CSAShopsTabState extends State<CSAShopsTab> {
   String _filter = 'all';
   late Future<Map<String, dynamic>> _shopsFuture;
+  late Future<List<Map<String, dynamic>>> _leadsFuture;
 
   @override
   void initState() {
     super.initState();
     _shopsFuture = CompanySalesService.instance.getShops();
+    _leadsFuture = CompanySalesService.instance.getLeads();
   }
 
   Future<void> _reload() async {
@@ -406,7 +408,24 @@ class _CSAShopsTabState extends State<CSAShopsTab> {
       _shopsFuture = CompanySalesService.instance.getShops(
         status: _filter == 'all' ? null : _filter,
       );
+      _leadsFuture = CompanySalesService.instance.getLeads();
     });
+  }
+
+  Future<void> _retryLeadInvite(String leadId) async {
+    try {
+      await CompanySalesService.instance.retryLeadInvite(leadId);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Invite OTP sent')),
+      );
+      _reload();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
+    }
   }
 
   @override
@@ -482,6 +501,77 @@ class _CSAShopsTabState extends State<CSAShopsTab> {
                     _filter = value.first;
                   });
                   _reload();
+                },
+              ),
+            ),
+            const SizedBox(height: AppTokens.spaceSM),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppTokens.spaceMD),
+              child: FutureBuilder<List<Map<String, dynamic>>>(
+                future: _leadsFuture,
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                    return const SizedBox.shrink();
+                  }
+                  final leads = snapshot.data!;
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Leads',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: AppTokens.spaceSM),
+                      ...leads.take(3).map((lead) {
+                        final inviteStatus =
+                            lead['inviteStatus']?.toString() ?? 'pending';
+                        final inviteColor = inviteStatus == 'failed'
+                            ? AppColors.error
+                            : AppColors.textSecondary;
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: AppTokens.spaceSM),
+                          color: AppColors.cardBackground,
+                          child: ListTile(
+                            title: Text(
+                              lead['shopName']?.toString() ?? 'Shop Lead',
+                              style: theme.textTheme.titleSmall?.copyWith(
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  lead['phone']?.toString() ?? '',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                                Text(
+                                  'Invite: $inviteStatus',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: inviteColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            trailing: inviteStatus == 'failed'
+                                ? TextButton(
+                                    onPressed: () => _retryLeadInvite(
+                                      lead['id']?.toString() ?? '',
+                                    ),
+                                    child: const Text('Retry OTP'),
+                                  )
+                                : null,
+                          ),
+                        );
+                      }),
+                      const SizedBox(height: AppTokens.spaceSM),
+                    ],
+                  );
                 },
               ),
             ),

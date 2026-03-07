@@ -30,7 +30,6 @@ class SsaCreateLeadScreen extends StatelessWidget {
             loadCoupons: SsaService.instance.getCoupons,
             createLead: ({
               required String shopName,
-              
               required String phone,
               String? ownerName,
               String? pincode,
@@ -39,7 +38,7 @@ class SsaCreateLeadScreen extends StatelessWidget {
               String? notes,
               String? couponCode,
             }) async {
-              await SsaService.instance.createLead(
+              return SsaService.instance.createLead(
                 shopName: shopName,
                 phone: phone,
                 ownerName: ownerName,

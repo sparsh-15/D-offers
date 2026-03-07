@@ -24,5 +24,6 @@ router.get('/coupons', companySalesController.getCoupons);
 // Leads (same shape as SSA: create lead with optional coupon, list leads)
 router.get('/leads', companySalesController.getLeads);
 router.post('/leads', companySalesController.createLead);
+router.post('/leads/:leadId/retry-invite', companySalesController.retryLeadInviteOtp);
 
 module.exports = router;
