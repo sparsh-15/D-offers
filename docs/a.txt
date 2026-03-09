@@ -23,3 +23,21 @@ create a proper a universal black theme error page like it can use for failed em
 
 check the ssa coupon code architecture and and according to the implemeent this in ssa dashboard so that it can apply its own coupon code while he is onboarding the shopkeeper and the shopkeeper form should be purely same as its in shopkeeper registration form if needed use  the same form 
 
+login screen we have to put the logo and everywhere as well as name
+T&c apply in login page 
+it should be logged in always
+we should have logged in history
+in login placeholder 'enter mobile number'
+
+
+
+first screen will be signup
+unlock this deal congratulatios
+in offers 2 column 1 row 
+in customer add one more tab loans
+
+in customer signup add gender and dob , occupation, about me (text i work as a doctor )
+in chatbot ask some question so that it doesnt show 100s of offer directly 
+
+while cereatin plans do with cammapigns
+

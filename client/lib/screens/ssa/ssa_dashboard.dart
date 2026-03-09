@@ -19,6 +19,11 @@ import '../../services/ssa_service.dart';
 import '../../models/ssa_lead_model.dart';
 import 'ssa_create_lead_screen.dart';
 
+String _monthName(int month) {
+  const names = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return names[(month - 1).clamp(0, 11)];
+}
+
 class SsaDashboard extends StatefulWidget {
   const SsaDashboard({super.key});
 
@@ -299,6 +304,23 @@ class _SsaHomeTabState extends State<SsaHomeTab> {
                                           0;
                                   final code =
                                       c['code']?.toString() ?? '';
+                                  final usages = c['usages'] as List<dynamic>? ?? [];
+                                  String usageLabel = '';
+                                  if (usages.isNotEmpty) {
+                                    final count = usages.length;
+                                    final latest = usages.first;
+                                    final usedAt = latest['usedAt']?.toString();
+                                    DateTime? dt;
+                                    if (usedAt != null && usedAt.isNotEmpty) {
+                                      dt = DateTime.tryParse(usedAt);
+                                    }
+                                    final dateStr = dt != null
+                                        ? '${dt.day} ${_monthName(dt.month)} ${dt.year}'
+                                        : '';
+                                    usageLabel = count == 1
+                                        ? (dateStr.isNotEmpty ? 'Used: $dateStr' : 'Used once')
+                                        : 'Used $count times${dateStr.isNotEmpty ? ' • Last: $dateStr' : ''}';
+                                  }
                                   return Padding(
                                     padding: const EdgeInsets.only(
                                         bottom: AppTokens.spaceSM),
@@ -332,31 +354,47 @@ class _SsaHomeTabState extends State<SsaHomeTab> {
                                           borderRadius: BorderRadius.circular(
                                               AppTokens.radiusMD),
                                         ),
-                                        child: Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceBetween,
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          mainAxisSize: MainAxisSize.min,
                                           children: [
-                                            Text(
-                                              '$pct% off',
-                                              style: theme.textTheme.titleSmall
-                                                  ?.copyWith(
-                                                    color: AppColors
-                                                        .textPrimary,
-                                                  ),
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.spaceBetween,
+                                              children: [
+                                                Text(
+                                                  '$pct% off',
+                                                  style: theme.textTheme.titleSmall
+                                                      ?.copyWith(
+                                                        color: AppColors
+                                                            .textPrimary,
+                                                      ),
+                                                ),
+                                                SelectableText(
+                                                  code,
+                                                  style: theme.textTheme.bodyMedium
+                                                      ?.copyWith(
+                                                        fontFamily: 'monospace',
+                                                        color: AppColors.accent,
+                                                      ),
+                                                ),
+                                                Icon(
+                                                  Icons.copy_rounded,
+                                                  size: 18,
+                                                  color: AppColors.textSecondary,
+                                                ),
+                                              ],
                                             ),
-                                            SelectableText(
-                                              code,
-                                              style: theme.textTheme.bodyMedium
-                                                  ?.copyWith(
-                                                    fontFamily: 'monospace',
-                                                    color: AppColors.accent,
-                                                  ),
-                                            ),
-                                            Icon(
-                                              Icons.copy_rounded,
-                                              size: 18,
-                                              color: AppColors.textSecondary,
-                                            ),
+                                            if (usageLabel.isNotEmpty) ...[
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                usageLabel,
+                                                style: theme.textTheme.bodySmall
+                                                    ?.copyWith(
+                                                      color: AppColors.textSecondary,
+                                                    ),
+                                              ),
+                                            ],
                                           ],
                                         ),
                                       ),
