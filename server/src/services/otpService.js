@@ -129,6 +129,8 @@ async function sendOtp(phone, role, signupData = {}) {
   const rawCoupon = signupData.couponCode != null ? String(signupData.couponCode).trim() : '';
   const signupCouponCode = rawCoupon ? rawCoupon.toUpperCase() : null;
   const signupCouponCapturedAt = signupCouponCode && role === 'shopkeeper' ? new Date() : null;
+  const acceptedTerms =
+    Boolean(signupData.acceptedTerms) || Boolean(signupData.termsAccepted);
 
   if (!name || !pincode) {
     const err = new Error('Name and pincode are required for signup');
@@ -175,7 +177,32 @@ async function sendOtp(phone, role, signupData = {}) {
     update.signupCouponCapturedAt = signupCouponCapturedAt;
   }
 
-  await userRepository.create(update);
+  const user = await userRepository.create(update);
+
+  if (role === 'shopkeeper' && acceptedTerms && user && user.id) {
+    const existing = await prisma.onboardingStatus.findUnique({
+      where: { userId: user.id },
+    });
+    if (existing) {
+      await prisma.onboardingStatus.update({
+        where: { userId: user.id },
+        data: {
+          termsAccepted: true,
+          termsAcceptedAt: new Date(),
+          currentStep: Math.max(existing.currentStep, 3),
+        },
+      });
+    } else {
+      await prisma.onboardingStatus.create({
+        data: {
+          userId: user.id,
+          termsAccepted: true,
+          termsAcceptedAt: new Date(),
+          currentStep: 3,
+        },
+      });
+    }
+  }
 
   return { success: true };
 }

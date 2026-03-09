@@ -254,6 +254,7 @@ class _CustomerProfileTabState extends State<CustomerProfileTab> {
                           final shouldLogout =
                               await DialogHelper.showLogoutDialog(context);
                           if (shouldLogout && context.mounted) {
+                            await AuthStore.clearPersistedAuth();
                             AuthStore.clear();
                             Navigator.of(context).pushAndRemoveUntil(
                               MaterialPageRoute(

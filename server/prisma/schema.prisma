@@ -149,6 +149,7 @@ model User {
   shopLeadsAsSsa         ShopLead[]                     @relation("ShopLeadSsa")
   shopLeadsAsCsa         ShopLead[]                     @relation("ShopLeadCsa")
   shopLeadsAsShopkeeper  ShopLead[]                     @relation("ShopLeadUser")
+  loginHistory           LoginHistory[]
 
   @@index([role, approvalStatus, createdAt(sort: Desc)], map: "idx_users_role_approval_created_desc")
   @@index([role, isActive, createdAt(sort: Desc)], map: "idx_users_role_active_created_desc")
@@ -385,6 +386,21 @@ model AuditLog {
   @@index([action, createdAt(sort: Desc)], map: "idx_audit_logs_action_created_desc")
   @@index([createdAt(sort: Desc)], map: "idx_audit_logs_created_desc")
   @@map("audit_logs")
+}
+
+model LoginHistory {
+  id         String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  role       RoleEnum
+  phone      String
+  ipAddress  String?  @map("ip_address")
+  userAgent  String?  @map("user_agent")
+  loggedInAt DateTime @default(now()) @map("logged_in_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, loggedInAt(sort: Desc)], map: "idx_login_history_user_logged_in_desc")
+  @@map("login_history")
 }
 
 model AiWallet {

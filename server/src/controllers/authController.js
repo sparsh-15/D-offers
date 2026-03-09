@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const config = require('../config');
 const otpService = require('../services/otpService');
 const userRepository = require('../repositories/userRepository');
+const loginHistoryRepository = require('../repositories/loginHistoryRepository');
 const { resolveCityStateFromPincode } = require('../services/pincodeService');
 
 function issueToken(user) {
@@ -14,14 +15,30 @@ function issueToken(user) {
 
 async function signup(req, res, next) {
   try {
-    const { phone, role, name, pincode, city, address, couponCode } = req.body;
+    const {
+      phone,
+      role,
+      name,
+      pincode,
+      city,
+      address,
+      couponCode,
+      acceptedTerms,
+    } = req.body;
     if (!phone || !role || !name || !pincode) {
       return res.status(400).json({
         success: false,
         message: 'Phone, role, name and pincode are required',
       });
     }
-    await otpService.sendOtp(phone.trim(), role, { name, pincode, city, address, couponCode });
+    await otpService.sendOtp(phone.trim(), role, {
+      name,
+      pincode,
+      city,
+      address,
+      couponCode,
+      acceptedTerms,
+    });
     res.status(200).json({ success: true, message: 'Signup OTP sent' });
   } catch (err) {
     next(err);
@@ -30,7 +47,16 @@ async function signup(req, res, next) {
 
 async function sendOtp(req, res, next) {
   try {
-    const { phone, role, name, pincode, city, address, couponCode } = req.body;
+    const {
+      phone,
+      role,
+      name,
+      pincode,
+      city,
+      address,
+      couponCode,
+      acceptedTerms,
+    } = req.body;
     const clientIp = req.ip || req.connection.remoteAddress;
     
     console.log(`[AUTH] sendOtp request - Role: ${role}, Phone: ${phone?.substring(0, 3)}***, IP: ${clientIp}`);
@@ -40,7 +66,14 @@ async function sendOtp(req, res, next) {
       return res.status(400).json({ success: false, message: 'Phone is required' });
     }
     
-    await otpService.sendOtp(phone.trim(), role, { name, pincode, city, address, couponCode });
+    await otpService.sendOtp(phone.trim(), role, {
+      name,
+      pincode,
+      city,
+      address,
+      couponCode,
+      acceptedTerms,
+    });
     console.log(`[AUTH] sendOtp success - Role: ${role}, Phone: ${phone?.substring(0, 3)}***`);
     res.status(200).json({ success: true, message: 'OTP sent' });
   } catch (err) {
@@ -63,7 +96,23 @@ async function verifyOtp(req, res, next) {
     
     const { user } = await otpService.verifyOtp(phone.trim(), String(otp), role);
     const token = issueToken(user);
-    console.log(`[AUTH] verifyOtp success - Role: ${role}, Phone: ${phone?.substring(0, 3)}***, UserId: ${user.id}`);
+    console.log(
+      `[AUTH] verifyOtp success - Role: ${role}, Phone: ${phone?.substring(0, 3)}***, UserId: ${user.id}`
+    );
+
+    try {
+      await loginHistoryRepository.create({
+        userId: user.id,
+        role: user.role,
+        phone: user.phone,
+        ipAddress: clientIp,
+        userAgent: req.headers['user-agent'] || null,
+      });
+    } catch (logErr) {
+      console.error(
+        `[AUTH] loginHistory error - UserId: ${user.id}, Error: ${logErr.message}`
+      );
+    }
     res.status(200).json({
       success: true,
       token,

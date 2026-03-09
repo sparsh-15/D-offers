@@ -46,6 +46,7 @@ class AuthService {
     required String phone,
     required String name,
     required String pincode,
+    required bool acceptedTerms,
     String? city,
     String? address,
     String? couponCode,
@@ -58,6 +59,7 @@ class AuthService {
       'pincode': pincode,
       'city': city ?? '',
       'address': address ?? '',
+      'acceptedTerms': acceptedTerms,
     };
     if (couponCode != null && couponCode.trim().isNotEmpty) {
       body['couponCode'] = couponCode.trim();

@@ -12,6 +12,7 @@ import '../../widgets/pincode_location_section.dart';
 import '../../services/auth_service.dart';
 import 'otp_screen.dart';
 import '../../core/utils/theme_helper.dart';
+import 'terms_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   final UserRole role;
@@ -36,6 +37,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _isLoadingPincode = false;
   List<Map<String, dynamic>> _availableAreas = [];
   String? _selectedArea;
+  bool _acceptedTerms = false;
 
   @override
   void initState() {
@@ -253,7 +255,57 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ),
                     ),
                   ],
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 24),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Checkbox(
+                        value: _acceptedTerms,
+                        onChanged: (value) {
+                          setState(() {
+                            _acceptedTerms = value ?? false;
+                          });
+                        },
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const TermsScreen(),
+                              ),
+                            );
+                          },
+                          child: RichText(
+                            text: TextSpan(
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(color: AppColors.textPrimary),
+                              children: [
+                                const TextSpan(text: 'I agree to the '),
+                                TextSpan(
+                                  text: 'Terms & Conditions',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodyMedium
+                                      ?.copyWith(
+                                        color: AppColors.primary,
+                                        fontWeight: FontWeight.w600,
+                                        decoration: TextDecoration.underline,
+                                      ),
+                                ),
+                                const TextSpan(text: ' of D\'Offer'),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
                   CustomButton(
                     text: AppStrings.sendOtp,
                     onPressed: _handleSignup,
@@ -271,6 +323,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Future<void> _handleSignup() async {
     if (!_formKey.currentState!.validate()) return;
+    if (!_acceptedTerms) {
+      DialogHelper.showErrorSnackBar(
+        context,
+        'Please accept the Terms & Conditions to continue.',
+      );
+      return;
+    }
     if (widget.role == UserRole.admin) {
       DialogHelper.showErrorSnackBar(
         context,
@@ -286,6 +345,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         phone: _phoneController.text,
         name: _nameController.text.trim(),
         pincode: _pincodeController.text,
+        acceptedTerms: _acceptedTerms,
         city: _cityController.text.trim().isEmpty
             ? null
             : _cityController.text.trim(),

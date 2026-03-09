@@ -283,6 +283,11 @@ class _OtpScreenState extends State<OtpScreen> {
         return;
       }
 
+      final token = AuthStore.token;
+      if (token != null) {
+        await AuthStore.saveAuth(token, user);
+      }
+
       _navigateByRole();
     } catch (e) {
       if (!mounted) return;

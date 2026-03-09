@@ -3,6 +3,14 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_design_tokens.dart';
 import '../../core/constants/app_strings.dart';
 import '../auth/login_screen.dart';
+import '../../services/auth_store.dart';
+import '../../services/auth_service.dart';
+import '../../models/role_enum.dart';
+import '../customer/customer_dashboard.dart';
+import '../shopkeeper/shop_dashboard.dart';
+import '../admin/admin_dashboard.dart';
+import '../company_sales_agent/csa_dashboard.dart';
+import '../ssa/ssa_dashboard.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -35,13 +43,58 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _navigate() async {
-    await Future.delayed(const Duration(milliseconds: 2800));
-    if (mounted) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
-      );
+    await Future.delayed(const Duration(milliseconds: 800));
+    bool restored = false;
+
+    try {
+      restored = await AuthStore.loadAuth();
+      if (restored && AuthStore.token != null) {
+        // Validate token and refresh user profile
+        final user = await AuthService.instance.fetchCurrentUser();
+        AuthStore.currentUser = user;
+
+        if (!mounted) return;
+
+        await Future.delayed(const Duration(milliseconds: 1000));
+
+        Widget destination;
+        switch (user.role) {
+          case UserRole.customer:
+            destination = const CustomerDashboard();
+            break;
+          case UserRole.shopkeeper:
+            destination = const ShopDashboard();
+            break;
+          case UserRole.admin:
+            destination = const AdminDashboard();
+            break;
+          case UserRole.companySalesAgent:
+            destination = const CSADashboard();
+            break;
+          case UserRole.ssa:
+            destination = const SsaDashboard();
+            break;
+        }
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => destination),
+        );
+        return;
+      }
+    } catch (_) {
+      await AuthStore.clearPersistedAuth();
+      AuthStore.clear();
     }
+
+    // Fallback to login if we couldn't restore a valid session
+    if (!mounted) return;
+    await Future.delayed(
+        const Duration(milliseconds: 2000)); // keep total ~2.8s
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+    );
   }
 
   @override
