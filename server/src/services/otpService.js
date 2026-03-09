@@ -131,6 +131,14 @@ async function sendOtp(phone, role, signupData = {}) {
   const signupCouponCapturedAt = signupCouponCode && role === 'shopkeeper' ? new Date() : null;
   const acceptedTerms =
     Boolean(signupData.acceptedTerms) || Boolean(signupData.termsAccepted);
+  const gender =
+    signupData.gender != null ? String(signupData.gender).trim() : '';
+  const dobRaw =
+    signupData.dob != null ? String(signupData.dob).trim() : '';
+  const occupation =
+    signupData.occupation != null ? String(signupData.occupation).trim() : '';
+  const aboutMe =
+    signupData.aboutMe != null ? String(signupData.aboutMe).trim() : '';
 
   if (!name || !pincode) {
     const err = new Error('Name and pincode are required for signup');
@@ -170,6 +178,22 @@ async function sendOtp(phone, role, signupData = {}) {
   // Manual moderation can still change approvalStatus later (e.g. to 'rejected').
   if (role === 'customer' || role === 'shopkeeper') {
     update.approvalStatus = 'approved';
+  }
+
+  if (gender) {
+    update.gender = gender;
+  }
+  if (dobRaw) {
+    const dobDate = new Date(dobRaw);
+    if (!Number.isNaN(dobDate.getTime())) {
+      update.dob = dobDate;
+    }
+  }
+  if (occupation) {
+    update.occupation = occupation;
+  }
+  if (aboutMe) {
+    update.aboutMe = aboutMe;
   }
 
   if (signupCouponCode && role === 'shopkeeper') {

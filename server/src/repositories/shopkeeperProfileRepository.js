@@ -21,25 +21,34 @@ function toProfileShape(profile) {
 async function upsertByUserId(userId, update) {
   const pgUserId = await resolvePgId('users', userId);
   if (!pgUserId) return null;
+  const user = await prisma.user.findUnique({
+    where: { id: pgUserId },
+    select: { address: true, pincode: true, city: true },
+  });
+
+  const createData = {
+    userId: pgUserId,
+    shopName: update.shopName,
+    address: update.address || user?.address || null,
+    pincode: update.pincode || user?.pincode || null,
+    city: update.city || user?.city || null,
+    category: update.category || null,
+    description: update.description || null,
+  };
+
+  const updateData = {
+    shopName: update.shopName,
+    address: update.address || null,
+    pincode: update.pincode || null,
+    city: update.city || null,
+    category: update.category || null,
+    description: update.description || null,
+  };
+
   const row = await prisma.shopkeeperProfile.upsert({
     where: { userId: pgUserId },
-    create: {
-      userId: pgUserId,
-      shopName: update.shopName,
-      address: update.address || null,
-      pincode: update.pincode || null,
-      city: update.city || null,
-      category: update.category || null,
-      description: update.description || null,
-    },
-    update: {
-      shopName: update.shopName,
-      address: update.address || null,
-      pincode: update.pincode || null,
-      city: update.city || null,
-      category: update.category || null,
-      description: update.description || null,
-    },
+    create: createData,
+    update: updateData,
   });
   return toProfileShape(row);
 }

@@ -40,6 +40,23 @@ function safeJsonParse(text) {
   }
 }
 
+function hasMeaningfulValue(value) {
+  return value !== undefined && value !== null && String(value).trim().length > 0;
+}
+
+function shouldClarifyBeforeOfferSearch(params = {}) {
+  const hasQuery = hasMeaningfulValue(params.query);
+  const hasCategory = hasMeaningfulValue(params.category);
+  const hasLocation =
+    hasMeaningfulValue(params.pincode) ||
+    hasMeaningfulValue(params.city) ||
+    hasMeaningfulValue(params.state);
+  const hasMinDiscount = hasMeaningfulValue(params.minDiscount);
+
+  // If user asked very broadly (no category/location/query/discount), ask clarifying questions first.
+  return !hasQuery && !hasCategory && !hasLocation && !hasMinDiscount;
+}
+
 async function classifyIntent(message) {
   const model = getClassifierModel();
 
@@ -118,6 +135,46 @@ async function handleIntent({ user, intent, params }) {
       };
     }
     case INTENTS.SEARCH_OFFERS: {
+      if (shouldClarifyBeforeOfferSearch(params)) {
+        const actions = [
+          {
+            label: 'Food & Dining offers',
+            type: 'ask_followup',
+            message: 'Show me food and dining offers.',
+          },
+          {
+            label: 'Fashion offers',
+            type: 'ask_followup',
+            message: 'Show me fashion offers.',
+          },
+          {
+            label: 'Nearby offers by pincode',
+            type: 'ask_followup',
+            message: 'Show me nearby offers for my pincode.',
+          },
+          {
+            label: 'High discount offers',
+            type: 'ask_followup',
+            message: 'Show me offers with at least 30% discount.',
+          },
+        ];
+        return {
+          intent,
+          params,
+          toolResult: {
+            mode: 'clarify',
+            reason: 'broad_search',
+            suggestedQuestions: [
+              'Which category are you looking for?',
+              'Do you want offers near a specific pincode or city?',
+              'Any minimum discount preference?',
+            ],
+          },
+          actions,
+          items: {},
+        };
+      }
+
       const toolResult = await offerTools.searchOffers({ user, params });
       const actions =
         (toolResult.offers || []).slice(0, 3).map((offer) => ({

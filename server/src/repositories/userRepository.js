@@ -73,6 +73,10 @@ async function create(data) {
       region: data.region || '',
       territory: data.territory || '',
       address: data.address || '',
+      gender: data.gender || null,
+      dob: data.dob || null,
+      occupation: data.occupation || null,
+      aboutMe: data.aboutMe || null,
       maxCouponDiscountPercent:
         data.maxCouponDiscountPercent !== undefined
           ? data.maxCouponDiscountPercent
