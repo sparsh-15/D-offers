@@ -1,6 +1,6 @@
-# D'Offer Feature Requirements and Roadmap
+# myOffers Feature Requirements and Roadmap
 
-**Source:** Doffers System Architecture Document V1 (PDF), Phases 1–3.  
+**Source:** myOffers System Architecture Document V1 (PDF), Phases 1–3.  
 **Purpose:** Flushed feature documentation and requirements for what we are doing next. Aligned with PDF roadmap; includes client-specific acceptance criteria and technical notes.
 
 ---

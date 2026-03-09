@@ -1,6 +1,6 @@
-# D'Offer System Architecture
+# myOffers System Architecture
 
-**Source:** Doffers System Architecture Document V1 (PDF).  
+**Source:** myOffers System Architecture Document V1 (PDF).  
 **Purpose:** Restate and refine the system architecture in the repository. Includes current Flutter client mapping (what is implemented vs planned).
 
 ---
@@ -21,7 +21,7 @@
 
 ## 1. Executive Overview
 
-D'Offers is an **AI-native hyperlocal commerce platform** connecting customers with nearby store offers in real time. The system enables:
+myOffers is an **AI-native hyperlocal commerce platform** connecting customers with nearby store offers in real time. The system enables:
 
 - **Customers** to discover pin-code specific offers
 - **Shopkeepers** to create and manage discounts

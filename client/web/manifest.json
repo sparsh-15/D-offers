@@ -1,11 +1,11 @@
 {
-    "name": "D'Offer",
-    "short_name": "D'Offer",
+    "name": "myOffers",
+    "short_name": "myOffers",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0A0E21",
     "theme_color": "#FFA726",
-    "description": "D'Offer - Discover Amazing Deals Near You",
+    "description": "myOffers - Discover Amazing Deals Near You",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
