@@ -139,6 +139,42 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: const BoxDecoration(
+                    color: AppColors.accent,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.check_rounded,
+                    color: AppColors.black,
+                    size: 24,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppTokens.spaceMD),
+            Text(
+              'Congratulations!',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+            const SizedBox(height: AppTokens.spaceXS),
+            Text(
+              'You’ve unlocked this deal. Show this code at the shop to redeem.',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+            ),
+            const SizedBox(height: AppTokens.spaceLG),
             Text(
               'Your deal code',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(

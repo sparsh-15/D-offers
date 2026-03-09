@@ -1,6 +1,6 @@
 class AppStrings {
   // App Name
-  static const String appName = "D'Offer";
+  static const String appName = "myOffers";
   static const String appTagline = "Discover Amazing Deals Near You";
 
   // Role Selection

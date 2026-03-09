@@ -312,6 +312,24 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
     descriptionController =
         TextEditingController(text: widget.profile?.description ?? '');
 
+    // Prefill from current user if profile is empty so shopkeepers don't retype
+    // everything they already entered during signup.
+    final currentUser = AuthStore.currentUser;
+    if (currentUser != null) {
+      if (addressController.text.trim().isEmpty &&
+          currentUser.address.trim().isNotEmpty) {
+        addressController.text = currentUser.address.trim();
+      }
+      if (pincodeController.text.trim().isEmpty &&
+          currentUser.pincode.trim().isNotEmpty) {
+        pincodeController.text = currentUser.pincode.trim();
+      }
+      if (cityController.text.trim().isEmpty &&
+          currentUser.city.trim().isNotEmpty) {
+        cityController.text = currentUser.city.trim();
+      }
+    }
+
     // Category will be set after loading categories in _loadCategories()
 
     pincodeController.addListener(_onPincodeChanged);
@@ -417,6 +435,16 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
             TextField(
               controller: shopNameController,
               decoration: const InputDecoration(labelText: 'Shop Name'),
+            ),
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'This is the shop location customers will see in the app.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+              ),
             ),
             const SizedBox(height: 8),
             PincodeLocationSection(

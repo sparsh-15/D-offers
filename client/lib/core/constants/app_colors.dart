@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Premium dark-first color system for D'Offers.
+/// Premium dark-first color system for myOffers.
 /// All colors follow a tonal elevation model — no gradients, no shadows.
 class AppColors {
   // ── Background layers ──────────────────────────────────────────────────────

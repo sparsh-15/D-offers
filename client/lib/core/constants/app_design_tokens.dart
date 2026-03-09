@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Design tokens for D'Offers — 8-point base grid.
+/// Design tokens for myOffers — 8-point base grid.
 /// Use these constants instead of magic numbers throughout the codebase.
 class AppTokens {
   // ── Spacing (8pt grid) ─────────────────────────────────────────────────────

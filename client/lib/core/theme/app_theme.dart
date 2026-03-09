@@ -6,7 +6,7 @@ import 'app_palette.dart';
 import 'app_text_styles.dart';
 
 class AppTheme {
-  // D'Offers is dark-only
+  // myOffers is dark-only
   static ThemeData get appTheme => darkTheme;
   static ThemeData get darkTheme => _buildTheme(AppPalette.dark());
   static ThemeData get lightTheme => _buildTheme(AppPalette.dark());

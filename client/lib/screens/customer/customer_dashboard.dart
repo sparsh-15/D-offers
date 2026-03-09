@@ -3,6 +3,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/utils/dialog_helper.dart';
 import 'customer_home_tab.dart';
 import 'customer_offers_tab.dart';
+import 'customer_loans_tab.dart';
 import 'customer_favorites_tab.dart';
 import 'customer_profile_tab.dart';
 import 'customer_chat_bot_screen.dart';
@@ -32,7 +33,11 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     _screens = [
       CustomerHomeTab(onViewAllOffers: () => _onNavigateToTab(1)),
       const CustomerOffersTab(),
-      CustomerFavoritesTab(key: _favoritesKey, onBrowseOffers: () => _onNavigateToTab(1)),
+      const CustomerLoansTab(),
+      CustomerFavoritesTab(
+        key: _favoritesKey,
+        onBrowseOffers: () => _onNavigateToTab(1),
+      ),
       const CustomerProfileTab(),
     ];
   }
@@ -79,7 +84,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
           child: BottomNavigationBar(
             currentIndex: _selectedIndex,
             onTap: (index) {
-              if (index == 2) {
+              if (index == 3) {
                 // Auto-refresh favorites whenever the tab is opened
                 final state = _favoritesKey.currentState;
                 if (state != null && state.mounted) {
@@ -98,6 +103,10 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
               BottomNavigationBarItem(
                 icon: Icon(Icons.local_offer_rounded),
                 label: 'Offers',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.account_balance_rounded),
+                label: 'Loans',
               ),
               BottomNavigationBarItem(
                 icon: Icon(Icons.favorite_rounded),

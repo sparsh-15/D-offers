@@ -23,11 +23,11 @@ class _CustomerChatBotScreenState extends State<CustomerChatBotScreen> {
     "What deals are near me?",
     "How do I redeem an offer?",
     "Where are my saved offers?",
-    "What is D'Offers?",
+    "What is myOffers?",
   ];
 
   static final Map<String, String> _localFallback = {
-    'hello': "Hi! I'm your D'Offers assistant. What can I help you with today?",
+    'hello': "Hi! I'm your myOffers assistant. What can I help you with today?",
     'hi': "Hello! Ask me about deals, favorites, or how to use the app.",
     'redeem': 'Show the offer to the shopkeeper at their store — they\'ll verify and apply the discount.',
     'favorites': 'Tap the heart icon on any offer to save it. Find saved offers in the Favorites tab.',
@@ -39,7 +39,7 @@ class _CustomerChatBotScreenState extends State<CustomerChatBotScreen> {
     super.initState();
     _messages.add(
       _ChatMessage(
-        text: "Hi! I'm your D'Offers assistant. Ask me about deals near you, how to redeem offers, or anything else.",
+        text: "Hi! I'm your myOffers assistant. Ask me about deals near you, how to redeem offers, or anything else.",
         isUser: false,
         actions: const [],
       ),
@@ -115,6 +115,12 @@ class _CustomerChatBotScreenState extends State<CustomerChatBotScreen> {
 
   void _handleAction(ChatAssistantAction action) {
     switch (action.type) {
+      case 'ask_followup':
+        {
+          final msg = action.payload['message']?.toString() ?? action.label;
+          _send(msg);
+        }
+        break;
       case 'open_offer':
       case 'open_offers_tab':
       case 'open_coupons_tab':
@@ -163,7 +169,7 @@ class _CustomerChatBotScreenState extends State<CustomerChatBotScreen> {
                   style: theme.textTheme.titleMedium,
                 ),
                 Text(
-                  'D\'Offers',
+                  'myOffers',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: AppColors.textMuted,
                     letterSpacing: 0.3,

@@ -32,12 +32,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _stateController = TextEditingController();
   final _addressController = TextEditingController();
   final _couponController = TextEditingController();
+  final _occupationController = TextEditingController();
+  final _aboutMeController = TextEditingController();
 
   bool _isLoading = false;
   bool _isLoadingPincode = false;
   List<Map<String, dynamic>> _availableAreas = [];
   String? _selectedArea;
   bool _acceptedTerms = false;
+  String? _selectedGender;
+  DateTime? _selectedDob;
 
   @override
   void initState() {
@@ -55,6 +59,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _stateController.dispose();
     _addressController.dispose();
     _couponController.dispose();
+    _occupationController.dispose();
+    _aboutMeController.dispose();
     super.dispose();
   }
 
@@ -128,8 +134,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
+  Future<void> _pickDob() async {
+    final now = DateTime.now();
+    final firstDate = DateTime(now.year - 80, now.month, now.day);
+    final lastDate = DateTime(now.year - 13, now.month, now.day);
+    final initialDate = _selectedDob ?? lastDate;
+
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: firstDate,
+      lastDate: lastDate,
+    );
+    if (picked != null) {
+      setState(() {
+        _selectedDob = picked;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isShopkeeper = widget.role == UserRole.shopkeeper;
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -160,7 +186,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Enter your details to signup',
+                    isShopkeeper
+                        ? 'Enter your basic details. You can complete your shop profile later.'
+                        : 'Enter your details to signup',
                     style: Theme.of(context).textTheme.bodyMedium,
                     textAlign: TextAlign.center,
                   ),
@@ -208,7 +236,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     availableAreas: _availableAreas,
                     selectedArea: _selectedArea,
                     onAreaChanged: _onAreaSelected,
-                    addressLabel: 'Address (optional)',
+                    addressLabel: isShopkeeper
+                        ? 'Owner address (optional – detailed shop address can be added later)'
+                        : 'Address (optional)',
                     pincodeValidator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Please enter pincode';
@@ -238,6 +268,75 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       return null;
                     },
                   ),
+                  if (widget.role == UserRole.customer) ...[
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      value: _selectedGender,
+                      decoration: const InputDecoration(
+                        labelText: 'Gender (optional)',
+                        prefixIcon: Icon(Icons.person_outline_rounded),
+                      ),
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'male',
+                          child: Text('Male'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'female',
+                          child: Text('Female'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'other',
+                          child: Text('Other'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'prefer_not_to_say',
+                          child: Text('Prefer not to say'),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        setState(() => _selectedGender = value);
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    InkWell(
+                      onTap: _pickDob,
+                      borderRadius: BorderRadius.circular(12),
+                      child: InputDecorator(
+                        decoration: const InputDecoration(
+                          labelText: 'Date of birth (optional)',
+                          prefixIcon: Icon(Icons.cake_rounded),
+                        ),
+                        child: Text(
+                          _selectedDob == null
+                              ? 'Tap to select DOB'
+                              : '${_selectedDob!.day}/${_selectedDob!.month}/${_selectedDob!.year}',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: _selectedDob == null
+                                    ? AppColors.textMuted
+                                    : AppColors.textPrimary,
+                              ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    CustomTextField(
+                      controller: _occupationController,
+                      label: 'Occupation (optional)',
+                      hint: 'e.g. Doctor, Student, Engineer',
+                      prefixIcon: Icons.work_outline_rounded,
+                      validator: (_) => null,
+                    ),
+                    const SizedBox(height: 16),
+                    CustomTextField(
+                      controller: _aboutMeController,
+                      label: 'About me (optional)',
+                      hint: 'I work as a doctor',
+                      prefixIcon: Icons.info_outline_rounded,
+                      maxLines: 3,
+                      validator: (_) => null,
+                    ),
+                  ],
                   if (widget.role == UserRole.shopkeeper) ...[
                     const SizedBox(height: 16),
                     CustomTextField(
@@ -346,6 +445,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
         name: _nameController.text.trim(),
         pincode: _pincodeController.text,
         acceptedTerms: _acceptedTerms,
+        gender: widget.role == UserRole.customer ? _selectedGender : null,
+        dob: widget.role == UserRole.customer && _selectedDob != null
+            ? '${_selectedDob!.year.toString().padLeft(4, '0')}-${_selectedDob!.month.toString().padLeft(2, '0')}-${_selectedDob!.day.toString().padLeft(2, '0')}'
+            : null,
+        occupation: widget.role == UserRole.customer
+            ? _occupationController.text.trim().isEmpty
+                ? null
+                : _occupationController.text.trim()
+            : null,
+        aboutMe: widget.role == UserRole.customer
+            ? _aboutMeController.text.trim().isEmpty
+                ? null
+                : _aboutMeController.text.trim()
+            : null,
         city: _cityController.text.trim().isEmpty
             ? null
             : _cityController.text.trim(),

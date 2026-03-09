@@ -621,12 +621,14 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
       );
     }
 
+    final int rowCount = (_items.length / 2).ceil();
+
     return ListView.builder(
       controller: _scrollController,
       padding: const EdgeInsets.all(16),
-      itemCount: _items.length + 1,
+      itemCount: rowCount + 1, // extra row for footer (load more/end)
       itemBuilder: (context, index) {
-        if (index == _items.length) {
+        if (index == rowCount) {
           if (_isLoadingMore) {
             return const Padding(
               padding: EdgeInsets.symmetric(vertical: 16),
@@ -654,16 +656,41 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
           return const SizedBox.shrink();
         }
 
-        final o = _items[index];
+        final int leftIndex = index * 2;
+        final int rightIndex = leftIndex + 1;
+
+        final leftOffer = _items[leftIndex];
+        final OfferModel? rightOffer =
+            rightIndex < _items.length ? _items[rightIndex] : null;
+
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
-          child: OfferCard(
-            offer: o,
-            onOfferUpdated: (updated) {
-              final idx = _items.indexWhere((x) => x.id == updated.id);
-              if (idx < 0) return;
-              setState(() => _items[idx] = updated);
-            },
+          child: Row(
+            children: [
+              Expanded(
+                child: OfferCard(
+                  offer: leftOffer,
+                  onOfferUpdated: (updated) {
+                    final idx = _items.indexWhere((x) => x.id == updated.id);
+                    if (idx < 0) return;
+                    setState(() => _items[idx] = updated);
+                  },
+                ),
+              ),
+              if (rightOffer != null) ...[
+                const SizedBox(width: 12),
+                Expanded(
+                  child: OfferCard(
+                    offer: rightOffer,
+                    onOfferUpdated: (updated) {
+                      final idx = _items.indexWhere((x) => x.id == updated.id);
+                      if (idx < 0) return;
+                      setState(() => _items[idx] = updated);
+                    },
+                  ),
+                ),
+              ],
+            ],
           ),
         );
       },

@@ -46,20 +46,20 @@ class _LoginScreenState extends State<LoginScreen> {
               children: [
                 const SizedBox(height: AppTokens.space3XL),
 
-                // ── Icon ──────────────────────────────────────────────────────
+                // ── Logo ──────────────────────────────────────────────────────
                 Align(
                   alignment: Alignment.centerLeft,
-                  child: Container(
-                    width: 64,
-                    height: 64,
-                    decoration: BoxDecoration(
-                      color: AppColors.cardBackground,
-                      borderRadius: BorderRadius.circular(AppTokens.radiusMD),
-                    ),
-                    child: const Icon(
-                      Iconsax.mobile,
-                      size: 32,
-                      color: AppColors.accent,
+                  child: SizedBox(
+                    width: 96,
+                    height: 96,
+                    child: Image.asset(
+                      'assets/Dofferlogo.png',
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const Icon(
+                        Iconsax.bag_2,
+                        size: 40,
+                        color: AppColors.accent,
+                      ),
                     ),
                   ),
                 ),
@@ -67,8 +67,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: AppTokens.spaceLG),
 
                 // ── Headline ──────────────────────────────────────────────────
+                
                 Text(
-                  'Welcome back.',
+                  'Welcome to ${AppStrings.appName}',
                   style: theme.textTheme.displayMedium,
                 ),
                 const SizedBox(height: AppTokens.spaceSM),

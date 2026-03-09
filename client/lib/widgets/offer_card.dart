@@ -179,34 +179,33 @@ class _OfferCardState extends State<OfferCard>
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
-            // ── Banner / image ──────────────────────────────────────────────
-            if (hasPhoto)
-              SizedBox(
-                height: 140,
-                child: CachedNetworkImage(
-                  imageUrl: widget.offer.photos.first,
-                  fit: BoxFit.cover,
-                  placeholder: (_, __) => const Center(
-                    child: SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+            // ── Banner / image (fixed aspect ratio for consistent thumbnails) ─
+            AspectRatio(
+              aspectRatio: 4 / 3,
+              child: hasPhoto
+                  ? CachedNetworkImage(
+                      imageUrl: widget.offer.photos.first,
+                      fit: BoxFit.cover,
+                      placeholder: (_, __) => const Center(
+                        child: SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
+                      errorWidget: (_, __, ___) => const Icon(
+                        Icons.broken_image_outlined,
+                        color: AppColors.textMuted,
+                      ),
+                    )
+                  : const OfferBannerPreview(
+                      title: '',
+                      discountType: '',
+                      discountValue: null,
+                      width: double.infinity,
+                      height: double.infinity,
                     ),
-                  ),
-                  errorWidget: (_, __, ___) => const Icon(
-                    Icons.broken_image_outlined,
-                    color: AppColors.textMuted,
-                  ),
-                ),
-              )
-            else
-              OfferBannerPreview(
-                title: widget.offer.title,
-                discountType: widget.offer.discountType,
-                discountValue: widget.offer.discountValue,
-                width: double.infinity,
-                height: 140,
-              ),
+            ),
 
             // ── Info strip ─────────────────────────────────────────────────
             Padding(

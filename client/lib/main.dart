@@ -12,7 +12,7 @@ void main() {
 
   // Use only bundled fonts so the app works offline and doesn't throw when
   // fonts.gstatic.com is unreachable (no network / DNS).
-  GoogleFonts.config.allowRuntimeFetching = false;
+  GoogleFonts.config.allowRuntimeFetching = true;
 
   debugPrint = (String? message, {int? wrapWidth}) {
     if (message != null && message.startsWith('animate:')) {

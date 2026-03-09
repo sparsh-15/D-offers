@@ -45,22 +45,22 @@ class RoleSelectionScreen extends StatelessWidget {
               children: [
                 Image.asset(
                   'assets/Dofferlogo.png',
-                  width: 56,
-                  height: 56,
+                  width: 88,
+                  height: 88,
                   errorBuilder: (_, __, ___) => const Icon(
                     Icons.local_offer_rounded,
                     color: AppColors.accent,
-                    size: 36,
+                    size: 44,
                   ),
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'Join D\'Offers',
+                  'Join ${AppStrings.appName}',
                   style: Theme.of(context).textTheme.displayMedium,
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Select how you\'d like to use the app.',
+                  'Select how you would like to use the app.',
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                         color: AppColors.textSecondary,
                       ),

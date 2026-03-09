@@ -50,6 +50,10 @@ class AuthService {
     String? city,
     String? address,
     String? couponCode,
+    String? gender,
+    String? dob, // ISO or simple date string
+    String? occupation,
+    String? aboutMe,
   }) async {
     final uri = Uri.parse('${ApiConfig.authUrl}/signup');
     final body = <String, dynamic>{
@@ -63,6 +67,18 @@ class AuthService {
     };
     if (couponCode != null && couponCode.trim().isNotEmpty) {
       body['couponCode'] = couponCode.trim();
+    }
+    if (gender != null && gender.trim().isNotEmpty) {
+      body['gender'] = gender.trim();
+    }
+    if (dob != null && dob.trim().isNotEmpty) {
+      body['dob'] = dob.trim();
+    }
+    if (occupation != null && occupation.trim().isNotEmpty) {
+      body['occupation'] = occupation.trim();
+    }
+    if (aboutMe != null && aboutMe.trim().isNotEmpty) {
+      body['aboutMe'] = aboutMe.trim();
     }
     final resp = await _client.post(
       uri,
