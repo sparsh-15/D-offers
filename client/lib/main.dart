@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'core/theme/app_theme.dart';
 import 'core/constants/app_strings.dart';
 import 'core/constants/app_colors.dart';
@@ -8,6 +9,10 @@ import 'screens/splash/splash_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Use only bundled fonts so the app works offline and doesn't throw when
+  // fonts.gstatic.com is unreachable (no network / DNS).
+  GoogleFonts.config.allowRuntimeFetching = false;
 
   debugPrint = (String? message, {int? wrapWidth}) {
     if (message != null && message.startsWith('animate:')) {

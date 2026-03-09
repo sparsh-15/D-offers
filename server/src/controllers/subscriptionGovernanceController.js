@@ -294,7 +294,7 @@ async function getRevenueIntelligence(req, res, next) {
 
 async function getAllSubscriptions(req, res, next) {
   try {
-    const { status, planId, shopkeeperId, expiringSoon, page = 1, limit = 20 } = req.query;
+    const { status, planId, shopkeeperId, expiringSoon, city, pincode, page = 1, limit = 20 } = req.query;
     const where = {};
     if (status) where.status = status;
     if (planId) where.planId = planId;
@@ -305,6 +305,19 @@ async function getAllSubscriptions(req, res, next) {
       sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
       where.status = 'active';
       where.endDate = { gte: now, lte: sevenDaysFromNow };
+    }
+    // Filter by shopkeeper city (case-insensitive) and/or pincode
+    if (city && String(city).trim()) {
+      where.shopkeeper = {
+        ...(where.shopkeeper || {}),
+        city: { equals: String(city).trim(), mode: 'insensitive' },
+      };
+    }
+    if (pincode && String(pincode).trim()) {
+      where.shopkeeper = {
+        ...(where.shopkeeper || {}),
+        pincode: String(pincode).trim(),
+      };
     }
     const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
     const [subscriptions, total] = await Promise.all([

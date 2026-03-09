@@ -384,6 +384,8 @@ class SubscriptionService {
     String? planId,
     String? shopkeeperId,
     bool? expiringSoon,
+    String? city,
+    String? pincode,
     int page = 1,
     int limit = 20,
   }) async {
@@ -397,6 +399,8 @@ class SubscriptionService {
       if (shopkeeperId != null) queryParams['shopkeeperId'] = shopkeeperId;
       if (expiringSoon != null)
         queryParams['expiringSoon'] = expiringSoon.toString();
+      if (city != null && city.trim().isNotEmpty) queryParams['city'] = city.trim();
+      if (pincode != null && pincode.trim().isNotEmpty) queryParams['pincode'] = pincode.trim();
 
       final uri = Uri.parse(
         '${ApiConfig.baseUrl}/subscription-governance/subscriptions',

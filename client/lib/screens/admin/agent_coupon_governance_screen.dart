@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
-import 'package:intl/intl.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_design_tokens.dart';
 import '../../core/utils/theme_helper.dart';
@@ -94,114 +93,23 @@ class _AgentCouponGovernanceScreenState
       body: Container(
         decoration:
             BoxDecoration(gradient: ThemeHelper.getBackgroundGradient(context)),
-        child: Column(
+        child: TabBarView(
+          controller: _tabController,
           children: [
-            _buildGlobalCouponCapBar(),
-            Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: const [
-                  SSAListTab(),
-                  SalesAgentsTab(),
-                  CouponsTab(),
-                ],
-              ),
+            const SSAListTab(),
+            const SalesAgentsTab(),
+            CouponsTab(
+              couponCap: _couponCap,
+              couponCapLoading: _couponCapLoading,
+              couponCapSaving: _couponCapSaving,
+              onCouponCapChanged: (v) => setState(() => _couponCap = v),
+              onCouponCapUpdate: _updateCouponCap,
+              loadCouponCap: _loadCouponCap,
             ),
           ],
         ),
       ),
       floatingActionButton: _buildFloatingActionButton(),
-    );
-  }
-
-  Widget _buildGlobalCouponCapBar() {
-    final theme = Theme.of(context);
-    if (_couponCapLoading) {
-      return Padding(
-        padding: const EdgeInsets.all(AppTokens.spaceMD),
-        child: Card(
-          color: AppColors.cardBackground,
-          child: Padding(
-            padding: const EdgeInsets.all(AppTokens.spaceMD),
-            child: Row(
-              children: [
-                const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-                const SizedBox(width: AppTokens.spaceMD),
-                Text(
-                  'Loading coupon cap…',
-                  style: theme.textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(AppTokens.spaceMD, AppTokens.spaceSM, AppTokens.spaceMD, 0),
-      child: Card(
-        color: AppColors.cardBackground,
-        child: Padding(
-          padding: const EdgeInsets.all(AppTokens.spaceMD),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  Icon(Icons.percent_rounded, color: AppColors.primary, size: 22),
-                  const SizedBox(width: AppTokens.spaceSM),
-                  Text(
-                    'Maximum discount cap for coupons (all agents)',
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppTokens.spaceXS),
-              Text(
-                'Coupons are auto-created in steps (5%, 10%, …) up to this cap for every SSA and Sales Agent.',
-                style: theme.textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
-              ),
-              const SizedBox(height: AppTokens.spaceSM),
-              Row(
-                children: [
-                  Expanded(
-                    child: Slider(
-                      value: _couponCap.toDouble(),
-                      min: 10,
-                      max: 90,
-                      divisions: 8,
-                      label: '$_couponCap%',
-                      onChanged: _couponCapSaving
-                          ? null
-                          : (v) => setState(() => _couponCap = v.round().clamp(10, 90)),
-                      onChangeEnd: _couponCapSaving
-                          ? null
-                          : (v) => _updateCouponCap(v.round().clamp(10, 90)),
-                      activeColor: AppColors.accent,
-                    ),
-                  ),
-                  const SizedBox(width: AppTokens.spaceSM),
-                  Text(
-                    '$_couponCap%',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 
@@ -1029,21 +937,31 @@ class _SalesAgentsTabState extends State<SalesAgentsTab> {
 
 // ============ Coupons Tab ============
 class CouponsTab extends StatefulWidget {
-  const CouponsTab({super.key});
+  const CouponsTab({
+    super.key,
+    required this.couponCap,
+    required this.couponCapLoading,
+    required this.couponCapSaving,
+    required this.onCouponCapChanged,
+    required this.onCouponCapUpdate,
+    required this.loadCouponCap,
+  });
+
+  final int couponCap;
+  final bool couponCapLoading;
+  final bool couponCapSaving;
+  final void Function(int) onCouponCapChanged;
+  final void Function(int) onCouponCapUpdate;
+  final Future<void> Function() loadCouponCap;
 
   @override
   State<CouponsTab> createState() => _CouponsTabState();
 }
 
 class _CouponsTabState extends State<CouponsTab> {
-  List<dynamic> _coupons = [];
   bool _loading = true;
-  int _currentPage = 1;
-  int _totalPages = 1;
+  int _totalCount = 0;
   num _totalDiscounts = 0;
-  final TextEditingController _couponCodeController = TextEditingController();
-  DateTime? _startDate;
-  DateTime? _endDate;
 
   num _parseNum(dynamic value) {
     if (value == null) return 0;
@@ -1061,417 +979,218 @@ class _CouponsTabState extends State<CouponsTab> {
     _loadCoupons();
   }
 
-  @override
-  void dispose() {
-    _couponCodeController.dispose();
-    super.dispose();
-  }
-
   Future<void> _loadCoupons() async {
     setState(() => _loading = true);
     try {
       final result = await AgentGovernanceService.instance.getCouponList(
-        search: _couponCodeController.text.isEmpty
-            ? null
-            : _couponCodeController.text,
-        page: _currentPage,
+        page: 1,
         limit: 20,
       );
 
       if (!mounted) return;
+      final list = (result['coupons'] as List<dynamic>?) ?? [];
+      final pagination = result['pagination'] as Map<String, dynamic>?;
+      final total = pagination?['total'] as int?;
+      final pages = pagination?['pages'] as int? ?? 1;
       setState(() {
-        _coupons = (result['coupons'] as List<dynamic>?) ?? [];
-        final pagination = result['pagination'] as Map<String, dynamic>?;
-        _totalPages = pagination?['pages'] as int? ?? 1;
-        // Calculate total discount from coupons
-        _totalDiscounts = _coupons.fold<num>(0, (sum, coupon) {
-          return sum + _parseNum(coupon['discountValue']);
-        });
+        _totalCount = total ?? (pages * 20);
+        _totalDiscounts = list.fold<num>(0, (sum, c) => sum + _parseNum(c['discountValue']));
         _loading = false;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _coupons = [];
+        _totalCount = 0;
+        _totalDiscounts = 0;
         _loading = false;
       });
       DialogHelper.showErrorSnackBar(context, e.toString());
     }
   }
 
-  Future<void> _selectDateRange() async {
-    final DateTimeRange? picked = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
-      initialDateRange: _startDate != null && _endDate != null
-          ? DateTimeRange(start: _startDate!, end: _endDate!)
-          : null,
-    );
-
-    if (picked != null) {
-      setState(() {
-        _startDate = picked.start;
-        _endDate = picked.end;
-      });
-      _loadCoupons();
+  Widget _buildCouponCapBar() {
+    final theme = Theme.of(context);
+    if (widget.couponCapLoading) {
+      return Padding(
+        padding: const EdgeInsets.all(AppTokens.spaceMD),
+        child: Card(
+          color: AppColors.cardBackground,
+          child: Padding(
+            padding: const EdgeInsets.all(AppTokens.spaceMD),
+            child: Row(
+              children: [
+                const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                const SizedBox(width: AppTokens.spaceMD),
+                Text(
+                  'Loading coupon cap…',
+                  style: theme.textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
     }
-  }
-
-  void _clearDateRange() {
-    setState(() {
-      _startDate = null;
-      _endDate = null;
-    });
-    _loadCoupons();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(AppTokens.spaceMD, AppTokens.spaceSM, AppTokens.spaceMD, 0),
+      child: Card(
+        color: AppColors.cardBackground,
+        child: Padding(
+          padding: const EdgeInsets.all(AppTokens.spaceMD),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.percent_rounded, color: AppColors.primary, size: 22),
+                  const SizedBox(width: AppTokens.spaceSM),
+                  Expanded(
+                    child: Text(
+                      'Maximum discount cap for coupons (all agents)',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppTokens.spaceXS),
+              Text(
+                'Coupons are auto-created in steps (5%, 10%, …) up to this cap for every SSA and Sales Agent.',
+                style: theme.textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: AppTokens.spaceSM),
+              Row(
+                children: [
+                  Expanded(
+                    child: Slider(
+                      value: widget.couponCap.toDouble(),
+                      min: 10,
+                      max: 90,
+                      divisions: 8,
+                      label: '${widget.couponCap}%',
+                      onChanged: widget.couponCapSaving
+                          ? null
+                          : (v) => widget.onCouponCapChanged(v.round().clamp(10, 90)),
+                      onChangeEnd: widget.couponCapSaving
+                          ? null
+                          : (v) => widget.onCouponCapUpdate(v.round().clamp(10, 90)),
+                      activeColor: AppColors.accent,
+                    ),
+                  ),
+                  const SizedBox(width: AppTokens.spaceSM),
+                  Text(
+                    '${widget.couponCap}%',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    final totalActivations = _coupons.length;
-
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            children: [
-              TextField(
-                controller: _couponCodeController,
-                decoration: InputDecoration(
-                  hintText: 'Search by coupon code',
-                  prefixIcon: const Icon(Icons.confirmation_number_rounded),
-                  suffixIcon: _couponCodeController.text.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear_rounded),
-                          onPressed: () {
-                            _couponCodeController.clear();
-                            _loadCoupons();
-                          },
-                        )
-                      : null,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                onSubmitted: (_) => _loadCoupons(),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: _selectDateRange,
-                      icon: const Icon(Icons.date_range_rounded),
-                      label: Text(
-                        _startDate != null && _endDate != null
-                            ? '${DateFormat('MMM d').format(_startDate!)} - ${DateFormat('MMM d, y').format(_endDate!)}'
-                            : 'Select Date Range',
-                      ),
-                    ),
-                  ),
-                  if (_startDate != null && _endDate != null) ...[
-                    const SizedBox(width: 8),
-                    IconButton(
-                      icon: const Icon(Icons.clear_rounded),
-                      onPressed: _clearDateRange,
+        _buildCouponCapBar(),
+        if (_loading)
+          const Expanded(
+            child: Center(child: CircularProgressIndicator()),
+          )
+        else
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: _loadCoupons,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: GradientCard(
+                            gradient: AppColors.primaryGradient,
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              children: [
+                                const Icon(
+                                  Icons.local_offer_rounded,
+                                  color: AppColors.white,
+                                  size: 32,
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  '$_totalCount',
+                                  style: const TextStyle(
+                                    color: AppColors.white,
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const Text(
+                                  'Total Coupons',
+                                  style: TextStyle(color: AppColors.white),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: GradientCard(
+                            gradient: const LinearGradient(
+                              colors: [AppColors.orange, AppColors.deepOrange],
+                            ),
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              children: [
+                                const Icon(
+                                  Icons.currency_rupee_rounded,
+                                  color: AppColors.white,
+                                  size: 32,
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  '₹${_totalDiscounts.toStringAsFixed(0)}',
+                                  style: const TextStyle(
+                                    color: AppColors.white,
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const Text(
+                                  'Discount (sample)',
+                                  style: TextStyle(color: AppColors.white),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
-                ],
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: GradientCard(
-                      gradient: AppColors.primaryGradient,
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        children: [
-                          const Icon(
-                            Icons.local_offer_rounded,
-                            color: AppColors.white,
-                            size: 32,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            '$totalActivations',
-                            style: const TextStyle(
-                              color: AppColors.white,
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const Text(
-                            'Activations',
-                            style: TextStyle(color: AppColors.white),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: GradientCard(
-                      gradient: const LinearGradient(
-                        colors: [AppColors.orange, AppColors.deepOrange],
-                      ),
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        children: [
-                          const Icon(
-                            Icons.currency_rupee_rounded,
-                            color: AppColors.white,
-                            size: 32,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            '₹${_totalDiscounts.toStringAsFixed(0)}',
-                            style: const TextStyle(
-                              color: AppColors.white,
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const Text(
-                            'Total Discount',
-                            style: TextStyle(color: AppColors.white),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: RefreshIndicator(
-            onRefresh: _loadCoupons,
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: _coupons.length + (_totalPages > 1 ? 1 : 0),
-              itemBuilder: (context, index) {
-                if (index == _coupons.length) {
-                  return _buildPagination();
-                }
-                final coupon = _coupons[index];
-                return FadeInUp(
-                  delay: Duration(milliseconds: 100 * index),
-                  child: _buildCouponCard(coupon),
-                );
-              },
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPagination() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 20),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          IconButton(
-            icon: const Icon(Icons.chevron_left_rounded),
-            onPressed: _currentPage > 1
-                ? () {
-                    setState(() => _currentPage--);
-                    _loadCoupons();
-                  }
-                : null,
-          ),
-          Text('Page $_currentPage of $_totalPages'),
-          IconButton(
-            icon: const Icon(Icons.chevron_right_rounded),
-            onPressed: _currentPage < _totalPages
-                ? () {
-                    setState(() => _currentPage++);
-                    _loadCoupons();
-                  }
-                : null,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCouponCard(Map<String, dynamic> coupon) {
-    final code = coupon['code'] as String? ?? 'N/A';
-    final discountType = coupon['discountType'] as String? ?? 'percentage';
-    final discountValue = _parseNum(coupon['discountValue']);
-    final isActive = coupon['isActive'] == true;
-    final currentUses = coupon['currentUses'] as int? ?? 0;
-    final maxUses = coupon['maxUses'] as int?;
-    final expiryDate = coupon['expiryDate'] as String?;
-
-    final remainingIncentivePercent = coupon['remainingIncentivePercent'] == null
-        ? null
-        : _parseNum(coupon['remainingIncentivePercent']).toInt();
-    final agentMaxDiscountPercent = coupon['agentMaxDiscountPercent'] == null
-        ? null
-        : _parseNum(coupon['agentMaxDiscountPercent']).toInt();
-
-    // Get agent info
-    final agentData = coupon['agent'] ?? coupon['agentId'];
-    String agentName = 'N/A';
-    String agentRole = 'N/A';
-    if (agentData is Map) {
-      agentName = agentData['name'] ?? 'N/A';
-      agentRole = agentData['role'] ?? 'N/A';
-    }
-
-    DateTime? expiry;
-    if (expiryDate != null) {
-      try {
-        expiry = DateTime.parse(expiryDate);
-      } catch (e) {
-        // Handle parse error
-      }
-    }
-
-    final isExpired = expiry != null && expiry.isBefore(DateTime.now());
-    final discountText =
-        discountType == 'percentage' ? '$discountValue%' : '₹$discountValue';
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    gradient: AppColors.primaryGradient,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    code,
-                    style: const TextStyle(
-                      color: AppColors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
                 ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isActive && !isExpired
-                        ? AppColors.success.withValues(alpha: 0.2)
-                        : AppColors.grey.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    isExpired ? 'Expired' : (isActive ? 'Active' : 'Inactive'),
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                      color: isExpired
-                          ? AppColors.red
-                          : (isActive ? AppColors.success : AppColors.grey),
-                    ),
-                  ),
-                ),
-                const Spacer(),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.success.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    discountText,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                      color: AppColors.success,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            _buildInfoRow(
-                Icons.person_rounded, 'Agent', '$agentName ($agentRole)'),
-            const SizedBox(height: 8),
-            _buildInfoRow(
-              Icons.confirmation_number_rounded,
-              'Uses',
-              maxUses != null
-                  ? '$currentUses / $maxUses'
-                  : '$currentUses (Unlimited)',
-            ),
-            if (discountType == 'percentage') ...[
-              const SizedBox(height: 8),
-              _buildInfoRow(
-                Icons.shield_rounded,
-                'Agent Cap',
-                '${agentMaxDiscountPercent ?? 50}%',
               ),
-              const SizedBox(height: 8),
-              _buildInfoRow(
-                Icons.savings_rounded,
-                'Incentive Left',
-                '${remainingIncentivePercent ?? 0}%',
-              ),
-            ],
-            if (expiry != null) ...[
-              const SizedBox(height: 8),
-              _buildInfoRow(
-                Icons.calendar_today_rounded,
-                'Expires',
-                DateFormat('MMM d, y').format(expiry),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInfoRow(IconData icon, String label, String value) {
-    return Row(
-      children: [
-        Icon(icon, size: 16, color: AppColors.grey600),
-        const SizedBox(width: 8),
-        Text(
-          '$label: ',
-          style: TextStyle(
-            fontSize: 12,
-            color: AppColors.grey600,
-          ),
-        ),
-        Expanded(
-          child: Text(
-            value,
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
             ),
           ),
-        ),
       ],
     );
   }

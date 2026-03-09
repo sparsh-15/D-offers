@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
 import '../../core/constants/app_colors.dart';
@@ -874,14 +875,37 @@ class _SubscriptionsManagementTabState
   int _page = 1;
   int _totalPages = 1;
   int _pageSize = 20;
+  final TextEditingController _cityController = TextEditingController();
+  final TextEditingController _pincodeController = TextEditingController();
+  Timer? _debounceTimer;
 
   @override
   void initState() {
     super.initState();
     _loadSubscriptions();
+    _cityController.addListener(_onLocationFilterChanged);
+    _pincodeController.addListener(_onLocationFilterChanged);
   }
 
+  @override
+  void dispose() {
+    _debounceTimer?.cancel();
+    _cityController.removeListener(_onLocationFilterChanged);
+    _pincodeController.removeListener(_onLocationFilterChanged);
+    _cityController.dispose();
+    _pincodeController.dispose();
+    super.dispose();
+  }
 
+  void _onLocationFilterChanged() {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
+      if (!mounted) return;
+      _debounceTimer = null;
+      setState(() => _page = 1);
+      _loadSubscriptions();
+    });
+  }
 
   Future<void> _loadSubscriptions() async {
     setState(() => _loading = true);
@@ -890,8 +914,13 @@ class _SubscriptionsManagementTabState
       if (_filter == 'active') statusFilter = 'active';
       if (_filter == 'expired') statusFilter = 'expired';
 
+      final city = _cityController.text.trim();
+      final pincode = _pincodeController.text.trim();
+
       final result = await SubscriptionService.instance.getAllSubscriptions(
         status: statusFilter,
+        city: city.isEmpty ? null : city,
+        pincode: pincode.isEmpty ? null : pincode,
         page: _page,
         limit: _pageSize,
       );
@@ -1022,6 +1051,46 @@ class _SubscriptionsManagementTabState
                   _loadSubscriptions();
                 },
               ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _cityController,
+                      decoration: const InputDecoration(
+                        labelText: 'City',
+                        hintText: 'e.g. Pune',
+                        isDense: true,
+                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      ),
+                      onSubmitted: (_) {
+                        setState(() => _page = 1);
+                        _loadSubscriptions();
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                      controller: _pincodeController,
+                      decoration: const InputDecoration(
+                        labelText: 'Pincode',
+                        hintText: 'e.g. 411001',
+                        isDense: true,
+                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      ),
+                      keyboardType: TextInputType.number,
+                      onSubmitted: (_) {
+                        setState(() => _page = 1);
+                        _loadSubscriptions();
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
             ],
           ),
         ),

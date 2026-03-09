@@ -123,7 +123,8 @@ async function createOrLinkLead({
   let ownerSummary = null;
 
   try {
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(
+      async (tx) => {
       const existingActiveLead = await tx.shopLead.findFirst({
         where: {
           phone: normalizedPhone,
@@ -208,7 +209,9 @@ async function createOrLinkLead({
         where: { id: user.id, onboardedByLeadId: null },
         data: { onboardedByLeadId: createdLead.id },
       });
-    });
+      },
+      { timeout: 15000 },
+    );
   } catch (err) {
     if (err instanceof LeadConflictError) {
       await auditLogRepository.create({

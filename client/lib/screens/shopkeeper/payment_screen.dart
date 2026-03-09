@@ -56,23 +56,38 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   int get _durationMonths {
-    final durationDays = widget.plan['durationDays'] ?? 30;
+    final durationDays = _toDouble(widget.plan['durationDays'] ?? 30);
     return (durationDays / 30).round().clamp(1, 24);
   }
 
+  static double _toDouble(dynamic value) {
+    if (value == null) return 0;
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value) ?? 0;
+    return 0;
+  }
+
   double get _basePrice {
-    final monthlyPrice = (widget.plan['monthlyPrice'] ?? 0) is int
-        ? (widget.plan['monthlyPrice'] as int).toDouble()
-        : (widget.plan['monthlyPrice'] ?? 0).toDouble();
+    final monthlyPrice = _toDouble(widget.plan['monthlyPrice']);
     return monthlyPrice * _durationMonths;
   }
 
   double get _displayPrice {
     if (_quote != null) {
       final fp = _quote!['finalPrice'];
-      if (fp is num) return fp.toDouble();
+      return _toDouble(fp);
     }
     return _basePrice;
+  }
+
+  /// Discount percentage when a coupon is applied (0 if none).
+  double get _discountPercent {
+    if (_quote == null) return 0;
+    final base = _toDouble(_quote!['basePrice']);
+    if (base <= 0) return 0;
+    final amount = _toDouble(_quote!['discountAmount']);
+    if (amount <= 0) return 0;
+    return (amount / base) * 100;
   }
 
   Future<void> _applyCoupon() async {
@@ -217,13 +232,15 @@ class _PaymentScreenState extends State<PaymentScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              'Discount',
+                              _discountPercent > 0
+                                  ? 'Discount (${_discountPercent.toStringAsFixed(0)}% off)'
+                                  : 'Discount',
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 color: AppColors.success,
                               ),
                             ),
                             Text(
-                              '- ₹${(_quote!['discountAmount'] as num).toStringAsFixed(0)}',
+                              '- ₹${_toDouble(_quote!['discountAmount']).toStringAsFixed(0)}',
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 color: AppColors.success,
                               ),
@@ -307,17 +324,19 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  SizedBox(
-                    height: 56,
-                    child: OutlinedButton(
-                      onPressed: _quoteLoading ? null : _applyCoupon,
-                      child: _quoteLoading
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Text('Apply'),
+                  Flexible(
+                    child: SizedBox(
+                      height: 56,
+                      child: OutlinedButton(
+                        onPressed: _quoteLoading ? null : _applyCoupon,
+                        child: _quoteLoading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Text('Apply'),
+                      ),
                     ),
                   ),
                 ],

@@ -70,16 +70,28 @@ async function getStats(req, res, next) {
       const subs = await prisma.subscription.findMany({
         where: {
           couponCode: { in: couponCodes },
+          couponAgentIdSnapshot: pgSsaId,
           status: 'active',
         },
         select: { id: true, discountAmount: true, actualPrice: true },
       });
       conversions = subs.length;
-      // Simple commission rule: 5% of actualPrice for subs created via SSA coupons.
-      commission = subs.reduce(
-        (sum, s) => sum + Number(s.actualPrice || 0) * 0.05,
-        0,
-      );
+
+      const agent = await prisma.user.findUnique({
+        where: { id: pgSsaId },
+        select: { maxCouponDiscountPercent: true },
+      });
+      const agentCap = Number(agent?.maxCouponDiscountPercent ?? 50);
+
+      commission = subs.reduce((sum, s) => {
+        const actualPrice = Number(s.actualPrice || 0);
+        const discountAmount = Number(s.discountAmount || 0);
+        const basePrice = actualPrice + discountAmount;
+        if (basePrice <= 0) return sum;
+        const discountPercent = (discountAmount / basePrice) * 100;
+        const remainingPercent = Math.max(0, agentCap - discountPercent);
+        return sum + (remainingPercent / 100) * actualPrice;
+      }, 0);
     }
 
     res.status(200).json({
@@ -168,6 +180,35 @@ async function getCoupons(req, res, next) {
       orderBy: { discountValue: 'asc' },
     });
 
+    const codes = coupons.map((c) => c.code);
+    let usagesByCode = {};
+    if (codes.length > 0) {
+      const subs = await prisma.subscription.findMany({
+        where: {
+          couponCode: { in: codes },
+          couponAgentIdSnapshot: pgSsaId,
+        },
+        select: {
+          id: true,
+          couponCode: true,
+          createdAt: true,
+          actualPrice: true,
+          discountAmount: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+      for (const s of subs) {
+        const code = s.couponCode || '';
+        if (!usagesByCode[code]) usagesByCode[code] = [];
+        usagesByCode[code].push({
+          subscriptionId: s.id,
+          usedAt: s.createdAt.toISOString(),
+          actualPrice: s.actualPrice != null ? Number(s.actualPrice) : null,
+          discountAmount: s.discountAmount != null ? Number(s.discountAmount) : null,
+        });
+      }
+    }
+
     res.status(200).json({
       success: true,
       coupons: coupons.map((c) => ({
@@ -181,6 +222,7 @@ async function getCoupons(req, res, next) {
         currentUses: c.currentUses,
         isActive: c.isActive,
         createdAt: c.createdAt.toISOString(),
+        usages: usagesByCode[c.code] || [],
       })),
     });
   } catch (err) {

@@ -6,13 +6,13 @@ class ApiConfig {
   /// Toggle between environments
   /// Set to false for local development
   /// Set to true for production/deployed backend
-  static const bool useProduction = true;
+  static const bool useProduction = false;
 
   /// Your machine's IP on the local network. Used for physical device & iOS.
   /// - Physical Android/iOS on same Wi‑Fi: use this (e.g. 192.168.29.47).
   /// - Android emulator: use '10.0.2.2' to reach host.
   /// Find your IP: Windows `ipconfig`, Mac/Linux `ifconfig` or `ip addr`.
-  static const String devHost = '192.168.29.47';
+  static const String devHost = '10.180.245.228';
 
   static String get baseUrl {
     if (useProduction) {
