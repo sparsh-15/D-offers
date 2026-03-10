@@ -23,8 +23,19 @@ async function upsertByUserId(userId, update) {
   if (!pgUserId) return null;
   const user = await prisma.user.findUnique({
     where: { id: pgUserId },
-    select: { address: true, pincode: true, city: true },
+    select: { address: true, pincode: true, city: true, onboardedByLeadId: true },
   });
+
+  // Resolve the onboarding agent from the lead that created this shopkeeper.
+  // Only applied on CREATE so existing attribution is never overwritten.
+  let onboardedBy = null;
+  if (user?.onboardedByLeadId) {
+    const lead = await prisma.shopLead.findUnique({
+      where: { id: user.onboardedByLeadId },
+      select: { ssaId: true, csaId: true },
+    });
+    onboardedBy = lead?.ssaId || lead?.csaId || null;
+  }
 
   const createData = {
     userId: pgUserId,
@@ -34,6 +45,7 @@ async function upsertByUserId(userId, update) {
     city: update.city || user?.city || null,
     category: update.category || null,
     description: update.description || null,
+    ...(onboardedBy ? { onboardedBy } : {}),
   };
 
   const updateData = {

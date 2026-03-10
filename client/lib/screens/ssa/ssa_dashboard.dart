@@ -57,52 +57,7 @@ class _SsaDashboardState extends State<SsaDashboard> {
       },
       child: Scaffold(
         backgroundColor: AppColors.background,
-        appBar: AppBar(
-          backgroundColor: AppColors.surface,
-          elevation: 0,
-          title: Text(
-            'SSA',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: AppColors.textPrimary,
-                  fontWeight: FontWeight.w600,
-                ),
-          ),
-          actions: [
-            Padding(
-              padding: const EdgeInsets.only(right: 12),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'Customer',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                  ),
-                  const SizedBox(width: 6),
-                  Theme(
-                    data: Theme.of(context).copyWith(
-                      switchTheme: SwitchThemeData(
-                        thumbColor: WidgetStateProperty.resolveWith((s) =>
-                            s.contains(WidgetState.selected)
-                                ? AppColors.accent
-                                : AppColors.textMuted),
-                        trackColor: WidgetStateProperty.resolveWith((s) =>
-                            s.contains(WidgetState.selected)
-                                ? AppColors.accent.withValues(alpha: 0.4)
-                                : AppColors.elevated),
-                      ),
-                    ),
-                    child: Switch.adaptive(
-                      value: false,
-                      onChanged: (_) => _switchToCustomerView(),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+        appBar: null,
         body: _screens[_selectedIndex],
         bottomNavigationBar: BottomNavigationBar(
           currentIndex: _selectedIndex,
