@@ -399,6 +399,8 @@ async function createLead(req, res, next) {
       category,
       notes,
       couponCode,
+      address,
+      description,
     } = req.body || {};
 
     const lead = await createOrLinkLead({
@@ -412,6 +414,8 @@ async function createLead(req, res, next) {
       category,
       notes,
       couponCode,
+      address,
+      description,
       ipAddress: req.ip || req.connection?.remoteAddress || null,
     });
 

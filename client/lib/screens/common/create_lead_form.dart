@@ -16,6 +16,8 @@ typedef CreateLeadCallback = Future<Map<String, dynamic>> Function({
   String? category,
   String? notes,
   String? couponCode,
+  String? address,
+  String? description,
 });
 
 /// Shared lead form for SSA and CSA: shop details + optional coupon.
@@ -186,6 +188,8 @@ class _CreateLeadFormState extends State<CreateLeadForm> {
         category: _categoryController.text.trim().isEmpty ? null : _categoryController.text.trim(),
         notes: combinedNotes,
         couponCode: _couponController.text.trim().isEmpty ? null : _couponController.text.trim(),
+        address: address.isEmpty ? null : address,
+        description: null,
       );
       if (!mounted) return;
       setState(() => _isSubmitting = false);

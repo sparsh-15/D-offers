@@ -114,6 +114,8 @@ class CompanySalesService {
     String? category,
     String? notes,
     String? couponCode,
+    String? address,
+    String? description,
   }) async {
     final uri = Uri.parse('${ApiConfig.companySalesUrl}/leads');
     final body = <String, dynamic>{
@@ -125,6 +127,8 @@ class CompanySalesService {
       if (category != null && category.trim().isNotEmpty) 'category': category.trim(),
       if (notes != null && notes.trim().isNotEmpty) 'notes': notes.trim(),
       if (couponCode != null && couponCode.trim().isNotEmpty) 'couponCode': couponCode.trim(),
+      if (address != null && address.trim().isNotEmpty) 'address': address.trim(),
+      if (description != null && description.trim().isNotEmpty) 'description': description.trim(),
     };
     final response = await _client.post(
       uri,

@@ -37,6 +37,8 @@ class CsaCreateLeadScreen extends StatelessWidget {
               String? category,
               String? notes,
               String? couponCode,
+              String? address,
+              String? description,
             }) async {
               return CompanySalesService.instance.createLead(
                 shopName: shopName,
@@ -47,6 +49,8 @@ class CsaCreateLeadScreen extends StatelessWidget {
                 category: category,
                 notes: notes,
                 couponCode: couponCode,
+                address: address,
+                description: description,
               );
             },
           ),

@@ -105,6 +105,8 @@ async function createOrLinkLead({
   category,
   notes,
   couponCode,
+  address,
+  description,
   ipAddress,
 }) {
   if (!ci(shopName) || !ci(phone)) {
@@ -249,6 +251,36 @@ async function createOrLinkLead({
       targetUserId: linkedUserId,
       targetUserRole: 'shopkeeper',
       details: { leadId: createdLead.id, phone: normalizedPhone },
+      ipAddress: ipAddress || null,
+    });
+  }
+
+  // Create or update the shopkeeper profile so the shop does not need to
+  // re-enter basic details later. Address should live on the profile (not
+  // the user), as per current architecture.
+  try {
+    const shopkeeperProfileRepository = require('../repositories/shopkeeperProfileRepository');
+    await shopkeeperProfileRepository.upsertByUserId(linkedUserId, {
+      shopName: ci(shopName),
+      address: ci(address) || null,
+      pincode: ci(pincode) || null,
+      city: ci(city) || null,
+      category: ci(category) || null,
+      description: ci(description) || null,
+    });
+  } catch (e) {
+    // Profile creation failure should not block lead creation; log via audit.
+    await auditLogRepository.create({
+      adminId: agentId,
+      adminRole: agentRole,
+      action: 'lead_created',
+      targetUserId: linkedUserId,
+      targetUserRole: 'shopkeeper',
+      details: {
+        leadId: createdLead.id,
+        phone: normalizedPhone,
+        profileUpsertError: ci(e?.message || e),
+      },
       ipAddress: ipAddress || null,
     });
   }
