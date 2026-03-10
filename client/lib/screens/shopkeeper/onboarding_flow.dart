@@ -5,10 +5,12 @@ import '../../core/utils/theme_helper.dart';
 import '../../core/utils/dialog_helper.dart';
 import '../../services/auth_service.dart';
 import '../../services/subscription_service.dart';
+import '../../services/auth_store.dart';
 import '../../models/shopkeeper_profile_model.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/gradient_card.dart';
 import '../../widgets/pincode_location_section.dart';
+import '../auth/login_screen.dart';
 import 'subscription_plans_screen.dart';
 
 class OnboardingFlow extends StatefulWidget {
@@ -117,6 +119,33 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
   Widget _buildProfileCompletionScreen() {
     return Scaffold(
+      appBar: AppBar(
+        backgroundColor: AppColors.transparent,
+        elevation: 0,
+        actions: [
+          TextButton(
+            onPressed: () async {
+              final shouldLogout =
+                  await DialogHelper.showLogoutDialog(context);
+              if (shouldLogout && context.mounted) {
+                await AuthStore.clearPersistedAuth();
+                AuthStore.clear();
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(
+                    builder: (_) => const LoginScreen(),
+                  ),
+                  (route) => false,
+                );
+                DialogHelper.showSuccessSnackBar(
+                  context,
+                  'Logged out successfully',
+                );
+              }
+            },
+            child: const Text('Logout'),
+          ),
+        ],
+      ),
       body: Container(
         decoration:
             BoxDecoration(gradient: ThemeHelper.getBackgroundGradient(context)),
