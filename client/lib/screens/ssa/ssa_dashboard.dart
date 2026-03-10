@@ -159,16 +159,59 @@ class _SsaHomeTabState extends State<SsaHomeTab> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'SSA Dashboard',
-                style: theme.textTheme.headlineMedium
-                    ?.copyWith(color: AppColors.textPrimary),
-              ),
-              const SizedBox(height: AppTokens.spaceXS),
-              Text(
-                'Your assigned shopkeepers and activity at a glance',
-                style: theme.textTheme.bodyMedium
-                    ?.copyWith(color: AppColors.textSecondary),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'SSA Dashboard',
+                        style: theme.textTheme.headlineMedium
+                            ?.copyWith(color: AppColors.textPrimary),
+                      ),
+                      const SizedBox(height: AppTokens.spaceXS),
+                      Text(
+                        'Your assigned shopkeepers and activity at a glance',
+                        style: theme.textTheme.bodyMedium
+                            ?.copyWith(color: AppColors.textSecondary),
+                      ),
+                    ],
+                  ),
+                  Theme(
+                    data: Theme.of(context).copyWith(
+                      switchTheme: SwitchThemeData(
+                        thumbColor:
+                            WidgetStateProperty.resolveWith((states) {
+                          if (states.contains(WidgetState.selected)) {
+                            return AppColors.accent;
+                          }
+                          return AppColors.textMuted;
+                        }),
+                        trackColor:
+                            WidgetStateProperty.resolveWith((states) {
+                          if (states.contains(WidgetState.selected)) {
+                            return AppColors.accent
+                                .withValues(alpha: 0.4);
+                          }
+                          return AppColors.elevated;
+                        }),
+                      ),
+                    ),
+                    child: Switch.adaptive(
+                      value: true,
+                      onChanged: (_) {
+                        Navigator.pushAndRemoveUntil(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const CustomerDashboard(),
+                          ),
+                          (route) => false,
+                        );
+                      },
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: AppTokens.spaceLG),
               Expanded(

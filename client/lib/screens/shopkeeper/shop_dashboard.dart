@@ -8,12 +8,12 @@ import '../../services/auth_service.dart';
 import '../../services/subscription_service.dart';
 import '../../models/offer_model.dart';
 import 'shop_profile_body.dart';
+import '../common/customer_experience_shell.dart';
 import '../../widgets/offer_card.dart';
 import '../common/offer_detail_screen.dart';
 import 'offer_details_screen.dart';
 import 'onboarding_flow.dart';
 import 'subscription_plans_screen.dart';
-import 'ai_credit_packs_screen.dart';
 
 class ShopDashboard extends StatefulWidget {
   const ShopDashboard({super.key});
@@ -200,6 +200,19 @@ class _ShopHomeTabState extends State<ShopHomeTab> {
                 ],
               ),
               actions: [
+                IconButton(
+                  icon: const Icon(Icons.person_search_rounded),
+                  tooltip: 'View app as customer',
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const CustomerExperienceShell(
+                          sourceLabel: 'Shopkeeper',
+                        ),
+                      ),
+                    );
+                  },
+                ),
                 IconButton(
                   icon: const Icon(Icons.notifications_rounded),
                   onPressed: () {},
@@ -641,7 +654,6 @@ class ShopProfileTab extends StatefulWidget {
 class _ShopProfileTabState extends State<ShopProfileTab> {
   Map<String, dynamic>? _subscription;
   int? _offerCount;
-  bool _loading = true;
 
   @override
   void initState() {
@@ -650,7 +662,6 @@ class _ShopProfileTabState extends State<ShopProfileTab> {
   }
 
   Future<void> _loadSubscriptionDetails() async {
-    setState(() => _loading = true);
     try {
       final dashboard = await AuthService.instance.getShopkeeperDashboard();
       final subscription = dashboard['subscription'] as Map<String, dynamic>?;
@@ -665,112 +676,13 @@ class _ShopProfileTabState extends State<ShopProfileTab> {
       setState(() {
         _subscription = subscription;
         _offerCount = offerCount;
-        _loading = false;
       });
     } catch (_) {
       if (!mounted) return;
-      setState(() => _loading = false);
+      setState(() {});
     }
   }
 
-  String _formatDate(dynamic value) {
-    if (value == null) return '—';
-    final date = DateTime.tryParse(value.toString());
-    if (date == null) return '—';
-    final y = date.year.toString().padLeft(4, '0');
-    final m = date.month.toString().padLeft(2, '0');
-    final d = date.day.toString().padLeft(2, '0');
-    return '$y-$m-$d';
-  }
-
-  Widget _buildSubscriptionCard(BuildContext context) {
-    if (_loading) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: LinearProgressIndicator(),
-      );
-    }
-    if (_subscription == null) {
-      return const SizedBox.shrink();
-    }
-    final planSnapshot =
-        _subscription?['planSnapshot'] as Map<String, dynamic>?;
-    final planName =
-        planSnapshot?['displayName'] ?? planSnapshot?['name'] ?? 'Plan';
-    final status = (_subscription?['status'] ?? 'inactive').toString();
-    final maxOffers = planSnapshot?['maxOffers'];
-    final offerLimitLabel = maxOffers == null || maxOffers == -1
-        ? 'Unlimited offers'
-        : '${_offerCount ?? 0} / $maxOffers offers used';
-    final monthlyAiLimit = planSnapshot?['monthlyAiLimit'];
-    final usedThisCycle = _subscription?['usedThisCycle'] ?? 0;
-    final extraCredits = _subscription?['extraCreditsCurrentCycle'] ?? 0;
-    final showAiUsage = monthlyAiLimit != null && monthlyAiLimit != -1;
-    final aiUsageLabel = showAiUsage
-        ? 'AI Banners: $usedThisCycle / $monthlyAiLimit used${extraCredits > 0 ? ' (+ $extraCredits extra)' : ''}'
-        : null;
-    final startDate = _formatDate(_subscription?['startDate']);
-    final endDate = _formatDate(_subscription?['endDate']);
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-      decoration: BoxDecoration(
-        color: ThemeHelper.getSurfaceColor(context),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Subscription',
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            '$planName • ${status.toUpperCase()}',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-          const SizedBox(height: 6),
-          Text(
-            offerLimitLabel,
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-          if (aiUsageLabel != null) ...[
-            const SizedBox(height: 6),
-            Text(aiUsageLabel, style: Theme.of(context).textTheme.bodySmall),
-            const SizedBox(height: 8),
-            TextButton.icon(
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const AiCreditPacksScreen(),
-                  ),
-                ).then((_) => _loadSubscriptionDetails());
-              },
-              icon: const Icon(Icons.auto_awesome_rounded, size: 18),
-              label: const Text('Buy AI Credit Pack'),
-              style: TextButton.styleFrom(
-                foregroundColor: AppColors.primary,
-                padding: EdgeInsets.zero,
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-            ),
-          ],
-          const SizedBox(height: 6),
-          Text(
-            'Valid: $startDate → $endDate',
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-        ],
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -784,7 +696,6 @@ class _ShopProfileTabState extends State<ShopProfileTab> {
       child: SafeArea(
         child: Column(
           children: [
-            _buildSubscriptionCard(context),
             if (!hasSubscription)
               Container(
                 width: double.infinity,
@@ -838,8 +749,11 @@ class _ShopProfileTabState extends State<ShopProfileTab> {
                   ],
                 ),
               ),
-            const Expanded(
-              child: ShopProfileBody(),
+            Expanded(
+              child: ShopProfileBody(
+                subscription: _subscription,
+                offerCount: _offerCount,
+              ),
             ),
           ],
         ),

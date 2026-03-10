@@ -4,8 +4,9 @@ import '../../core/constants/app_colors.dart';
 import '../../core/utils/dialog_helper.dart';
 import '../../services/auth_service.dart';
 import '../../services/auth_store.dart';
-import '../../services/subscription_service.dart';
 import '../../models/shopkeeper_profile_model.dart';
+import '../../services/subscription_service.dart';
+import 'ai_credit_packs_screen.dart';
 import '../../widgets/theme_toggle.dart';
 import '../../widgets/profile_option_tile.dart';
 import '../../widgets/pincode_location_section.dart';
@@ -13,9 +14,18 @@ import '../auth/login_screen.dart';
 import '../common/settings_page.dart';
 import '../common/help_support_page.dart';
 import '../common/about_page.dart';
+import '../common/customer_experience_shell.dart';
+import 'shop_business_details_page.dart';
 
 class ShopProfileBody extends StatefulWidget {
-  const ShopProfileBody({super.key});
+  final Map<String, dynamic>? subscription;
+  final int? offerCount;
+
+  const ShopProfileBody({
+    super.key,
+    this.subscription,
+    this.offerCount,
+  });
 
   @override
   State<ShopProfileBody> createState() => _ShopProfileBodyState();
@@ -53,9 +63,6 @@ class _ShopProfileBodyState extends State<ShopProfileBody> {
         : (AuthStore.currentUser?.name.isNotEmpty == true
             ? AuthStore.currentUser!.name
             : 'My Shop');
-    final ownerName = AuthStore.currentUser?.name ?? '';
-    final ownerPhone = AuthStore.currentUser?.phone ?? '';
-
     return Column(
       children: [
         AppBar(
@@ -66,94 +73,125 @@ class _ShopProfileBodyState extends State<ShopProfileBody> {
           ],
         ),
         const SizedBox(height: 20),
-        const CircleAvatar(
-          radius: 50,
-          backgroundColor: AppColors.primary,
-          child: Icon(Icons.store_rounded, size: 50, color: AppColors.white),
-        ),
-        const SizedBox(height: 16),
-        Text(
-          name,
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
-        if (_profile?.category.isNotEmpty == true)
-          Text(
-            _profile!.category,
-            style: Theme.of(context).textTheme.bodyMedium,
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Column(
+                children: [
+                  const CircleAvatar(
+                    radius: 40,
+                    backgroundColor: AppColors.primary,
+                    child: Icon(Icons.store_rounded,
+                        size: 40, color: AppColors.white),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    name,
+                    style: Theme.of(context).textTheme.titleLarge,
+                    textAlign: TextAlign.center,
+                  ),
+                  if (_profile?.category.isNotEmpty == true)
+                    Text(
+                      _profile!.category,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                      textAlign: TextAlign.center,
+                    ),
+                ],
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildCompactSubscription(context),
+              ),
+            ],
           ),
+        ),
         const SizedBox(height: 24),
         Expanded(
           child: _loading
               ? const Center(child: CircularProgressIndicator())
               : ListView(
                   children: [
-                    if (_profile != null) Padding(
-                      padding: const EdgeInsets.symmetric(
+                    const ThemeToggle(),
+                    Card(
+                      margin: const EdgeInsets.symmetric(
                         horizontal: 16,
                         vertical: 8,
                       ),
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: AppColors.elevated,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppColors.borderSubtle),
+                      color: AppColors.elevated,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        child: Row(
                           children: [
-                            Text(
-                              'Shop details',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleMedium
-                                  ?.copyWith(
-                                    color: AppColors.textPrimary,
-                                    fontWeight: FontWeight.w600,
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Customer view',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(
+                                          color: AppColors.textPrimary,
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                   ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Switch to browse myOffers as a customer',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall
+                                        ?.copyWith(
+                                          color: AppColors.textSecondary,
+                                        ),
+                                  ),
+                                ],
+                              ),
                             ),
-                            const SizedBox(height: 8),
-                            if (ownerName.isNotEmpty)
-                              _DetailRow(
-                                icon: Icons.person_rounded,
-                                label: 'Owner',
-                                value: ownerName,
+                            Theme(
+                              data: Theme.of(context).copyWith(
+                                switchTheme: SwitchThemeData(
+                                  thumbColor:
+                                      WidgetStateProperty.resolveWith((states) {
+                                    if (states.contains(WidgetState.selected)) {
+                                      return AppColors.accent;
+                                    }
+                                    return AppColors.textMuted;
+                                  }),
+                                  trackColor:
+                                      WidgetStateProperty.resolveWith((states) {
+                                    if (states.contains(WidgetState.selected)) {
+                                      return AppColors.accent
+                                          .withValues(alpha: 0.4);
+                                    }
+                                    return AppColors.elevated;
+                                  }),
+                                ),
                               ),
-                            if (ownerPhone.isNotEmpty)
-                              _DetailRow(
-                                icon: Icons.phone_rounded,
-                                label: 'Contact',
-                                value: '+91 $ownerPhone',
+                              child: Switch.adaptive(
+                                value: true,
+                                onChanged: (_) {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          const CustomerExperienceShell(
+                                        sourceLabel: 'Shopkeeper',
+                                      ),
+                                    ),
+                                  );
+                                },
                               ),
-                            if (_profile!.address.isNotEmpty)
-                              _DetailRow(
-                                icon: Icons.location_on_rounded,
-                                label: 'Address',
-                                value: _profile!.address,
-                              ),
-                            if (_profile!.city.isNotEmpty ||
-                                _profile!.pincode.isNotEmpty)
-                              _DetailRow(
-                                icon: Icons.map_rounded,
-                                label: 'Area',
-                                value: [
-                                  if (_profile!.city.isNotEmpty) _profile!.city,
-                                  if (_profile!.pincode.isNotEmpty)
-                                    _profile!.pincode,
-                                ].join(', '),
-                              ),
-                            if (_profile!.description.isNotEmpty)
-                              _DetailRow(
-                                icon: Icons.info_outline_rounded,
-                                label: 'Description',
-                                value: _profile!.description,
-                                maxLines: 3,
-                              ),
+                            ),
                           ],
                         ),
                       ),
                     ),
-                    const ThemeToggle(),
                     ProfileOptionTile(
                       icon: Icons.edit_rounded,
                       title: 'Edit Shop Profile',
@@ -162,7 +200,13 @@ class _ShopProfileBodyState extends State<ShopProfileBody> {
                     ProfileOptionTile(
                       icon: Icons.business_rounded,
                       title: 'Business Details',
-                      onTap: () => _openEditProfileDialog(context),
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const ShopBusinessDetailsPage(),
+                          ),
+                        );
+                      },
                     ),
                     ProfileOptionTile(
                       icon: Icons.settings_rounded,
@@ -221,6 +265,107 @@ class _ShopProfileBodyState extends State<ShopProfileBody> {
                 ),
         ),
       ],
+    );
+  }
+
+  Widget _buildCompactSubscription(BuildContext context) {
+    final sub = widget.subscription;
+    if (sub == null) {
+      return const SizedBox.shrink();
+    }
+    final planSnapshot =
+        sub['planSnapshot'] as Map<String, dynamic>? ?? <String, dynamic>{};
+    final planName =
+        planSnapshot['displayName'] ?? planSnapshot['name'] ?? 'Plan';
+    final status = (sub['status'] ?? 'inactive').toString();
+    final Object? maxOffers = planSnapshot['maxOffers'];
+    final Object? monthlyAiLimit = planSnapshot['monthlyAiLimit'];
+    final int usedThisCycle = (sub['usedThisCycle'] as num?)?.toInt() ?? 0;
+    final int extraCredits =
+        (sub['extraCreditsCurrentCycle'] as num?)?.toInt() ?? 0;
+    String? offerLabel;
+    if (maxOffers == null || maxOffers == -1) {
+      offerLabel = 'Unlimited offers';
+    } else {
+      offerLabel = '${widget.offerCount ?? 0} / $maxOffers offers used';
+    }
+
+    String? aiLabel;
+    if (monthlyAiLimit != null && monthlyAiLimit != -1) {
+      final int limit = (monthlyAiLimit as num?)?.toInt() ?? 0;
+      aiLabel =
+          'AI banners: $usedThisCycle / $limit used${extraCredits > 0 ? ' (+$extraCredits extra)' : ''}';
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.elevated,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.borderSubtle),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'Subscription',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '$planName • ${status.toUpperCase()}',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+          ),
+          if (offerLabel != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              offerLabel,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+            ),
+          ],
+          if (aiLabel != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              aiLabel,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+            ),
+          ],
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const AiCreditPacksScreen(),
+                  ),
+                );
+              },
+              icon: const Icon(
+                Icons.auto_awesome_rounded,
+                size: 18,
+              ),
+              label: const Text('AI Banner Packs'),
+              style: TextButton.styleFrom(
+                padding: EdgeInsets.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                minimumSize: Size.zero,
+                foregroundColor: AppColors.primary,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -534,54 +679,5 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
   }
 }
 
-class _DetailRow extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  final int maxLines;
-
-  const _DetailRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-    this.maxLines = 2,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 18, color: AppColors.textMuted),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppColors.textMuted,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  value,
-                  maxLines: maxLines,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
+// Detail row widget was used for the old in-tab \"Shop details\" card
+// and is no longer needed now that business details have a dedicated screen.

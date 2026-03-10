@@ -7,6 +7,7 @@ import '../../core/utils/dialog_helper.dart';
 import '../../widgets/gradient_card.dart';
 import '../../widgets/theme_toggle.dart';
 import '../../widgets/profile_option_tile.dart';
+import '../common/customer_experience_shell.dart';
 import '../../services/auth_service.dart';
 import '../../services/auth_store.dart';
 import '../../services/subscription_service.dart';
@@ -1861,6 +1862,88 @@ class _AdminProfileTabState extends State<AdminProfileTab> {
                   child: ListView(
                     children: [
                       const ThemeToggle(),
+                      Card(
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        color: AppColors.elevated,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Customer view',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyMedium
+                                          ?.copyWith(
+                                            color: AppColors.textPrimary,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'Switch to browse myOffers as a customer',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(
+                                            color: AppColors.textSecondary,
+                                          ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Theme(
+                                data: Theme.of(context).copyWith(
+                                  switchTheme: SwitchThemeData(
+                                    thumbColor:
+                                        WidgetStateProperty.resolveWith(
+                                            (states) {
+                                      if (states.contains(
+                                          WidgetState.selected)) {
+                                        return AppColors.accent;
+                                      }
+                                      return AppColors.textMuted;
+                                    }),
+                                    trackColor:
+                                        WidgetStateProperty.resolveWith(
+                                            (states) {
+                                      if (states.contains(
+                                          WidgetState.selected)) {
+                                        return AppColors.accent
+                                            .withValues(alpha: 0.4);
+                                      }
+                                      return AppColors.elevated;
+                                    }),
+                                  ),
+                                ),
+                                child: Switch.adaptive(
+                                  value: true,
+                                  onChanged: (_) {
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (_) =>
+                                            const CustomerExperienceShell(
+                                          sourceLabel: 'Admin',
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                       ProfileOptionTile(
                         icon: Icons.edit_rounded,
                         title: 'Edit Profile',

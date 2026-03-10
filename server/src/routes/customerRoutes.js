@@ -7,7 +7,16 @@ const shopkeeperProfileController = require('../controllers/shopkeeperProfileCon
 const router = express.Router();
 
 router.use(authMiddleware);
-router.use(requireRole(['customer', 'super_admin', 'subadmin', 'ssa']));
+router.use(
+  requireRole([
+    'customer',
+    'super_admin',
+    'subadmin',
+    'ssa',
+    'shopkeeper',
+    'company_sales_agent',
+  ]),
+);
 
 router.get('/offers', customerController.listOffers);
 router.post('/offers/:id/like', customerController.toggleLike);

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_design_tokens.dart';
@@ -262,15 +263,21 @@ class _CreateLeadFormState extends State<CreateLeadForm> {
             TextFormField(
               controller: _phoneController,
               decoration: const InputDecoration(
-                labelText: 'Phone',
+                labelText: 'Owner mobile',
                 prefixIcon: Icon(Icons.phone_rounded),
                 counterText: '',
               ),
               keyboardType: TextInputType.phone,
               maxLength: 10,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+              ],
               validator: (value) {
-                if (value == null || value.trim().isEmpty) return 'Phone is required';
-                if (value.trim().length != 10) return 'Enter a valid 10-digit phone number';
+                final v = value?.trim() ?? '';
+                if (v.isEmpty) return 'Phone is required';
+                if (v.length != 10) {
+                  return 'Please enter valid 10-digit mobile number';
+                }
                 return null;
               },
             ),
@@ -284,7 +291,31 @@ class _CreateLeadFormState extends State<CreateLeadForm> {
               availableAreas: _availableAreas,
               selectedArea: _selectedArea,
               onAreaChanged: _onAreaSelected,
-              addressLabel: 'Shop address (optional)',
+              addressLabel:
+                  'Owner address (optional – detailed shop address can be added later)',
+              pincodeValidator: (value) {
+                final v = value?.trim() ?? '';
+                if (v.isEmpty) return 'Please enter pincode';
+                if (v.length != 6) return 'Please enter valid 6-digit pincode';
+                return null;
+              },
+              cityValidator: (value) {
+                final v = value?.trim() ?? '';
+                if (v.isEmpty) return 'City required';
+                return null;
+              },
+              areaValidator: (value) {
+                if (_availableAreas.isNotEmpty) {
+                  final v = value?.trim() ?? '';
+                  if (v.isEmpty) return 'Please select area';
+                }
+                return null;
+              },
+              stateValidator: (value) {
+                final v = value?.trim() ?? '';
+                if (v.isEmpty) return 'State required';
+                return null;
+              },
             ),
             const SizedBox(height: AppTokens.spaceMD),
             _isLoadingCategories
