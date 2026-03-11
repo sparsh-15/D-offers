@@ -536,6 +536,8 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+    final ctaReservedHeight = bottomInset + 190;
     final offer = widget.offer;
     final hasPhotos = offer.photos.isNotEmpty;
 
@@ -568,7 +570,7 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
             slivers: [
               // ── Header (photo or typographic) ──────────────────────────────
               SliverAppBar(
-                expandedHeight: 320,
+                expandedHeight: 200,
                 pinned: true,
                 backgroundColor: AppColors.background,
                 leading: GestureDetector(
@@ -640,12 +642,25 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                         ),
                       ),
                       const SizedBox(height: AppTokens.spaceXS),
-                      Text(
-                        shopDisplayName,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          color: AppColors.textSecondary,
-                          fontWeight: FontWeight.w500,
-                        ),
+                      Row(
+                        children: [
+                          ShopLogoWidget(
+                            logoUrl: _shopProfile?.logoUrl ?? offer.shopLogoUrl,
+                            radius: 11,
+                          ),
+                          const SizedBox(width: AppTokens.spaceXS),
+                          Expanded(
+                            child: Text(
+                              shopDisplayName,
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                color: AppColors.textSecondary,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: AppTokens.spaceMD),
                       Wrap(
@@ -784,24 +799,10 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                                 );
                               },
                               child: Container(
-                                width: 120,
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(
-                                    AppTokens.radiusMD,
-                                  ),
-                                  color: AppColors.elevated,
-                                ),
-                                clipBehavior: Clip.antiAlias,
-                                child: CachedNetworkImage(
+                                child: _PhotoThumbnailTile(
                                   imageUrl: _shopProfile!.shopImages[index],
+                                  height: 120,
                                   fit: BoxFit.cover,
-                                  placeholder: (_, __) => const ColoredBox(
-                                    color: AppColors.cardBackground,
-                                  ),
-                                  errorWidget: (_, __, ___) => const Icon(
-                                    Icons.broken_image_outlined,
-                                    color: AppColors.textMuted,
-                                  ),
                                 ),
                               ),
                             ),
@@ -821,31 +822,14 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                             itemCount: offer.photos.length,
                             itemBuilder: (ctx, i) => GestureDetector(
                               onTap: () => _showPhotoGallery(i),
-                              child: Container(
-                                width: 120,
-                                margin: const EdgeInsets.only(right: AppTokens.spaceSM),
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(AppTokens.radiusMD),
-                                  color: AppColors.elevated,
+                              child: Padding(
+                                padding: const EdgeInsets.only(
+                                  right: AppTokens.spaceSM,
                                 ),
-                                clipBehavior: Clip.antiAlias,
-                                child: CachedNetworkImage(
+                                child: _PhotoThumbnailTile(
                                   imageUrl: offer.photos[i],
-                                  fit: BoxFit.contain,
-                                  placeholder: (_, __) => const Center(
-                                    child: SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: AppColors.accentDim,
-                                      ),
-                                    ),
-                                  ),
-                                  errorWidget: (_, __, ___) => const Icon(
-                                    Icons.broken_image_outlined,
-                                    color: AppColors.textMuted,
-                                  ),
+                                  height: 120,
+                                  fit: BoxFit.cover,
                                 ),
                               ),
                             ),
@@ -903,9 +887,28 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                       const _SectionTitle('Shop details'),
                       const SizedBox(height: AppTokens.spaceSM),
                       if (_isLoadingShop)
-                        const LinearProgressIndicator(
-                          color: AppColors.accentDim,
-                          minHeight: 2,
+                        _SectionCard(
+                          child: Row(
+                            children: [
+                              const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: AppColors.accentDim,
+                                ),
+                              ),
+                              const SizedBox(width: AppTokens.spaceSM),
+                              Expanded(
+                                child: Text(
+                                  'Loading shop details...',
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         )
                       else if (_shopProfile != null)
                         _SectionCard(
@@ -992,16 +995,47 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                             ],
                           ),
                         )
-                      else if (_shopError != null)
-                        Text(
-                          'Could not load shop details',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: AppColors.textMuted,
+                      else
+                        _SectionCard(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.storefront_outlined,
+                                    color: AppColors.textMuted,
+                                    size: 18,
+                                  ),
+                                  const SizedBox(width: AppTokens.spaceXS),
+                                  Expanded(
+                                    child: Text(
+                                      offer.shopName?.trim().isNotEmpty == true
+                                          ? offer.shopName!
+                                          : 'Shop details unavailable',
+                                      style: theme.textTheme.titleMedium?.copyWith(
+                                        color: AppColors.textPrimary,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: AppTokens.spaceXS),
+                              Text(
+                                _shopError != null
+                                    ? 'Could not load full shop profile right now.'
+                                    : 'Detailed shop profile is not available for this offer yet.',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: AppColors.textMuted,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
 
                       // Space for pinned CTA
-                      const SizedBox(height: 120),
+                      SizedBox(height: ctaReservedHeight),
                     ],
                   ),
                 ),
@@ -1349,11 +1383,15 @@ class _InfoChip extends StatelessWidget {
 
 class _PhotoThumbnailTile extends StatefulWidget {
   final String imageUrl;
+  final double height;
+  final BoxFit fit;
   final bool isSelected;
 
   const _PhotoThumbnailTile({
     required this.imageUrl,
-    required this.isSelected,
+    this.height = 76,
+    this.fit = BoxFit.cover,
+    this.isSelected = false,
   });
 
   @override
@@ -1361,9 +1399,8 @@ class _PhotoThumbnailTile extends StatefulWidget {
 }
 
 class _PhotoThumbnailTileState extends State<_PhotoThumbnailTile> {
-  static const double _tileHeight = 76;
-  static const double _minTileWidth = 54;
-  static const double _maxTileWidth = 170;
+  static const double _minAspectRatio = 0.45;
+  static const double _maxAspectRatio = 2.4;
   double _aspectRatio = 1;
   ImageStream? _imageStream;
   ImageStreamListener? _imageStreamListener;
@@ -1398,11 +1435,9 @@ class _PhotoThumbnailTileState extends State<_PhotoThumbnailTile> {
       final image = info.image;
       if (!mounted || image.height == 0) return;
       final ratio = image.width / image.height;
-      final width = (_tileHeight * ratio).clamp(
-        _minTileWidth,
-        _maxTileWidth,
-      );
-      final normalizedRatio = width / _tileHeight;
+      final normalizedRatio = ratio
+          .clamp(_minAspectRatio, _maxAspectRatio)
+          .toDouble();
       if ((_aspectRatio - normalizedRatio).abs() > 0.005) {
         setState(() {
           _aspectRatio = normalizedRatio;
@@ -1427,8 +1462,8 @@ class _PhotoThumbnailTileState extends State<_PhotoThumbnailTile> {
 
     return AnimatedContainer(
       duration: AppTokens.durationFast,
-      width: _tileHeight * _aspectRatio,
-      height: _tileHeight,
+      width: widget.height * _aspectRatio,
+      height: widget.height,
       padding: const EdgeInsets.all(2),
       decoration: BoxDecoration(
         color: AppColors.elevated,
@@ -1442,7 +1477,7 @@ class _PhotoThumbnailTileState extends State<_PhotoThumbnailTile> {
         borderRadius: BorderRadius.circular(AppTokens.radiusSM),
         child: CachedNetworkImage(
           imageUrl: widget.imageUrl,
-          fit: BoxFit.cover,
+          fit: widget.fit,
           placeholder: (_, __) => const ColoredBox(
             color: AppColors.elevated,
           ),

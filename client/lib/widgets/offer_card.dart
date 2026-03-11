@@ -290,9 +290,9 @@ class _OfferCardState extends State<OfferCard>
                           children: [
                             ShopLogoWidget(
                               logoUrl: widget.offer.shopLogoUrl,
-                              radius: 9,
+                              radius: 12,
                             ),
-                            const SizedBox(width: 6),
+                            const SizedBox(width: 8),
                             Expanded(
                               child: Text(
                                 shopDisplayName,
