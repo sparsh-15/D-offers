@@ -1,6 +1,6 @@
-# myOffers Feature Requirements and Roadmap
+# MyOffers Feature Requirements and Roadmap
 
-**Source:** myOffers System Architecture Document V1 (PDF), Phases 1–3.  
+**Source:** MyOffers System Architecture Document V1 (PDF), Phases 1–3.  
 **Purpose:** Flushed feature documentation and requirements for what we are doing next. Aligned with PDF roadmap; includes client-specific acceptance criteria and technical notes.
 
 ---

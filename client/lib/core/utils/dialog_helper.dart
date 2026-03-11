@@ -55,7 +55,7 @@ class DialogHelper {
   static Future<bool> showLogoutDialog(BuildContext context) async {
     return await showConfirmDialog(
       context: context,
-      title: "Log out from myOffers?",
+      title: "Log out from MyOffers?",
       message: 'You can sign back in anytime with your mobile number.',
       confirmText: 'Log out',
       cancelText: 'Stay signed in',

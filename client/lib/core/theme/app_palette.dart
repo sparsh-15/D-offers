@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../constants/app_colors.dart';
 
-/// Dark-only palette. myOffers is a dark-first premium experience.
+/// Dark-only palette. MyOffers is a dark-first premium experience.
 class AppPalette {
   final bool isDark;
   final ColorScheme colorScheme;

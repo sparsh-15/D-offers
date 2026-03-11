@@ -1,6 +1,6 @@
 # client
 
-Flutter client for myOffers — hyperlocal offers and deals.
+Flutter client for MyOffers — hyperlocal offers and deals.
 
 ## Documentation
 

@@ -1891,7 +1891,7 @@ class _AdminProfileTabState extends State<AdminProfileTab> {
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
-                                      'Switch to browse myOffers as a customer',
+                                      'Switch to browse MyOffers as a customer',
                                       style: Theme.of(context)
                                           .textTheme
                                           .bodySmall

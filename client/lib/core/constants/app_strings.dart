@@ -1,6 +1,6 @@
 class AppStrings {
   // App Name
-  static const String appName = "myOffers";
+  static const String appName = "MyOffers";
   static const String appTagline = "Discover Amazing Deals Near You";
 
   // Role Selection
@@ -44,7 +44,7 @@ class AppStrings {
 
   // Customer
   static const String exploreOffers = "Explore Offers";
-  static const String myOffers = "My Offers";
+  static const String MyOffers = "My Offers";
   static const String favorites = "Favorites";
   static const String nearbyShops = "Nearby Shops";
 

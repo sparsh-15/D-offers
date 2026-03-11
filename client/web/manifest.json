@@ -1,11 +1,11 @@
 {
-    "name": "myOffers",
-    "short_name": "myOffers",
+    "name": "MyOffers",
+    "short_name": "MyOffers",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0A0E21",
     "theme_color": "#FFA726",
-    "description": "myOffers - Discover Amazing Deals Near You",
+    "description": "MyOffers - Discover Amazing Deals Near You",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
