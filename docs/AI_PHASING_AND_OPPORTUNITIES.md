@@ -1,4 +1,4 @@
-# D'Offer – AI Phasing & Opportunities
+# MyOffers – AI Phasing & Opportunities
 
 This document describes **where AI is used today** and **where AI will be used** across the app, by phase. It is the single reference for AI rollout planning.
 

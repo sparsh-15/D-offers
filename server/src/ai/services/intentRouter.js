@@ -69,7 +69,7 @@ async function classifyIntent(message) {
     `- ${INTENTS.BEST_COUPONS_FOR_PLAN}: user asks for best coupon for a subscription or plan.`,
     `- ${INTENTS.LIKE_OFFER}: user wants to like/favorite a specific offer.`,
     `- ${INTENTS.UNLIKE_OFFER}: user wants to remove like from a specific offer.`,
-    `- ${INTENTS.SEARCH_SHOPS_NEARBY}: user wants to find shops near them (by pincode/city/state) that are on D'Offer.`,
+    `- ${INTENTS.SEARCH_SHOPS_NEARBY}: user wants to find shops near them (by pincode/city/state) that are on MyOffers.`,
     '',
     'Schema (JSON):',
     '{',

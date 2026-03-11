@@ -1,4 +1,4 @@
-## D'Offer AI Assistant – Overview
+## MyOffers AI Assistant – Overview
 
 ### What this AI does
 - **Customer in‑app assistant** exposed via `POST /ai/chat` (see `aiController.js`).

@@ -1,5 +1,5 @@
 /**
- * Optional seed for D'Offers monetization: Silver/Gold/Platinum plans (category 'all')
+ * Optional seed for MyOfferss monetization: Silver/Gold/Platinum plans (category 'all')
  * and AI credit packs. Admin UI remains the source of truth; this provides initial data.
  * Run: node scripts/seed-monetization.js (from server directory, with .env loaded).
  */
