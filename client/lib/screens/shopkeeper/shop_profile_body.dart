@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../core/constants/app_colors.dart';
+import '../../core/constants/app_strings.dart';
 import '../../core/utils/dialog_helper.dart';
 import '../../services/auth_service.dart';
 import '../../services/auth_store.dart';
@@ -198,7 +199,7 @@ class _ShopProfileBodyState extends State<ShopProfileBody> {
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
-                                    'Switch to browse MyOffers as a customer',
+                                    'Switch to browse ${AppStrings.appName} as a customer',
                                     style: Theme.of(context)
                                         .textTheme
                                         .bodySmall

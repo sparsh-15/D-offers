@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_design_tokens.dart';
+import '../../core/constants/app_strings.dart';
 import '../../core/utils/dialog_helper.dart';
 import '../../services/chat_assistant_service.dart';
 
@@ -23,11 +24,11 @@ class _CustomerChatBotScreenState extends State<CustomerChatBotScreen> {
     "What deals are near me?",
     "How do I redeem an offer?",
     "Where are my saved offers?",
-    "What is MyOffers?",
+    'What is ${AppStrings.appName}?',
   ];
 
   static final Map<String, String> _localFallback = {
-    'hello': "Hi! I'm your MyOffers assistant. What can I help you with today?",
+    'hello': "Hi! I'm your ${AppStrings.appName} assistant. What can I help you with today?",
     'hi': "Hello! Ask me about deals, favorites, or how to use the app.",
     'redeem': 'Show the offer to the shopkeeper at their store — they\'ll verify and apply the discount.',
     'favorites': 'Tap the heart icon on any offer to save it. Find saved offers in the Favorites tab.',
@@ -39,7 +40,7 @@ class _CustomerChatBotScreenState extends State<CustomerChatBotScreen> {
     super.initState();
     _messages.add(
       _ChatMessage(
-        text: "Hi! I'm your MyOffers assistant. Ask me about deals near you, how to redeem offers, or anything else.",
+        text: "Hi! I'm your ${AppStrings.appName} assistant. Ask me about deals near you, how to redeem offers, or anything else.",
         isUser: false,
         actions: const [],
       ),
@@ -169,7 +170,7 @@ class _CustomerChatBotScreenState extends State<CustomerChatBotScreen> {
                   style: theme.textTheme.titleMedium,
                 ),
                 Text(
-                  'MyOffers',
+                  AppStrings.appName,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: AppColors.textMuted,
                     letterSpacing: 0.3,

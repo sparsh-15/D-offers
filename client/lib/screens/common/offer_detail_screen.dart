@@ -7,6 +7,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_design_tokens.dart';
+import '../../core/constants/app_strings.dart';
 import '../../models/offer_model.dart';
 import '../../models/shopkeeper_profile_model.dart';
 import '../../services/auth_service.dart';
@@ -360,7 +361,7 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
 
     final text = StringBuffer()
       ..writeln('${offer.title} — $discountText')
-      ..writeln('at $shopName on D\'Offers')
+      ..writeln('at $shopName on ${AppStrings.appName}')
       ..writeln()
       ..writeln('Download the app: $appLink');
 

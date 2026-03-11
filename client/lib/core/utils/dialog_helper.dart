@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
+import '../constants/app_strings.dart';
 import '../../screens/shopkeeper/ai_credit_packs_screen.dart';
 
 class DialogHelper {
@@ -55,7 +56,7 @@ class DialogHelper {
   static Future<bool> showLogoutDialog(BuildContext context) async {
     return await showConfirmDialog(
       context: context,
-      title: "Log out from MyOffers?",
+      title: 'Log out from ${AppStrings.appName}?',
       message: 'You can sign back in anytime with your mobile number.',
       confirmText: 'Log out',
       cancelText: 'Stay signed in',

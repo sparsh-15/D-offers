@@ -396,7 +396,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                         decoration: TextDecoration.underline,
                                       ),
                                 ),
-                                const TextSpan(text: ' of D\'Offer'),
+                                const TextSpan(text: ' of ${AppStrings.appName}'),
                               ],
                             ),
                           ),
