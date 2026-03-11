@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -39,6 +41,9 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
   bool _isLoadingShop = false;
   String? _shopError;
   ShopkeeperProfileModel? _shopProfile;
+  late final PageController _offerPhotoController;
+  int _currentOfferPhotoIndex = 0;
+  Timer? _offerPhotoAutoPlayTimer;
 
   late AnimationController _heartController;
   late Animation<double> _heartScale;
@@ -53,18 +58,60 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
       duration: const Duration(milliseconds: 200),
       vsync: this,
     );
+    _offerPhotoController = PageController();
     _heartScale = TweenSequence<double>([
       TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.25), weight: 50),
       TweenSequenceItem(tween: Tween(begin: 1.25, end: 1.0), weight: 50),
     ]).animate(CurvedAnimation(parent: _heartController, curve: Curves.easeInOut));
 
+    _startOfferPhotoAutoPlay();
     _loadShopDetails();
   }
 
   @override
   void dispose() {
+    _offerPhotoAutoPlayTimer?.cancel();
+    _offerPhotoController.dispose();
     _heartController.dispose();
     super.dispose();
+  }
+
+  void _startOfferPhotoAutoPlay() {
+    _offerPhotoAutoPlayTimer?.cancel();
+    if (widget.offer.photos.length <= 1) return;
+
+    _offerPhotoAutoPlayTimer = Timer.periodic(
+      const Duration(seconds: 2),
+      (_) {
+        if (!mounted || !_offerPhotoController.hasClients) return;
+        final nextIndex =
+            (_currentOfferPhotoIndex + 1) % widget.offer.photos.length;
+        _offerPhotoController.animateToPage(
+          nextIndex,
+          duration: const Duration(milliseconds: 320),
+          curve: Curves.easeInOut,
+        );
+      },
+    );
+  }
+
+  void _pauseOfferPhotoAutoPlay() {
+    _offerPhotoAutoPlayTimer?.cancel();
+  }
+
+  void _resumeOfferPhotoAutoPlay() {
+    _startOfferPhotoAutoPlay();
+  }
+
+  void _selectOfferPhoto(int index) {
+    if (!_offerPhotoController.hasClients) return;
+    _pauseOfferPhotoAutoPlay();
+    _offerPhotoController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 240),
+      curve: Curves.easeOutCubic,
+    );
+    _resumeOfferPhotoAutoPlay();
   }
 
   Future<void> _toggleLike() async {
@@ -521,7 +568,7 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
             slivers: [
               // ── Header (photo or typographic) ──────────────────────────────
               SliverAppBar(
-                expandedHeight: 280,
+                expandedHeight: 320,
                 pinned: true,
                 backgroundColor: AppColors.background,
                 leading: GestureDetector(
@@ -554,10 +601,18 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                 flexibleSpace: FlexibleSpaceBar(
                   collapseMode: CollapseMode.pin,
                   background: hasPhotos
-                      ? _PhotoHeader(
-                          photoUrl: offer.photos.first,
+                      ? _OfferPhotoCarousel(
+                          photos: offer.photos,
                           offerId: offer.id,
-                          onTap: () => _showPhotoGallery(0),
+                          controller: _offerPhotoController,
+                          currentIndex: _currentOfferPhotoIndex,
+                          onInteractionStart: _pauseOfferPhotoAutoPlay,
+                          onInteractionEnd: _resumeOfferPhotoAutoPlay,
+                          onPageChanged: (index) {
+                            if (!mounted) return;
+                            setState(() => _currentOfferPhotoIndex = index);
+                          },
+                          onTapPhoto: _showPhotoGallery,
                         )
                       : _TypographicHeader(
                           discountText: discountText,
@@ -623,6 +678,59 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                           ],
                         ],
                       ),
+
+                      if (hasPhotos) ...[
+                        const SizedBox(height: AppTokens.spaceMD),
+                        SizedBox(
+                          height: 76,
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: offer.photos.length,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(width: AppTokens.spaceSM),
+                            itemBuilder: (context, index) {
+                              final isSelected =
+                                  index == _currentOfferPhotoIndex;
+                              return GestureDetector(
+                                onTap: () => _selectOfferPhoto(index),
+                                child: AnimatedContainer(
+                                  duration: AppTokens.durationFast,
+                                  width: 76,
+                                  padding: const EdgeInsets.all(2),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.elevated,
+                                    borderRadius: BorderRadius.circular(
+                                      AppTokens.radiusMD,
+                                    ),
+                                    border: Border.all(
+                                      color: isSelected
+                                          ? AppColors.accent
+                                          : AppColors.borderSubtle,
+                                      width: isSelected ? 1.5 : 1,
+                                    ),
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(
+                                      AppTokens.radiusSM,
+                                    ),
+                                    child: CachedNetworkImage(
+                                      imageUrl: offer.photos[index],
+                                      fit: BoxFit.cover,
+                                      placeholder: (_, __) => const ColoredBox(
+                                        color: AppColors.cardBackground,
+                                      ),
+                                      errorWidget: (_, __, ___) => const Icon(
+                                        Icons.broken_image_outlined,
+                                        color: AppColors.textMuted,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
 
                       // Shop details (address, owner, etc.)
                       if (_isLoadingShop) ...[
@@ -722,52 +830,6 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                                   value: _shopProfile!.description,
                                   maxLines: 4,
                                 ),
-                              if (_shopProfile!.shopImages.isNotEmpty) ...[
-                                const SizedBox(height: AppTokens.spaceMD),
-                                Text(
-                                  'Shop photos',
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    color: AppColors.textPrimary,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                const SizedBox(height: AppTokens.spaceSM),
-                                SizedBox(
-                                  height: 96,
-                                  child: ListView.separated(
-                                    scrollDirection: Axis.horizontal,
-                                    itemCount: _shopProfile!.shopImages.length,
-                                    separatorBuilder: (_, __) =>
-                                        const SizedBox(width: AppTokens.spaceSM),
-                                    itemBuilder: (context, index) => ClipRRect(
-                                      borderRadius: BorderRadius.circular(
-                                        AppTokens.radiusMD,
-                                      ),
-                                      child: CachedNetworkImage(
-                                        imageUrl: _shopProfile!.shopImages[index],
-                                        width: 96,
-                                        height: 96,
-                                        fit: BoxFit.cover,
-                                        placeholder: (_, __) => Container(
-                                          width: 96,
-                                          height: 96,
-                                          color: AppColors.cardBackground,
-                                        ),
-                                        errorWidget: (_, __, ___) => Container(
-                                          width: 96,
-                                          height: 96,
-                                          color: AppColors.cardBackground,
-                                          alignment: Alignment.center,
-                                          child: const Icon(
-                                            Icons.broken_image_outlined,
-                                            color: AppColors.textMuted,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
                             ],
                           ),
                         ),
@@ -828,11 +890,66 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                         ),
                       ],
 
-                      // Photos grid
+                      if ((_shopProfile?.shopImages.isNotEmpty ?? false)) ...[
+                        const SizedBox(height: AppTokens.spaceLG),
+                        Text(
+                          'Shop photos',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: AppTokens.spaceSM),
+                        SizedBox(
+                          height: 120,
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: _shopProfile!.shopImages.length,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(width: AppTokens.spaceSM),
+                            itemBuilder: (context, index) => GestureDetector(
+                              onTap: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => _PhotoGalleryScreen(
+                                      photos: _shopProfile!.shopImages,
+                                      initialIndex: index,
+                                      offerId:
+                                          '${widget.offer.id}_shop_${_shopProfile!.id}',
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: Container(
+                                width: 120,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(
+                                    AppTokens.radiusMD,
+                                  ),
+                                  color: AppColors.elevated,
+                                ),
+                                clipBehavior: Clip.antiAlias,
+                                child: CachedNetworkImage(
+                                  imageUrl: _shopProfile!.shopImages[index],
+                                  fit: BoxFit.cover,
+                                  placeholder: (_, __) => const ColoredBox(
+                                    color: AppColors.cardBackground,
+                                  ),
+                                  errorWidget: (_, __, ___) => const Icon(
+                                    Icons.broken_image_outlined,
+                                    color: AppColors.textMuted,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+
+                      // Offer photos
                       if (hasPhotos && offer.photos.length > 1) ...[
                         const SizedBox(height: AppTokens.spaceLG),
                         Text(
-                          'Photos',
+                          'Offer photos',
                           style: theme.textTheme.titleMedium?.copyWith(
                             color: AppColors.textPrimary,
                           ),
@@ -1014,46 +1131,126 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
 
 // ── Sub-widgets ──────────────────────────────────────────────────────────────
 
-class _PhotoHeader extends StatelessWidget {
-  final String photoUrl;
+class _OfferPhotoCarousel extends StatelessWidget {
+  final List<String> photos;
   final String offerId;
-  final VoidCallback onTap;
+  final PageController controller;
+  final int currentIndex;
+  final VoidCallback onInteractionStart;
+  final VoidCallback onInteractionEnd;
+  final ValueChanged<int> onPageChanged;
+  final ValueChanged<int> onTapPhoto;
 
-  const _PhotoHeader({
-    required this.photoUrl,
+  const _OfferPhotoCarousel({
+    required this.photos,
     required this.offerId,
-    required this.onTap,
+    required this.controller,
+    required this.currentIndex,
+    required this.onInteractionStart,
+    required this.onInteractionEnd,
+    required this.onPageChanged,
+    required this.onTapPhoto,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Hero(
-        tag: 'offer_photo_${offerId}_0',
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            CachedNetworkImage(
-              imageUrl: photoUrl,
-              fit: BoxFit.cover,
-              placeholder: (_, __) => const ColoredBox(color: AppColors.cardBackground),
-              errorWidget: (_, __, ___) =>
-                  const ColoredBox(color: AppColors.cardBackground),
-            ),
-            // Scrim for back button legibility
-            Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xAA000000), Colors.transparent],
-                  begin: Alignment.topCenter,
-                  end: Alignment.center,
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Listener(
+          onPointerDown: (_) => onInteractionStart(),
+          onPointerUp: (_) => onInteractionEnd(),
+          onPointerCancel: (_) => onInteractionEnd(),
+          child: PageView.builder(
+            controller: controller,
+            physics: const BouncingScrollPhysics(),
+            itemCount: photos.length,
+            onPageChanged: onPageChanged,
+            itemBuilder: (context, index) => GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => onTapPhoto(index),
+              child: Container(
+                color: AppColors.cardBackground,
+                alignment: Alignment.center,
+                child: Hero(
+                  tag: 'offer_photo_${offerId}_$index',
+                  child: CachedNetworkImage(
+                    imageUrl: photos[index],
+                    fit: BoxFit.contain,
+                    placeholder: (_, __) =>
+                        const ColoredBox(color: AppColors.cardBackground),
+                    errorWidget: (_, __, ___) =>
+                        const ColoredBox(color: AppColors.cardBackground),
+                  ),
                 ),
               ),
             ),
-          ],
+          ),
         ),
-      ),
+        IgnorePointer(
+          child: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xAA000000), Colors.transparent],
+                begin: Alignment.topCenter,
+                end: Alignment.center,
+              ),
+            ),
+          ),
+        ),
+        if (photos.length > 1)
+          Positioned(
+            top: kToolbarHeight + AppTokens.spaceSM,
+            right: AppTokens.spaceLG,
+            child: IgnorePointer(
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppTokens.spaceSM,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.background.withValues(alpha: 0.7),
+                  borderRadius: BorderRadius.circular(AppTokens.radiusFull),
+                ),
+                child: Text(
+                  '${currentIndex + 1}/${photos.length}',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppColors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+              ),
+            ),
+          ),
+        if (photos.length > 1)
+          Positioned(
+            left: AppTokens.spaceLG,
+            right: AppTokens.spaceLG,
+            bottom: AppTokens.spaceLG,
+            child: IgnorePointer(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(
+                  photos.length,
+                  (index) => AnimatedContainer(
+                    duration: AppTokens.durationFast,
+                    width: index == currentIndex ? 18 : 6,
+                    height: 6,
+                    margin: const EdgeInsets.symmetric(horizontal: 3),
+                    decoration: BoxDecoration(
+                      color: index == currentIndex
+                          ? AppColors.white
+                          : AppColors.white.withValues(alpha: 0.45),
+                      borderRadius: BorderRadius.circular(
+                        AppTokens.radiusFull,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
@@ -1181,8 +1378,6 @@ class _ShopDetailRow extends StatelessWidget {
     );
   }
 }
-
-// ── Photo gallery ────────────────────────────────────────────────────────────
 
 class _PhotoGalleryScreen extends StatefulWidget {
   final List<String> photos;

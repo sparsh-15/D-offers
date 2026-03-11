@@ -666,27 +666,34 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: OfferCard(
-                  offer: leftOffer,
-                  onOfferUpdated: (updated) {
-                    final idx = _items.indexWhere((x) => x.id == updated.id);
-                    if (idx < 0) return;
-                    setState(() => _items[idx] = updated);
-                  },
-                ),
-              ),
-              if (rightOffer != null) ...[
-                const SizedBox(width: 12),
-                Expanded(
+                child: Align(
+                  alignment: Alignment.topCenter,
                   child: OfferCard(
-                    offer: rightOffer,
+                    offer: leftOffer,
                     onOfferUpdated: (updated) {
                       final idx = _items.indexWhere((x) => x.id == updated.id);
                       if (idx < 0) return;
                       setState(() => _items[idx] = updated);
                     },
+                  ),
+                ),
+              ),
+              if (rightOffer != null) ...[
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.topCenter,
+                    child: OfferCard(
+                      offer: rightOffer,
+                      onOfferUpdated: (updated) {
+                        final idx = _items.indexWhere((x) => x.id == updated.id);
+                        if (idx < 0) return;
+                        setState(() => _items[idx] = updated);
+                      },
+                    ),
                   ),
                 ),
               ],
