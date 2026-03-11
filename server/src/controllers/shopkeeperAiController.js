@@ -1,7 +1,7 @@
 const { prisma } = require('../db/prisma');
 const { resolvePgId } = require('../repositories/idResolver');
 const { getAvailableCredits, deductAiCredit } = require('../services/aiWalletService');
-const { generateBannerImageUrl } = require('../ai/bannerGenerator');
+const { generateBannerImageUrl } = require('../ai/services/bannerGenerator');
 
 async function getAiWallet(req, res, next) {
   try {
@@ -268,6 +268,13 @@ async function generateBanner(req, res, next) {
       });
     }
 
+    // Optional: logo URL and template layout preference
+    const logo = typeof req.body.logo === 'string' ? req.body.logo.trim().slice(0, 500) : undefined;
+    const templatePreference =
+      typeof req.body.templatePreference === 'string'
+        ? req.body.templatePreference.trim()
+        : undefined;
+
     const banner = await generateBannerImageUrl({
       title: String(title).trim().slice(0, 120),
       description: typeof description === 'string' ? description.trim().slice(0, 300) : '',
@@ -276,6 +283,8 @@ async function generateBanner(req, res, next) {
       discountValue: Number(discountValue),
       shopName: typeof shopName === 'string' ? shopName.trim().slice(0, 120) : '',
       shopLocation: typeof shopLocation === 'string' ? shopLocation.trim().slice(0, 120) : '',
+      logo: logo || undefined,
+      templatePreference: templatePreference || undefined,
     });
 
     res.status(200).json({
@@ -284,6 +293,8 @@ async function generateBanner(req, res, next) {
         imageUrl: banner.imageUrl,
         altText: banner.altText,
         promptUsed: banner.promptUsed,
+        templateUsed: banner.templateUsed,
+        seasonalTheme: banner.seasonalTheme,
       },
     });
   } catch (err) {

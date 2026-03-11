@@ -164,15 +164,11 @@ class _PlansManagementTabState extends State<PlansManagementTab> {
       return priceB.compareTo(priceA);
     });
 
-    return DataStateWrapper(
-      loading: _loading,
-      error: _error,
-      isEmpty: _plans.isEmpty,
-      onRetry: _loadData,
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
+    return Column(
+      children: [
+        // Always-visible header with Add Plan button
+        Padding(
+          padding: const EdgeInsets.all(16.0),
             child: Row(
               children: [
                 Expanded(
@@ -240,21 +236,62 @@ class _PlansManagementTabState extends State<PlansManagementTab> {
         ),
         const SizedBox(height: 8),
         Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: filteredPlans.length,
-            itemBuilder: (context, index) {
-              final plan = filteredPlans[index];
-              return FadeInUp(
-                delay: Duration(milliseconds: 100 * index),
-                child: _buildPlanCard(plan),
-              );
-            },
-          ),
+          child: _loading
+              ? const Center(child: CircularProgressIndicator())
+              : (_error != null && _error!.isNotEmpty)
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.error_outline_rounded,
+                              size: 48, color: AppColors.error),
+                          const SizedBox(height: 12),
+                          Text(_error!,
+                              textAlign: TextAlign.center,
+                              style: Theme.of(context).textTheme.bodyMedium),
+                          const SizedBox(height: 16),
+                          ElevatedButton.icon(
+                            onPressed: _loadData,
+                            icon: const Icon(Icons.refresh_rounded),
+                            label: const Text('Try again'),
+                          ),
+                        ],
+                      ),
+                    )
+                  : filteredPlans.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.inbox_rounded,
+                                  size: 48,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurface
+                                      .withValues(alpha: 0.4)),
+                              const SizedBox(height: 12),
+                              Text(
+                                'No plans yet. Tap "Add Plan" above to create one.',
+                                textAlign: TextAlign.center,
+                                style: Theme.of(context).textTheme.bodyMedium,
+                              ),
+                            ],
+                          ),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          itemCount: filteredPlans.length,
+                          itemBuilder: (context, index) {
+                            final plan = filteredPlans[index];
+                            return FadeInUp(
+                              delay: Duration(milliseconds: 100 * index),
+                              child: _buildPlanCard(plan),
+                            );
+                          },
+                        ),
         ),
         ],
-      ),
-    );
+      );
   }
 
   Widget _buildPlanCard(Map<String, dynamic> plan) {
@@ -1371,95 +1408,132 @@ class _AiCreditPacksTabState extends State<AiCreditPacksTab> {
 
   @override
   Widget build(BuildContext context) {
-    return DataStateWrapper(
-      loading: _loading,
-      error: _error,
-      isEmpty: _packs.isEmpty,
-      onRetry: _loadData,
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    '${_packs.length} AI Credit Packs',
-                    style: Theme.of(context).textTheme.titleLarge,
+    return Column(
+      children: [
+        // Always-visible header with Add Pack button
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '${_packs.length} AI Credit Packs',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ),
+              Flexible(
+                fit: FlexFit.loose,
+                child: ElevatedButton.icon(
+                  onPressed: () => _showPackDialog(),
+                  icon: const Icon(Icons.add_rounded),
+                  label: const Text('Add Pack'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.accent,
+                    foregroundColor: AppColors.black,
                   ),
                 ),
-                Flexible(
-                  fit: FlexFit.loose,
-                  child: ElevatedButton.icon(
-                    onPressed: () => _showPackDialog(),
-                    icon: const Icon(Icons.add_rounded),
-                    label: const Text('Add Pack'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.accent,
-                      foregroundColor: AppColors.black,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-            child: Row(
-              children: [
-                Text('Category: ', style: Theme.of(context).textTheme.bodyMedium),
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    value: (_filterCategory == null ||
-                            _filterCategory == 'all' ||
-                            (_filterCategory?.isEmpty ?? true) ||
-                            !_categories.any((c) => c['value'] == _filterCategory))
-                        ? 'all'
-                        : _filterCategory!,
-                    decoration: const InputDecoration(
-                      isDense: true,
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      border: OutlineInputBorder(),
-                    ),
-                    items: [
-                      const DropdownMenuItem(value: 'all', child: Text('All categories')),
-                      ..._categories.map<DropdownMenuItem<String>>((cat) {
-                        final value = cat['value'] as String? ?? '';
-                        final label = cat['label'] as String? ?? value;
-                        return DropdownMenuItem(
-                          value: value,
-                          child: Text(label),
-                        );
-                      }),
-                    ],
-                    onChanged: (value) {
-                      setState(() {
-                        _filterCategory = (value == 'all' || value == null) ? null : value;
-                        _loading = true;
-                      });
-                      _loadPacks();
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
-          Expanded(
-            child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: _packs.length,
-            itemBuilder: (context, index) {
-              final pack = _packs[index];
-              return FadeInUp(
-                delay: Duration(milliseconds: 100 * index),
-                child: _buildPackCard(pack),
-              );
-            },
+              ),
+            ],
           ),
         ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+          child: Row(
+            children: [
+              Text('Category: ', style: Theme.of(context).textTheme.bodyMedium),
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  value: (_filterCategory == null ||
+                          _filterCategory == 'all' ||
+                          (_filterCategory?.isEmpty ?? true) ||
+                          !_categories.any((c) => c['value'] == _filterCategory))
+                      ? 'all'
+                      : _filterCategory!,
+                  decoration: const InputDecoration(
+                    isDense: true,
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    border: OutlineInputBorder(),
+                  ),
+                  items: [
+                    const DropdownMenuItem(value: 'all', child: Text('All categories')),
+                    ..._categories.map<DropdownMenuItem<String>>((cat) {
+                      final value = cat['value'] as String? ?? '';
+                      final label = cat['label'] as String? ?? value;
+                      return DropdownMenuItem(
+                        value: value,
+                        child: Text(label),
+                      );
+                    }),
+                  ],
+                  onChanged: (value) {
+                    setState(() {
+                      _filterCategory = (value == 'all' || value == null) ? null : value;
+                      _loading = true;
+                    });
+                    _loadPacks();
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Expanded(
+          child: _loading
+              ? const Center(child: CircularProgressIndicator())
+              : (_error != null && _error!.isNotEmpty)
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.error_outline_rounded,
+                              size: 48, color: AppColors.error),
+                          const SizedBox(height: 12),
+                          Text(_error!,
+                              textAlign: TextAlign.center,
+                              style: Theme.of(context).textTheme.bodyMedium),
+                          const SizedBox(height: 16),
+                          ElevatedButton.icon(
+                            onPressed: _loadData,
+                            icon: const Icon(Icons.refresh_rounded),
+                            label: const Text('Try again'),
+                          ),
+                        ],
+                      ),
+                    )
+                  : _packs.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.inbox_rounded,
+                                  size: 48,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurface
+                                      .withValues(alpha: 0.4)),
+                              const SizedBox(height: 12),
+                              Text(
+                                'No AI packs yet. Tap "Add Pack" above to create one.',
+                                textAlign: TextAlign.center,
+                                style: Theme.of(context).textTheme.bodyMedium,
+                              ),
+                            ],
+                          ),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          itemCount: _packs.length,
+                          itemBuilder: (context, index) {
+                            final pack = _packs[index];
+                            return FadeInUp(
+                              delay: Duration(milliseconds: 100 * index),
+                              child: _buildPackCard(pack),
+                            );
+                          },
+                        ),
+        ),
       ],
-    ),
     );
   }
 

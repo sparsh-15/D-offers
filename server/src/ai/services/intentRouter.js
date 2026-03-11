@@ -1,7 +1,7 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
-const offerTools = require('./tools/offerTools');
-const couponTools = require('./tools/couponTools');
-const shopTools = require('./tools/shopTools');
+const offerTools = require('../tools/offerTools');
+const couponTools = require('../tools/couponTools');
+const shopTools = require('../tools/shopTools');
 
 // Keep this list in sync with the intents described in the prompt.
 const INTENTS = {

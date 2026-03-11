@@ -1,5 +1,5 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
-const { routeIntent } = require('../ai/intentRouter');
+const { routeIntent } = require('../ai/services/intentRouter');
 
 // Use a currently available, low-latency model for answer generation
 const MODEL_NAME = 'gemini-2.5-flash';
