@@ -13,8 +13,11 @@ router.use(requireRole(['shopkeeper', 'super_admin', 'subadmin']));
 // Upload single image
 router.post('/image', upload.single('image'), uploadController.uploadImage);
 
+router.post('/shop-logo', upload.single('image'), uploadController.uploadShopLogo);
+
 // Upload multiple images
 router.post('/images', upload.array('images', 10), uploadController.uploadMultipleImages);
+router.post('/shop-images', upload.array('images', 10), uploadController.uploadShopImages);
 
 // Delete image
 router.delete('/image', uploadController.deleteImage);

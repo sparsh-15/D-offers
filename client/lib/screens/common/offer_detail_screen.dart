@@ -8,6 +8,7 @@ import '../../core/constants/app_design_tokens.dart';
 import '../../models/offer_model.dart';
 import '../../models/shopkeeper_profile_model.dart';
 import '../../services/auth_service.dart';
+import '../../widgets/shop_logo_widget.dart';
 
 /// Premium offer detail screen — full-bleed header, bottom-pinned CTA.
 class OfferDetailScreen extends StatefulWidget {
@@ -643,12 +644,44 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                'Shop details',
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  color: AppColors.textPrimary,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  ShopLogoWidget(
+                                    logoUrl: _shopProfile!.logoUrl,
+                                    radius: 24,
+                                  ),
+                                  const SizedBox(width: AppTokens.spaceSM),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          _shopProfile!.shopName.isNotEmpty
+                                              ? _shopProfile!.shopName
+                                              : (widget.offer.shopName ?? 'Shop details'),
+                                          style: theme.textTheme.titleMedium
+                                              ?.copyWith(
+                                            color: AppColors.textPrimary,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        if (_shopProfile!.category.isNotEmpty)
+                                          Padding(
+                                            padding: const EdgeInsets.only(top: 2),
+                                            child: Text(
+                                              _shopProfile!.category,
+                                              style: theme.textTheme.bodySmall
+                                                  ?.copyWith(
+                                                color: AppColors.textSecondary,
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
                               ),
                               const SizedBox(height: AppTokens.spaceSM),
                               if ((_shopProfile!.ownerName ?? '').isNotEmpty)
@@ -689,6 +722,52 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                                   value: _shopProfile!.description,
                                   maxLines: 4,
                                 ),
+                              if (_shopProfile!.shopImages.isNotEmpty) ...[
+                                const SizedBox(height: AppTokens.spaceMD),
+                                Text(
+                                  'Shop photos',
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: AppColors.textPrimary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: AppTokens.spaceSM),
+                                SizedBox(
+                                  height: 96,
+                                  child: ListView.separated(
+                                    scrollDirection: Axis.horizontal,
+                                    itemCount: _shopProfile!.shopImages.length,
+                                    separatorBuilder: (_, __) =>
+                                        const SizedBox(width: AppTokens.spaceSM),
+                                    itemBuilder: (context, index) => ClipRRect(
+                                      borderRadius: BorderRadius.circular(
+                                        AppTokens.radiusMD,
+                                      ),
+                                      child: CachedNetworkImage(
+                                        imageUrl: _shopProfile!.shopImages[index],
+                                        width: 96,
+                                        height: 96,
+                                        fit: BoxFit.cover,
+                                        placeholder: (_, __) => Container(
+                                          width: 96,
+                                          height: 96,
+                                          color: AppColors.cardBackground,
+                                        ),
+                                        errorWidget: (_, __, ___) => Container(
+                                          width: 96,
+                                          height: 96,
+                                          color: AppColors.cardBackground,
+                                          alignment: Alignment.center,
+                                          child: const Icon(
+                                            Icons.broken_image_outlined,
+                                            color: AppColors.textMuted,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
                         ),

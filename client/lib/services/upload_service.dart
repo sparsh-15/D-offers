@@ -1,6 +1,9 @@
 import 'dart:io';
-import 'package:http/http.dart' as http;
 import 'dart:convert';
+
+import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
+
 import 'api_config.dart';
 import 'auth_store.dart';
 
@@ -8,41 +11,37 @@ class UploadService {
   static final UploadService instance = UploadService._();
   UploadService._();
 
-  Future<String> uploadImage(File imageFile) async {
-    final token = AuthStore.token;
-    if (token == null) throw Exception('Not authenticated');
-
-    final uri = Uri.parse('${ApiConfig.baseUrl}/upload/image');
-    final request = http.MultipartRequest('POST', uri);
-
-    request.headers['Authorization'] = 'Bearer $token';
-
-    // Determine content type from file extension
-    String? contentType;
+  MediaType _contentTypeForFile(File imageFile) {
     final extension = imageFile.path.toLowerCase().split('.').last;
     switch (extension) {
       case 'jpg':
       case 'jpeg':
-        contentType = 'image/jpeg';
-        break;
+        return MediaType.parse('image/jpeg');
       case 'png':
-        contentType = 'image/png';
-        break;
+        return MediaType.parse('image/png');
       case 'gif':
-        contentType = 'image/gif';
-        break;
+        return MediaType.parse('image/gif');
       case 'webp':
-        contentType = 'image/webp';
-        break;
+        return MediaType.parse('image/webp');
       default:
-        contentType = 'image/jpeg'; // fallback
+        return MediaType.parse('image/jpeg');
     }
+  }
+
+  Future<String> _uploadSingleImage(File imageFile, String endpoint) async {
+    final token = AuthStore.token;
+    if (token == null) throw Exception('Not authenticated');
+
+    final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
+    final request = http.MultipartRequest('POST', uri);
+
+    request.headers['Authorization'] = 'Bearer $token';
 
     request.files.add(
       await http.MultipartFile.fromPath(
         'image',
         imageFile.path,
-        contentType: http.MediaType.parse(contentType),
+        contentType: _contentTypeForFile(imageFile),
       ),
     );
 
@@ -58,42 +57,24 @@ class UploadService {
     }
   }
 
-  Future<List<String>> uploadMultipleImages(List<File> imageFiles) async {
+  Future<List<String>> _uploadMultipleImages(
+    List<File> imageFiles,
+    String endpoint,
+  ) async {
     final token = AuthStore.token;
     if (token == null) throw Exception('Not authenticated');
 
-    final uri = Uri.parse('${ApiConfig.baseUrl}/upload/images');
+    final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
     final request = http.MultipartRequest('POST', uri);
 
     request.headers['Authorization'] = 'Bearer $token';
 
     for (final file in imageFiles) {
-      // Determine content type from file extension
-      String? contentType;
-      final extension = file.path.toLowerCase().split('.').last;
-      switch (extension) {
-        case 'jpg':
-        case 'jpeg':
-          contentType = 'image/jpeg';
-          break;
-        case 'png':
-          contentType = 'image/png';
-          break;
-        case 'gif':
-          contentType = 'image/gif';
-          break;
-        case 'webp':
-          contentType = 'image/webp';
-          break;
-        default:
-          contentType = 'image/jpeg'; // fallback
-      }
-
       request.files.add(
         await http.MultipartFile.fromPath(
           'images',
           file.path,
-          contentType: http.MediaType.parse(contentType),
+          contentType: _contentTypeForFile(file),
         ),
       );
     }
@@ -109,5 +90,21 @@ class UploadService {
       final errorData = jsonDecode(response.body);
       throw Exception(errorData['message'] ?? 'Failed to upload images');
     }
+  }
+
+  Future<String> uploadImage(File imageFile) {
+    return _uploadSingleImage(imageFile, '/upload/image');
+  }
+
+  Future<List<String>> uploadMultipleImages(List<File> imageFiles) {
+    return _uploadMultipleImages(imageFiles, '/upload/images');
+  }
+
+  Future<String> uploadShopLogo(File imageFile) {
+    return _uploadSingleImage(imageFile, '/upload/shop-logo');
+  }
+
+  Future<List<String>> uploadShopImages(List<File> imageFiles) {
+    return _uploadMultipleImages(imageFiles, '/upload/shop-images');
   }
 }

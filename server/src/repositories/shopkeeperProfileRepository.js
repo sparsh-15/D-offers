@@ -13,6 +13,8 @@ function toProfileShape(profile) {
     city: profile.city,
     category: profile.category,
     description: profile.description,
+    shopImages: profile.shopImages || [],
+    logoUrl: profile.logoUrl,
     createdAt: profile.createdAt,
     updatedAt: profile.updatedAt,
   };
@@ -45,6 +47,8 @@ async function upsertByUserId(userId, update) {
     city: update.city || user?.city || null,
     category: update.category || null,
     description: update.description || null,
+    shopImages: update.shopImages || [],
+    logoUrl: update.logoUrl || null,
     ...(onboardedBy ? { onboardedBy } : {}),
   };
 
@@ -55,6 +59,8 @@ async function upsertByUserId(userId, update) {
     city: update.city || null,
     category: update.category || null,
     description: update.description || null,
+    ...(update.shopImages !== undefined ? { shopImages: update.shopImages } : {}),
+    ...(update.logoUrl !== undefined ? { logoUrl: update.logoUrl || null } : {}),
   };
 
   const row = await prisma.shopkeeperProfile.upsert({

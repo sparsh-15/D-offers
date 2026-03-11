@@ -3,6 +3,36 @@ const { prisma } = require('../db/prisma');
 const { resolvePgId } = require('../repositories/idResolver');
 const { getAvailableCredits } = require('../services/aiWalletService');
 
+const MAX_SHOP_IMAGES = 10;
+
+function normalizeShopImages(images) {
+  if (images === undefined) return undefined;
+  if (!Array.isArray(images)) {
+    const err = new Error('shopImages must be an array of image URLs');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const normalized = images
+    .map((image) => String(image || '').trim())
+    .filter(Boolean);
+
+  if (normalized.length > MAX_SHOP_IMAGES) {
+    const err = new Error(`shopImages cannot contain more than ${MAX_SHOP_IMAGES} images`);
+    err.statusCode = 400;
+    throw err;
+  }
+
+  return normalized;
+}
+
+function normalizeLogoUrl(logoUrl) {
+  if (logoUrl === undefined) return undefined;
+  if (logoUrl === null) return null;
+  const normalized = String(logoUrl).trim();
+  return normalized || null;
+}
+
 async function getProfile(req, res, next) {
   try {
     let userId = req.user.userId;
@@ -30,12 +60,14 @@ async function getProfile(req, res, next) {
 
 async function upsertProfile(req, res, next) {
   try {
-    const { shopName, address, pincode, city, category, description } = req.body;
+    const { shopName, address, pincode, city, category, description, shopImages, logoUrl } = req.body;
     if (!shopName || typeof shopName !== 'string' || !shopName.trim()) {
       const err = new Error('shopName is required');
       err.statusCode = 400;
       return next(err);
     }
+    const normalizedShopImages = normalizeShopImages(shopImages);
+    const normalizedLogoUrl = normalizeLogoUrl(logoUrl);
     const profile = await shopkeeperProfileRepository.upsertByUserId(req.user.userId, {
       shopName: shopName.trim(),
       address: address != null ? String(address).trim() : undefined,
@@ -43,6 +75,8 @@ async function upsertProfile(req, res, next) {
       city: city != null ? String(city).trim() : undefined,
       category: category != null ? String(category).trim() : undefined,
       description: description != null ? String(description).trim() : undefined,
+      ...(normalizedShopImages !== undefined ? { shopImages: normalizedShopImages } : {}),
+      ...(normalizedLogoUrl !== undefined ? { logoUrl: normalizedLogoUrl } : {}),
     });
 
     // Keep core user location fields in sync so customer pincode/city filters work correctly.
@@ -136,6 +170,8 @@ async function getPublicProfile(req, res, next) {
         city: profile.city || '',
         category: profile.category || '',
         description: profile.description || '',
+        shopImages: profile.shopImages || [],
+        logoUrl: profile.logoUrl || null,
         ownerName: owner?.name || null,
         ownerPhone: owner?.phone || null,
       },
@@ -145,4 +181,95 @@ async function getPublicProfile(req, res, next) {
   }
 }
 
-module.exports = { getProfile, upsertProfile, getDashboard, getPublicProfile };
+async function updateShopImages(req, res, next) {
+  try {
+    const images = normalizeShopImages(req.body.images);
+    if (images === undefined) {
+      const err = new Error('images is required');
+      err.statusCode = 400;
+      return next(err);
+    }
+
+    const pgUserId = await resolvePgId('users', req.user.userId);
+    if (!pgUserId) {
+      const err = new Error('Invalid user id');
+      err.statusCode = 400;
+      return next(err);
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: pgUserId },
+      select: { name: true, address: true, pincode: true, city: true },
+    });
+
+    const profile = await prisma.shopkeeperProfile.upsert({
+      where: { userId: pgUserId },
+      create: {
+        userId: pgUserId,
+        shopName: user?.name?.trim() || 'My Shop',
+        address: user?.address || null,
+        pincode: user?.pincode || null,
+        city: user?.city || null,
+        shopImages: images,
+      },
+      update: {
+        shopImages: images,
+      },
+    });
+
+    res.status(200).json({ success: true, profile });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function updateLogoUrl(req, res, next) {
+  try {
+    const normalizedLogoUrl = normalizeLogoUrl(req.body.logoUrl);
+    if (normalizedLogoUrl === undefined && req.body.logoUrl !== null) {
+      const err = new Error('logoUrl is required');
+      err.statusCode = 400;
+      return next(err);
+    }
+
+    const pgUserId = await resolvePgId('users', req.user.userId);
+    if (!pgUserId) {
+      const err = new Error('Invalid user id');
+      err.statusCode = 400;
+      return next(err);
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: pgUserId },
+      select: { name: true, address: true, pincode: true, city: true },
+    });
+
+    const profile = await prisma.shopkeeperProfile.upsert({
+      where: { userId: pgUserId },
+      create: {
+        userId: pgUserId,
+        shopName: user?.name?.trim() || 'My Shop',
+        address: user?.address || null,
+        pincode: user?.pincode || null,
+        city: user?.city || null,
+        logoUrl: normalizedLogoUrl,
+      },
+      update: {
+        logoUrl: normalizedLogoUrl,
+      },
+    });
+
+    res.status(200).json({ success: true, profile });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = {
+  getProfile,
+  upsertProfile,
+  getDashboard,
+  getPublicProfile,
+  updateShopImages,
+  updateLogoUrl,
+};

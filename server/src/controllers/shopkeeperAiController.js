@@ -269,11 +269,19 @@ async function generateBanner(req, res, next) {
     }
 
     // Optional: logo URL and template layout preference
-    const logo = typeof req.body.logo === 'string' ? req.body.logo.trim().slice(0, 500) : undefined;
+    let logo = typeof req.body.logo === 'string' ? req.body.logo.trim().slice(0, 500) : undefined;
     const templatePreference =
       typeof req.body.templatePreference === 'string'
         ? req.body.templatePreference.trim()
         : undefined;
+
+    if (!logo) {
+      const profile = await prisma.shopkeeperProfile.findUnique({
+        where: { userId: shopkeeperId },
+        select: { logoUrl: true },
+      });
+      logo = profile?.logoUrl || undefined;
+    }
 
     const banner = await generateBannerImageUrl({
       title: String(title).trim().slice(0, 120),

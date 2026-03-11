@@ -20,6 +20,8 @@ router.use(requireRole('shopkeeper', 'super_admin', 'subadmin'));
 // Profile routes - accessible without subscription (needed for onboarding)
 router.get('/profile', shopkeeperProfileController.getProfile);
 router.put('/profile', shopkeeperProfileController.upsertProfile);
+router.patch('/profile/images', shopkeeperProfileController.updateShopImages);
+router.patch('/profile/logo', shopkeeperProfileController.updateLogoUrl);
 
 // Subscription plan viewing (for shopkeepers to see available plans)
 router.get('/plans', subscriptionPlanController.getAllPlans);

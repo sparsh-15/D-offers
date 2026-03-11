@@ -300,6 +300,8 @@ class AuthService {
     String? city,
     String? category,
     String? description,
+    List<String>? shopImages,
+    String? logoUrl,
   }) async {
     final token = AuthStore.token;
     if (token == null) throw Exception('Not authenticated');
@@ -317,7 +319,45 @@ class AuthService {
         if (city != null) 'city': city,
         if (category != null) 'category': category,
         if (description != null) 'description': description,
+        if (shopImages != null) 'shopImages': shopImages,
+        if (logoUrl != null) 'logoUrl': logoUrl,
       }),
+    );
+    final data = _handleResponse(resp) as Map<String, dynamic>;
+    return ShopkeeperProfileModel.fromJson(
+      data['profile'] as Map<String, dynamic>,
+    );
+  }
+
+  Future<ShopkeeperProfileModel> updateShopImages(List<String> images) async {
+    final token = AuthStore.token;
+    if (token == null) throw Exception('Not authenticated');
+    final uri = Uri.parse('${ApiConfig.shopkeeperUrl}/profile/images');
+    final resp = await _client.patch(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({'images': images}),
+    );
+    final data = _handleResponse(resp) as Map<String, dynamic>;
+    return ShopkeeperProfileModel.fromJson(
+      data['profile'] as Map<String, dynamic>,
+    );
+  }
+
+  Future<ShopkeeperProfileModel> updateLogoUrl(String? logoUrl) async {
+    final token = AuthStore.token;
+    if (token == null) throw Exception('Not authenticated');
+    final uri = Uri.parse('${ApiConfig.shopkeeperUrl}/profile/logo');
+    final resp = await _client.patch(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({'logoUrl': logoUrl}),
     );
     final data = _handleResponse(resp) as Map<String, dynamic>;
     return ShopkeeperProfileModel.fromJson(

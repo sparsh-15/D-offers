@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/dialog_helper.dart';
@@ -6,10 +9,12 @@ import '../../services/auth_service.dart';
 import '../../services/auth_store.dart';
 import '../../models/shopkeeper_profile_model.dart';
 import '../../services/subscription_service.dart';
+import '../../services/upload_service.dart';
 import 'ai_credit_packs_screen.dart';
 import '../../widgets/theme_toggle.dart';
 import '../../widgets/profile_option_tile.dart';
 import '../../widgets/pincode_location_section.dart';
+import '../../widgets/shop_logo_widget.dart';
 import '../auth/login_screen.dart';
 import '../common/settings_page.dart';
 import '../common/help_support_page.dart';
@@ -34,6 +39,7 @@ class ShopProfileBody extends StatefulWidget {
 class _ShopProfileBodyState extends State<ShopProfileBody> {
   ShopkeeperProfileModel? _profile;
   bool _loading = true;
+  bool _uploadingLogo = false;
 
   @override
   void initState() {
@@ -52,6 +58,37 @@ class _ShopProfileBodyState extends State<ShopProfileBody> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _loading = false);
+      DialogHelper.showErrorSnackBar(context, e.toString());
+    }
+  }
+
+  Future<void> _uploadLogo() async {
+    if (_uploadingLogo) return;
+
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 90,
+      maxWidth: 1200,
+      maxHeight: 1200,
+    );
+    if (picked == null || !mounted) return;
+
+    setState(() => _uploadingLogo = true);
+    try {
+      final logoUrl = await UploadService.instance.uploadShopLogo(
+        File(picked.path),
+      );
+      final updated = await AuthService.instance.updateLogoUrl(logoUrl);
+      if (!mounted) return;
+      setState(() {
+        _profile = updated;
+        _uploadingLogo = false;
+      });
+      DialogHelper.showSuccessSnackBar(context, 'Shop logo updated');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _uploadingLogo = false);
       DialogHelper.showErrorSnackBar(context, e.toString());
     }
   }
@@ -80,11 +117,29 @@ class _ShopProfileBodyState extends State<ShopProfileBody> {
             children: [
               Column(
                 children: [
-                  const CircleAvatar(
-                    radius: 40,
-                    backgroundColor: AppColors.primary,
-                    child: Icon(Icons.store_rounded,
-                        size: 40, color: AppColors.white),
+                  Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      ShopLogoWidget(
+                        logoUrl: _profile?.logoUrl,
+                        radius: 40,
+                        isEditable: true,
+                        onTap: _uploadLogo,
+                      ),
+                      if (_uploadingLogo)
+                        const Positioned.fill(
+                          child: ColoredBox(
+                            color: Color(0x66000000),
+                            child: Center(
+                              child: SizedBox(
+                                width: 28,
+                                height: 28,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                   const SizedBox(height: 12),
                   Text(
@@ -200,12 +255,14 @@ class _ShopProfileBodyState extends State<ShopProfileBody> {
                     ProfileOptionTile(
                       icon: Icons.business_rounded,
                       title: 'Business Details',
-                      onTap: () {
-                        Navigator.of(context).push(
+                      onTap: () async {
+                        await Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (_) => const ShopBusinessDetailsPage(),
                           ),
                         );
+                        if (!mounted) return;
+                        await _load();
                       },
                     ),
                     ProfileOptionTile(

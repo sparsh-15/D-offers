@@ -1,11 +1,16 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../core/constants/app_colors.dart';
-import '../../core/utils/theme_helper.dart';
 import '../../core/utils/dialog_helper.dart';
+import '../../models/shopkeeper_profile_model.dart';
 import '../../services/auth_service.dart';
 import '../../services/auth_store.dart';
-import '../../models/shopkeeper_profile_model.dart';
+import '../../services/upload_service.dart';
+import '../../widgets/shop_logo_widget.dart';
+import '../../core/utils/theme_helper.dart';
 import 'ai_credit_packs_screen.dart';
 
 class ShopBusinessDetailsPage extends StatefulWidget {
@@ -17,9 +22,13 @@ class ShopBusinessDetailsPage extends StatefulWidget {
 }
 
 class _ShopBusinessDetailsPageState extends State<ShopBusinessDetailsPage> {
+  static const int _maxShopImages = 10;
+
   ShopkeeperProfileModel? _profile;
   bool _loading = true;
   String? _error;
+  bool _uploadingLogo = false;
+  bool _uploadingImages = false;
 
   @override
   void initState() {
@@ -45,6 +54,98 @@ class _ShopBusinessDetailsPageState extends State<ShopBusinessDetailsPage> {
         _loading = false;
         _error = e.toString();
       });
+      DialogHelper.showErrorSnackBar(context, e.toString());
+    }
+  }
+
+  Future<void> _uploadLogo() async {
+    if (_uploadingLogo) return;
+    final picked = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 90,
+      maxWidth: 1200,
+      maxHeight: 1200,
+    );
+    if (picked == null || !mounted) return;
+
+    setState(() => _uploadingLogo = true);
+    try {
+      final logoUrl = await UploadService.instance.uploadShopLogo(File(picked.path));
+      final updated = await AuthService.instance.updateLogoUrl(logoUrl);
+      if (!mounted) return;
+      setState(() {
+        _profile = updated;
+        _uploadingLogo = false;
+      });
+      DialogHelper.showSuccessSnackBar(context, 'Shop logo updated');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _uploadingLogo = false);
+      DialogHelper.showErrorSnackBar(context, e.toString());
+    }
+  }
+
+  Future<void> _addShopImages() async {
+    final profile = _profile;
+    if (profile == null || _uploadingImages) return;
+
+    final remainingSlots = _maxShopImages - profile.shopImages.length;
+    if (remainingSlots <= 0) {
+      DialogHelper.showInfoSnackBar(
+        context,
+        'You can upload up to $_maxShopImages shop images.',
+      );
+      return;
+    }
+
+    final pickedFiles = await ImagePicker().pickMultiImage(
+      imageQuality: 85,
+      maxWidth: 1600,
+      maxHeight: 1600,
+      limit: remainingSlots,
+    );
+    if (pickedFiles.isEmpty || !mounted) return;
+
+    setState(() => _uploadingImages = true);
+    try {
+      final uploadedUrls = await UploadService.instance.uploadShopImages(
+        pickedFiles.map((file) => File(file.path)).toList(),
+      );
+      final updated = await AuthService.instance.updateShopImages([
+        ...profile.shopImages,
+        ...uploadedUrls,
+      ]);
+      if (!mounted) return;
+      setState(() {
+        _profile = updated;
+        _uploadingImages = false;
+      });
+      DialogHelper.showSuccessSnackBar(context, 'Shop images updated');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _uploadingImages = false);
+      DialogHelper.showErrorSnackBar(context, e.toString());
+    }
+  }
+
+  Future<void> _removeShopImage(String imageUrl) async {
+    final profile = _profile;
+    if (profile == null || _uploadingImages) return;
+
+    setState(() => _uploadingImages = true);
+    try {
+      final updated = await AuthService.instance.updateShopImages(
+        profile.shopImages.where((image) => image != imageUrl).toList(),
+      );
+      if (!mounted) return;
+      setState(() {
+        _profile = updated;
+        _uploadingImages = false;
+      });
+      DialogHelper.showSuccessSnackBar(context, 'Shop image removed');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _uploadingImages = false);
       DialogHelper.showErrorSnackBar(context, e.toString());
     }
   }
@@ -133,14 +234,29 @@ class _ShopBusinessDetailsPageState extends State<ShopBusinessDetailsPage> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const CircleAvatar(
-                radius: 32,
-                backgroundColor: AppColors.primary,
-                child: Icon(
-                  Icons.store_rounded,
-                  size: 32,
-                  color: AppColors.white,
-                ),
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  ShopLogoWidget(
+                    logoUrl: profile.logoUrl,
+                    radius: 32,
+                    isEditable: true,
+                    onTap: _uploadLogo,
+                  ),
+                  if (_uploadingLogo)
+                    const Positioned.fill(
+                      child: ColoredBox(
+                        color: Color(0x66000000),
+                        child: Center(
+                          child: SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -158,11 +274,116 @@ class _ShopBusinessDetailsPageState extends State<ShopBusinessDetailsPage> {
                         style: theme.textTheme.bodyMedium
                             ?.copyWith(color: AppColors.textSecondary),
                       ),
+                    const SizedBox(height: 8),
+                    OutlinedButton.icon(
+                      onPressed: _uploadingLogo ? null : _uploadLogo,
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(140, 44),
+                      ),
+                      icon: const Icon(Icons.photo_camera_rounded),
+                      label: Text(
+                        profile.logoUrl?.isNotEmpty == true
+                            ? 'Update logo'
+                            : 'Upload logo',
+                      ),
+                    ),
                   ],
                 ),
               ),
             ],
           ),
+          const SizedBox(height: 24),
+          _buildSectionTitle(context, 'Shop photos'),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '${profile.shopImages.length} / $_maxShopImages uploaded',
+                  style: theme.textTheme.bodySmall
+                      ?.copyWith(color: AppColors.textSecondary),
+                ),
+              ),
+              OutlinedButton.icon(
+                onPressed: _uploadingImages ? null : _addShopImages,
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(120, 44),
+                ),
+                icon: _uploadingImages
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.add_photo_alternate_rounded),
+                label: const Text('Add photos'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (profile.shopImages.isEmpty)
+            _buildMultilineBox(
+              context,
+              icon: Icons.photo_library_outlined,
+              value:
+                  'Add storefront or ambience photos so customers can recognize your shop.',
+            )
+          else
+            SizedBox(
+              height: 132,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: profile.shopImages.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 12),
+                itemBuilder: (context, index) {
+                  final imageUrl = profile.shopImages[index];
+                  return Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.network(
+                          imageUrl,
+                          width: 132,
+                          height: 132,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            width: 132,
+                            height: 132,
+                            color: AppColors.elevated,
+                            alignment: Alignment.center,
+                            child: const Icon(
+                              Icons.broken_image_outlined,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: InkWell(
+                          onTap: _uploadingImages
+                              ? null
+                              : () => _removeShopImage(imageUrl),
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: AppColors.background.withValues(alpha: 0.7),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.close_rounded,
+                              size: 16,
+                              color: AppColors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
           const SizedBox(height: 24),
           _buildSectionTitle(context, 'Owner details'),
           const SizedBox(height: 8),

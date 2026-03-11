@@ -173,6 +173,8 @@ model ShopkeeperProfile {
   city        String?
   category    String?
   description String?
+  shopImages  String[] @default([]) @map("shop_images")
+  logoUrl     String?  @map("logo_url")
   onboardedBy String?  @map("onboarded_by") @db.Uuid
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)

@@ -7,6 +7,8 @@ class ShopkeeperProfileModel {
   final String city;
   final String category;
   final String description;
+  final List<String> shopImages;
+  final String? logoUrl;
   final String? ownerName;
   final String? ownerPhone;
 
@@ -19,6 +21,8 @@ class ShopkeeperProfileModel {
     required this.city,
     required this.category,
     required this.description,
+    required this.shopImages,
+    this.logoUrl,
     this.ownerName,
     this.ownerPhone,
   });
@@ -33,6 +37,11 @@ class ShopkeeperProfileModel {
       city: json['city']?.toString() ?? '',
       category: json['category']?.toString() ?? '',
       description: json['description']?.toString() ?? '',
+      shopImages: (json['shopImages'] as List<dynamic>? ?? const [])
+          .map((image) => image.toString())
+          .where((image) => image.isNotEmpty)
+          .toList(),
+      logoUrl: json['logoUrl']?.toString(),
       ownerName: json['ownerName']?.toString(),
       ownerPhone: json['ownerPhone']?.toString(),
     );
