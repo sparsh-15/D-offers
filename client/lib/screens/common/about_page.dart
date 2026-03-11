@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/constants/app_strings.dart';
 import '../../core/utils/theme_helper.dart';
 
 /// Shared About page for all roles.
@@ -45,7 +46,7 @@ class AboutPage extends StatelessWidget {
                 ),
                 const SizedBox(height: 24),
                 Text(
-                  'D\'Offer',
+                  AppStrings.appName,
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
@@ -65,7 +66,7 @@ class AboutPage extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'About D\'Offer',
+                          'About ${AppStrings.companyName}',
                           style:
                               Theme.of(context).textTheme.titleMedium?.copyWith(
                                     fontWeight: FontWeight.bold,
@@ -76,6 +77,33 @@ class AboutPage extends StatelessWidget {
                           'D\'Offer helps you discover hyperlocal deals and offers from shops near you. '
                           'Customers can browse and save offers; shopkeepers can create and manage offers; '
                           'admins oversee the platform.',
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Text(
+                              'Support',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(
+                                    color: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall
+                                        ?.color,
+                                  ),
+                            ),
+                            const Spacer(),
+                            Text(
+                              AppStrings.supportEmail,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 16),
                         Row(
@@ -110,7 +138,7 @@ class AboutPage extends StatelessWidget {
                 ),
                 const SizedBox(height: 24),
                 Text(
-                  '© ${DateTime.now().year} D\'Offer. All rights reserved.',
+                  '© ${DateTime.now().year} ${AppStrings.companyName}. All rights reserved.',
                   style: Theme.of(context).textTheme.bodySmall,
                   textAlign: TextAlign.center,
                 ),

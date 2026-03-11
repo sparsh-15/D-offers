@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/constants/app_strings.dart';
 import '../../core/utils/theme_helper.dart';
 
 /// Shared Help & Support page for all roles.
 class HelpSupportPage extends StatelessWidget {
   const HelpSupportPage({super.key});
 
-  static const String _supportEmail = 'support@doffer.app';
   static const String _supportPhone = '+91 1800 123 4567';
 
   @override
@@ -50,7 +50,7 @@ class HelpSupportPage extends StatelessWidget {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Contact the D\'Offer support team for any questions or issues.',
+                          'Contact ${AppStrings.companyName} for any questions or issues.',
                           textAlign: TextAlign.center,
                           style: Theme.of(context).textTheme.bodyMedium,
                         ),
@@ -62,9 +62,11 @@ class HelpSupportPage extends StatelessWidget {
                 _ContactTile(
                   icon: Icons.email_rounded,
                   title: 'Email us',
-                  subtitle: _supportEmail,
+                  subtitle: AppStrings.supportEmail,
                   onTap: () {
-                    Clipboard.setData(const ClipboardData(text: _supportEmail));
+                    Clipboard.setData(
+                      const ClipboardData(text: AppStrings.supportEmail),
+                    );
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                           content: Text('Email copied to clipboard')),

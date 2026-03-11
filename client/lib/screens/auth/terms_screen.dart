@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_design_tokens.dart';
+import '../../core/constants/app_strings.dart';
 import '../../core/utils/theme_helper.dart';
 
 class TermsScreen extends StatelessWidget {
@@ -27,7 +28,7 @@ class TermsScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'D\'Offer Terms & Conditions',
+                    '${AppStrings.companyName} Terms & Conditions',
                     style: theme.textTheme.headlineSmall?.copyWith(
                       color: AppColors.textPrimary,
                       fontWeight: FontWeight.bold,
@@ -35,7 +36,8 @@ class TermsScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: AppTokens.spaceMD),
                   Text(
-                    'These are placeholder terms and conditions for D\'Offer. '
+                    'These are placeholder terms and conditions for ${AppStrings.companyName}. '
+                    'For support queries, contact ${AppStrings.supportEmail}. '
                     'The final legal document will be provided here in a future update.',
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: AppColors.textSecondary,

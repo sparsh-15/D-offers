@@ -2,6 +2,8 @@ class AppStrings {
   // App Name
   static const String appName = "MyOffers";
   static const String appTagline = "Discover Amazing Deals Near You";
+  static const String companyName = "hyperlocalventures pvt ltd";
+  static const String supportEmail = "support@hyperlocalventures.com";
 
   // Role Selection
   static const String selectRole = "Select Your Role";
