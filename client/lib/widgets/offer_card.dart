@@ -36,11 +36,18 @@ class OfferCard extends StatefulWidget {
 
 class _OfferCardState extends State<OfferCard>
     with SingleTickerProviderStateMixin {
+  static const double _defaultBannerAspectRatio = 4 / 3;
+  static const double _minBannerAspectRatio = 0.7;
+  static const double _maxBannerAspectRatio = 2.2;
+
   late bool _isLiked;
   late int _likesCount;
   bool _isToggling = false;
   late AnimationController _heartController;
   late Animation<double> _heartScale;
+  double _bannerAspectRatio = _defaultBannerAspectRatio;
+  ImageStream? _imageStream;
+  ImageStreamListener? _imageStreamListener;
 
   @override
   void initState() {
@@ -58,6 +65,8 @@ class _OfferCardState extends State<OfferCard>
     ]).animate(
       CurvedAnimation(parent: _heartController, curve: Curves.easeInOut),
     );
+
+    _resolveBannerAspectRatio();
   }
 
   @override
@@ -69,12 +78,63 @@ class _OfferCardState extends State<OfferCard>
       _isLiked = widget.offer.isLiked;
       _likesCount = widget.offer.likesCount;
     }
+
+    final oldPhoto = oldWidget.offer.photos.isNotEmpty
+        ? oldWidget.offer.photos.first
+        : null;
+    final newPhoto = widget.offer.photos.isNotEmpty
+        ? widget.offer.photos.first
+        : null;
+    if (oldPhoto != newPhoto) {
+      _bannerAspectRatio = _defaultBannerAspectRatio;
+      _clearImageListener();
+      _resolveBannerAspectRatio();
+    }
   }
 
   @override
   void dispose() {
+    _clearImageListener();
     _heartController.dispose();
     super.dispose();
+  }
+
+  void _clearImageListener() {
+    if (_imageStream != null && _imageStreamListener != null) {
+      _imageStream!.removeListener(_imageStreamListener!);
+    }
+    _imageStream = null;
+    _imageStreamListener = null;
+  }
+
+  void _resolveBannerAspectRatio() {
+    if (widget.offer.photos.isEmpty || !mounted) return;
+
+    final provider = CachedNetworkImageProvider(widget.offer.photos.first);
+    final stream = provider.resolve(const ImageConfiguration());
+    final listener = ImageStreamListener((ImageInfo info, bool _) {
+      final width = info.image.width.toDouble();
+      final height = info.image.height.toDouble();
+      if (width <= 0 || height <= 0 || !mounted) return;
+
+      final resolvedAspectRatio =
+          (width / height).clamp(_minBannerAspectRatio, _maxBannerAspectRatio);
+
+      if ((_bannerAspectRatio - resolvedAspectRatio).abs() > 0.01) {
+        setState(() {
+          _bannerAspectRatio = resolvedAspectRatio;
+        });
+      }
+
+      _clearImageListener();
+    }, onError: (_, __) {
+      _clearImageListener();
+    });
+
+    _clearImageListener();
+    _imageStream = stream;
+    _imageStreamListener = listener;
+    stream.addListener(listener);
   }
 
   Future<void> _toggleLike() async {
@@ -181,21 +241,24 @@ class _OfferCardState extends State<OfferCard>
           children: [
             // ── Banner / image (fixed aspect ratio for consistent thumbnails) ─
             AspectRatio(
-              aspectRatio: 4 / 3,
+              aspectRatio: _bannerAspectRatio,
               child: hasPhoto
-                  ? CachedNetworkImage(
-                      imageUrl: widget.offer.photos.first,
-                      fit: BoxFit.cover,
-                      placeholder: (_, __) => const Center(
-                        child: SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                  ? Container(
+                      color: AppColors.elevated,
+                      child: CachedNetworkImage(
+                        imageUrl: widget.offer.photos.first,
+                        fit: BoxFit.contain,
+                        placeholder: (_, __) => const Center(
+                          child: SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
                         ),
-                      ),
-                      errorWidget: (_, __, ___) => const Icon(
-                        Icons.broken_image_outlined,
-                        color: AppColors.textMuted,
+                        errorWidget: (_, __, ___) => const Icon(
+                          Icons.broken_image_outlined,
+                          color: AppColors.textMuted,
+                        ),
                       ),
                     )
                   : const OfferBannerPreview(

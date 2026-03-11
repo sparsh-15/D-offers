@@ -642,7 +642,7 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                           MediaQuery.of(context).size.width * 0.82;
 
                       return SizedBox(
-                        height: 240,
+                        height: MediaQuery.of(context).size.width * 0.78,
                         child: PageView.builder(
                           controller: PageController(
                             viewportFraction: 0.84,
@@ -660,20 +660,23 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                                       : 0,
                                   left: i == 0 ? AppTokens.spaceSM : 0,
                                 ),
-                                child: SizedBox(
-                                  width: cardWidth,
-                                  child: OfferCard(
-                                    offer: featured[i],
-                                    onOfferUpdated: (updated) {
-                                      final idx = _featuredDeals.indexWhere(
-                                          (x) => x.id == updated.id);
-                                      if (idx < 0) return;
-                                      setState(() {
-                                        final next = [..._featuredDeals];
-                                        next[idx] = updated;
-                                        _featuredDeals = next;
-                                      });
-                                    },
+                                child: Align(
+                                  alignment: Alignment.topCenter,
+                                  child: SizedBox(
+                                    width: cardWidth,
+                                    child: OfferCard(
+                                      offer: featured[i],
+                                      onOfferUpdated: (updated) {
+                                        final idx = _featuredDeals.indexWhere(
+                                            (x) => x.id == updated.id);
+                                        if (idx < 0) return;
+                                        setState(() {
+                                          final next = [..._featuredDeals];
+                                          next[idx] = updated;
+                                          _featuredDeals = next;
+                                        });
+                                      },
+                                    ),
                                   ),
                                 ),
                               ),

@@ -855,7 +855,7 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                                 clipBehavior: Clip.antiAlias,
                                 child: CachedNetworkImage(
                                   imageUrl: offer.photos[i],
-                                  fit: BoxFit.cover,
+                                  fit: BoxFit.contain,
                                   placeholder: (_, __) => const Center(
                                     child: SizedBox(
                                       width: 20,
