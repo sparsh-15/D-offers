@@ -9,6 +9,7 @@ import '../screens/customer/customer_chat_bot_screen.dart';
 import '../services/auth_service.dart';
 import '../core/utils/dialog_helper.dart';
 import 'offer_banner_preview.dart';
+import 'shop_logo_widget.dart';
 
 class OfferCard extends StatefulWidget {
   final OfferModel offer;
@@ -285,13 +286,24 @@ class _OfferCardState extends State<OfferCard>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          shopDisplayName,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            color: AppColors.textPrimary,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                        Row(
+                          children: [
+                            ShopLogoWidget(
+                              logoUrl: widget.offer.shopLogoUrl,
+                              radius: 9,
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                shopDisplayName,
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  color: AppColors.textPrimary,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
                         ),
                         if (tierLabel != null && tierLabel.isNotEmpty) ...[
                           const SizedBox(height: 6),

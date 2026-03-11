@@ -631,51 +631,50 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Shop name
                       Text(
-                        shopDisplayName,
-                        style: theme.textTheme.titleLarge?.copyWith(
+                        offer.title,
+                        style: theme.textTheme.headlineMedium?.copyWith(
                           color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w700,
+                          height: 1.15,
                         ),
                       ),
                       const SizedBox(height: AppTokens.spaceXS),
-                      Row(
+                      Text(
+                        shopDisplayName,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: AppTokens.spaceMD),
+                      Wrap(
+                        spacing: AppTokens.spaceSM,
+                        runSpacing: AppTokens.spaceSM,
                         children: [
-                          Text(
-                            discountText,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: AppColors.accent,
-                              fontWeight: FontWeight.w600,
-                            ),
+                          _InfoChip(
+                            icon: Icons.local_offer_rounded,
+                            label: discountText,
+                            foreground: AppColors.accent,
+                            background: AppColors.accent.withValues(alpha: 0.12),
                           ),
-                          if (offer.category.trim().isNotEmpty) ...[
-                            const SizedBox(width: AppTokens.spaceSM),
-                            Container(
-                              width: 3,
-                              height: 3,
-                              decoration: const BoxDecoration(
-                                color: AppColors.textMuted,
-                                shape: BoxShape.circle,
-                              ),
+                          if (offer.category.trim().isNotEmpty)
+                            _InfoChip(
+                              icon: Icons.category_rounded,
+                              label: offer.category,
                             ),
-                            const SizedBox(width: AppTokens.spaceSM),
-                            Text(
-                              offer.category,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                          ],
-                          if (isExpired) ...[
-                            const SizedBox(width: AppTokens.spaceSM),
-                            Text(
-                              '· EXPIRED',
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: AppColors.error,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
+                          _InfoChip(
+                            icon: isExpired
+                                ? Icons.event_busy_rounded
+                                : Icons.verified_rounded,
+                            label: isExpired ? 'Expired' : 'Active deal',
+                            foreground:
+                                isExpired ? AppColors.error : AppColors.textPrimary,
+                          ),
+                          _InfoChip(
+                            icon: Icons.favorite_outline_rounded,
+                            label: '${offer.likesCount} likes',
+                          ),
                         ],
                       ),
 
@@ -693,38 +692,9 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                                   index == _currentOfferPhotoIndex;
                               return GestureDetector(
                                 onTap: () => _selectOfferPhoto(index),
-                                child: AnimatedContainer(
-                                  duration: AppTokens.durationFast,
-                                  width: 76,
-                                  padding: const EdgeInsets.all(2),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.elevated,
-                                    borderRadius: BorderRadius.circular(
-                                      AppTokens.radiusMD,
-                                    ),
-                                    border: Border.all(
-                                      color: isSelected
-                                          ? AppColors.accent
-                                          : AppColors.borderSubtle,
-                                      width: isSelected ? 1.5 : 1,
-                                    ),
-                                  ),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(
-                                      AppTokens.radiusSM,
-                                    ),
-                                    child: CachedNetworkImage(
-                                      imageUrl: offer.photos[index],
-                                      fit: BoxFit.cover,
-                                      placeholder: (_, __) => const ColoredBox(
-                                        color: AppColors.cardBackground,
-                                      ),
-                                      errorWidget: (_, __, ___) => const Icon(
-                                        Icons.broken_image_outlined,
-                                        color: AppColors.textMuted,
-                                      ),
-                                    ),
-                                  ),
+                                child: _PhotoThumbnailTile(
+                                  imageUrl: offer.photos[index],
+                                  isSelected: isSelected,
                                 ),
                               );
                             },
@@ -732,172 +702,66 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                         ),
                       ],
 
-                      // Shop details (address, owner, etc.)
-                      if (_isLoadingShop) ...[
-                        const SizedBox(height: AppTokens.spaceMD),
-                        const LinearProgressIndicator(
-                          color: AppColors.accentDim,
-                          minHeight: 2,
-                        ),
-                      ] else if (_shopProfile != null) ...[
-                        const SizedBox(height: AppTokens.spaceMD),
-                        Container(
-                          padding: const EdgeInsets.all(AppTokens.spaceMD),
-                          decoration: BoxDecoration(
-                            color: AppColors.elevated,
-                            borderRadius:
-                                BorderRadius.circular(AppTokens.radiusMD),
-                            border: Border.all(color: AppColors.borderSubtle),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  ShopLogoWidget(
-                                    logoUrl: _shopProfile!.logoUrl,
-                                    radius: 24,
-                                  ),
-                                  const SizedBox(width: AppTokens.spaceSM),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          _shopProfile!.shopName.isNotEmpty
-                                              ? _shopProfile!.shopName
-                                              : (widget.offer.shopName ?? 'Shop details'),
-                                          style: theme.textTheme.titleMedium
-                                              ?.copyWith(
-                                            color: AppColors.textPrimary,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                        if (_shopProfile!.category.isNotEmpty)
-                                          Padding(
-                                            padding: const EdgeInsets.only(top: 2),
-                                            child: Text(
-                                              _shopProfile!.category,
-                                              style: theme.textTheme.bodySmall
-                                                  ?.copyWith(
-                                                color: AppColors.textSecondary,
-                                              ),
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: AppTokens.spaceSM),
-                              if ((_shopProfile!.ownerName ?? '').isNotEmpty)
-                                _ShopDetailRow(
-                                  icon: Icons.person_rounded,
-                                  label: 'Owner',
-                                  value: _shopProfile!.ownerName!,
-                                ),
-                              if ((_shopProfile!.ownerPhone ?? '').isNotEmpty)
-                                _ShopDetailRow(
-                                  icon: Icons.phone_rounded,
-                                  label: 'Contact',
-                                  value: '+91 ${_shopProfile!.ownerPhone}',
-                                ),
-                              if (_shopProfile!.address.isNotEmpty)
-                                _ShopDetailRow(
-                                  icon: Icons.location_on_rounded,
-                                  label: 'Address',
-                                  value: _shopProfile!.address,
-                                  maxLines: 3,
-                                ),
-                              if (_shopProfile!.city.isNotEmpty ||
-                                  _shopProfile!.pincode.isNotEmpty)
-                                _ShopDetailRow(
-                                  icon: Icons.map_rounded,
-                                  label: 'Area',
-                                  value: [
-                                    if (_shopProfile!.city.isNotEmpty)
-                                      _shopProfile!.city,
-                                    if (_shopProfile!.pincode.isNotEmpty)
-                                      _shopProfile!.pincode,
-                                  ].join(', '),
-                                ),
-                              if (_shopProfile!.description.isNotEmpty)
-                                _ShopDetailRow(
-                                  icon: Icons.info_outline_rounded,
-                                  label: 'About shop',
-                                  value: _shopProfile!.description,
-                                  maxLines: 4,
-                                ),
-                            ],
-                          ),
-                        ),
-                      ] else if (_shopError != null) ...[
-                        const SizedBox(height: AppTokens.spaceSM),
-                        Text(
-                          'Could not load shop details',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: AppColors.textMuted,
-                          ),
-                        ),
-                      ],
-
-                      // Validity
-                      if (offer.validFrom != null || offer.validTo != null) ...[
-                        const SizedBox(height: AppTokens.spaceMD),
-                        const Divider(color: AppColors.borderSubtle, height: 1),
-                        const SizedBox(height: AppTokens.spaceMD),
-                        Row(
-                          children: [
-                            if (offer.validFrom != null)
-                              Expanded(
-                                child: _ValidityColumn(
-                                  label: 'From',
-                                  value: _formatDate(offer.validFrom!),
-                                ),
-                              ),
-                            if (offer.validFrom != null && offer.validTo != null)
-                              const SizedBox(
-                                height: 36,
-                                child: VerticalDivider(
-                                  color: AppColors.borderSubtle,
-                                  width: AppTokens.spaceLG,
-                                ),
-                              ),
-                            if (offer.validTo != null)
-                              Expanded(
-                                child: _ValidityColumn(
-                                  label: 'Until',
-                                  value: _formatDate(offer.validTo!),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ],
-
-                      // Description
-                      if (offer.description.trim().isNotEmpty) ...[
-                        const SizedBox(height: AppTokens.spaceMD),
-                        const Divider(color: AppColors.borderSubtle, height: 1),
-                        const SizedBox(height: AppTokens.spaceMD),
-                        Text(
-                          offer.description,
+                      const SizedBox(height: AppTokens.spaceLG),
+                      const _SectionTitle('Offer description'),
+                      const SizedBox(height: AppTokens.spaceSM),
+                      _SectionCard(
+                        child: Text(
+                          offer.description.trim().isNotEmpty
+                              ? offer.description
+                              : 'No description was added for this offer yet.',
                           style: theme.textTheme.bodyLarge?.copyWith(
-                            color: AppColors.textSecondary,
+                            color: offer.description.trim().isNotEmpty
+                                ? AppColors.textSecondary
+                                : AppColors.textMuted,
                             height: 1.6,
                           ),
                         ),
-                      ],
+                      ),
+
+                      const SizedBox(height: AppTokens.spaceLG),
+                      const _SectionTitle('Offer timeline'),
+                      const SizedBox(height: AppTokens.spaceSM),
+                      _SectionCard(
+                        child: Column(
+                          children: [
+                            if (offer.createdAt != null)
+                              _TimelineItem(
+                                icon: Icons.add_circle_outline_rounded,
+                                title: 'Created',
+                                value: _formatDateTime(offer.createdAt!),
+                              ),
+                            if (offer.updatedAt != null)
+                              _TimelineItem(
+                                icon: Icons.update_rounded,
+                                title: 'Last updated',
+                                value: _formatDateTime(offer.updatedAt!),
+                              ),
+                            if (offer.validFrom != null)
+                              _TimelineItem(
+                                icon: Icons.event_available_rounded,
+                                title: 'Valid from',
+                                value: _formatDateTime(offer.validFrom!),
+                              ),
+                            if (offer.validTo != null)
+                              _TimelineItem(
+                                icon: Icons.event_busy_rounded,
+                                title: 'Valid until',
+                                value: _formatDateTime(offer.validTo!),
+                              ),
+                            _TimelineItem(
+                              icon: Icons.flag_circle_rounded,
+                              title: 'Status',
+                              value: offer.status.toUpperCase(),
+                              isLast: true,
+                            ),
+                          ],
+                        ),
+                      ),
 
                       if ((_shopProfile?.shopImages.isNotEmpty ?? false)) ...[
                         const SizedBox(height: AppTokens.spaceLG),
-                        Text(
-                          'Shop photos',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
+                        const _SectionTitle('Shop photos'),
                         const SizedBox(height: AppTokens.spaceSM),
                         SizedBox(
                           height: 120,
@@ -948,12 +812,7 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                       // Offer photos
                       if (hasPhotos && offer.photos.length > 1) ...[
                         const SizedBox(height: AppTokens.spaceLG),
-                        Text(
-                          'Offer photos',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
+                        const _SectionTitle('Offer photos'),
                         const SizedBox(height: AppTokens.spaceSM),
                         SizedBox(
                           height: 120,
@@ -997,45 +856,149 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                       // Terms (collapsible)
                       if (offer.termsAndConditions.trim().isNotEmpty) ...[
                         const SizedBox(height: AppTokens.spaceLG),
-                        const Divider(color: AppColors.borderSubtle, height: 1),
-                        GestureDetector(
-                          onTap: () => setState(() => _termsExpanded = !_termsExpanded),
-                          behavior: HitTestBehavior.opaque,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              vertical: AppTokens.spaceMD,
-                            ),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    'Terms & Conditions',
-                                    style: theme.textTheme.titleMedium?.copyWith(
-                                      color: AppColors.textSecondary,
+                        const _SectionTitle('Terms & conditions'),
+                        const SizedBox(height: AppTokens.spaceSM),
+                        _SectionCard(
+                          child: Column(
+                            children: [
+                              GestureDetector(
+                                onTap: () =>
+                                    setState(() => _termsExpanded = !_termsExpanded),
+                                behavior: HitTestBehavior.opaque,
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        'Read important conditions before visiting the store',
+                                        style: theme.textTheme.bodyMedium?.copyWith(
+                                          color: AppColors.textSecondary,
+                                        ),
+                                      ),
                                     ),
+                                    Icon(
+                                      _termsExpanded
+                                          ? Icons.keyboard_arrow_up_rounded
+                                          : Icons.keyboard_arrow_down_rounded,
+                                      color: AppColors.textMuted,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              if (_termsExpanded) ...[
+                                const SizedBox(height: AppTokens.spaceMD),
+                                Text(
+                                  offer.termsAndConditions,
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: AppColors.textMuted,
+                                    height: 1.6,
                                   ),
                                 ),
-                                Icon(
-                                  _termsExpanded
-                                      ? Icons.keyboard_arrow_up_rounded
-                                      : Icons.keyboard_arrow_down_rounded,
-                                  color: AppColors.textMuted,
-                                ),
                               ],
-                            ),
+                            ],
                           ),
                         ),
-                        if (_termsExpanded) ...[
-                          Text(
-                            offer.termsAndConditions,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: AppColors.textMuted,
-                              height: 1.6,
-                            ),
-                          ),
-                          const SizedBox(height: AppTokens.spaceMD),
-                        ],
                       ],
+
+                      const SizedBox(height: AppTokens.spaceLG),
+                      const _SectionTitle('Shop details'),
+                      const SizedBox(height: AppTokens.spaceSM),
+                      if (_isLoadingShop)
+                        const LinearProgressIndicator(
+                          color: AppColors.accentDim,
+                          minHeight: 2,
+                        )
+                      else if (_shopProfile != null)
+                        _SectionCard(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  ShopLogoWidget(
+                                    logoUrl: _shopProfile!.logoUrl,
+                                    radius: 24,
+                                  ),
+                                  const SizedBox(width: AppTokens.spaceSM),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          _shopProfile!.shopName.isNotEmpty
+                                              ? _shopProfile!.shopName
+                                              : (widget.offer.shopName ?? 'Shop details'),
+                                          style: theme.textTheme.titleMedium
+                                              ?.copyWith(
+                                            color: AppColors.textPrimary,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                        if (_shopProfile!.category.isNotEmpty)
+                                          Padding(
+                                            padding: const EdgeInsets.only(top: 2),
+                                            child: Text(
+                                              _shopProfile!.category,
+                                              style: theme.textTheme.bodySmall
+                                                  ?.copyWith(
+                                                color: AppColors.textSecondary,
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: AppTokens.spaceMD),
+                              if ((_shopProfile!.ownerName ?? '').isNotEmpty)
+                                _ShopDetailRow(
+                                  icon: Icons.person_rounded,
+                                  label: 'Owner',
+                                  value: _shopProfile!.ownerName!,
+                                ),
+                              if ((_shopProfile!.ownerPhone ?? '').isNotEmpty)
+                                _ShopDetailRow(
+                                  icon: Icons.phone_rounded,
+                                  label: 'Contact',
+                                  value: '+91 ${_shopProfile!.ownerPhone}',
+                                ),
+                              if (_shopProfile!.address.isNotEmpty)
+                                _ShopDetailRow(
+                                  icon: Icons.location_on_rounded,
+                                  label: 'Address',
+                                  value: _shopProfile!.address,
+                                  maxLines: 3,
+                                ),
+                              if (_shopProfile!.city.isNotEmpty ||
+                                  _shopProfile!.pincode.isNotEmpty)
+                                _ShopDetailRow(
+                                  icon: Icons.map_rounded,
+                                  label: 'Area',
+                                  value: [
+                                    if (_shopProfile!.city.isNotEmpty)
+                                      _shopProfile!.city,
+                                    if (_shopProfile!.pincode.isNotEmpty)
+                                      _shopProfile!.pincode,
+                                  ].join(', '),
+                                ),
+                              if (_shopProfile!.description.isNotEmpty)
+                                _ShopDetailRow(
+                                  icon: Icons.info_outline_rounded,
+                                  label: 'About shop',
+                                  value: _shopProfile!.description,
+                                  maxLines: 4,
+                                ),
+                            ],
+                          ),
+                        )
+                      else if (_shopError != null)
+                        Text(
+                          'Could not load shop details',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: AppColors.textMuted,
+                          ),
+                        ),
 
                       // Space for pinned CTA
                       const SizedBox(height: 120),
@@ -1127,6 +1090,13 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
   }
 
   String _formatDate(DateTime d) => '${d.day}/${d.month}/${d.year}';
+
+  String _formatDateTime(DateTime d) {
+    final hour = d.hour % 12 == 0 ? 12 : d.hour % 12;
+    final minute = d.minute.toString().padLeft(2, '0');
+    final period = d.hour >= 12 ? 'PM' : 'AM';
+    return '${d.day}/${d.month}/${d.year} • $hour:$minute $period';
+  }
 }
 
 // ── Sub-widgets ──────────────────────────────────────────────────────────────
@@ -1289,6 +1259,257 @@ class _TypographicHeader extends StatelessWidget {
             ),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionTitle extends StatelessWidget {
+  final String title;
+
+  const _SectionTitle(this.title);
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      title,
+      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.w700,
+          ),
+    );
+  }
+}
+
+class _SectionCard extends StatelessWidget {
+  final Widget child;
+
+  const _SectionCard({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppTokens.spaceMD),
+      decoration: BoxDecoration(
+        color: AppColors.elevated,
+        borderRadius: BorderRadius.circular(AppTokens.radiusMD),
+        border: Border.all(color: AppColors.borderSubtle),
+      ),
+      child: child,
+    );
+  }
+}
+
+class _InfoChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color? foreground;
+  final Color? background;
+
+  const _InfoChip({
+    required this.icon,
+    required this.label,
+    this.foreground,
+    this.background,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = foreground ?? AppColors.textSecondary;
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppTokens.spaceSM,
+        vertical: 8,
+      ),
+      decoration: BoxDecoration(
+        color: background ?? AppColors.elevated,
+        borderRadius: BorderRadius.circular(AppTokens.radiusFull),
+        border: Border.all(color: AppColors.borderSubtle),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: fg),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: fg,
+                  fontWeight: FontWeight.w600,
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PhotoThumbnailTile extends StatefulWidget {
+  final String imageUrl;
+  final bool isSelected;
+
+  const _PhotoThumbnailTile({
+    required this.imageUrl,
+    required this.isSelected,
+  });
+
+  @override
+  State<_PhotoThumbnailTile> createState() => _PhotoThumbnailTileState();
+}
+
+class _PhotoThumbnailTileState extends State<_PhotoThumbnailTile> {
+  static const double _tileHeight = 76;
+  static const double _minTileWidth = 54;
+  static const double _maxTileWidth = 170;
+  double _aspectRatio = 1;
+  ImageStream? _imageStream;
+  ImageStreamListener? _imageStreamListener;
+
+  @override
+  void initState() {
+    super.initState();
+    _resolveImage();
+  }
+
+  @override
+  void didUpdateWidget(covariant _PhotoThumbnailTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.imageUrl != widget.imageUrl) {
+      _removeImageListener();
+      _aspectRatio = 1;
+      _resolveImage();
+    }
+  }
+
+  @override
+  void dispose() {
+    _removeImageListener();
+    super.dispose();
+  }
+
+  void _resolveImage() {
+    final provider = CachedNetworkImageProvider(widget.imageUrl);
+    final stream = provider.resolve(const ImageConfiguration());
+    _imageStream = stream;
+    _imageStreamListener = ImageStreamListener((info, _) {
+      final image = info.image;
+      if (!mounted || image.height == 0) return;
+      final ratio = image.width / image.height;
+      final width = (_tileHeight * ratio).clamp(
+        _minTileWidth,
+        _maxTileWidth,
+      );
+      final normalizedRatio = width / _tileHeight;
+      if ((_aspectRatio - normalizedRatio).abs() > 0.005) {
+        setState(() {
+          _aspectRatio = normalizedRatio;
+        });
+      }
+    });
+    stream.addListener(_imageStreamListener!);
+  }
+
+  void _removeImageListener() {
+    if (_imageStream != null && _imageStreamListener != null) {
+      _imageStream!.removeListener(_imageStreamListener!);
+    }
+    _imageStream = null;
+    _imageStreamListener = null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final borderColor =
+        widget.isSelected ? AppColors.accent : AppColors.borderSubtle;
+
+    return AnimatedContainer(
+      duration: AppTokens.durationFast,
+      width: _tileHeight * _aspectRatio,
+      height: _tileHeight,
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: AppColors.elevated,
+        borderRadius: BorderRadius.circular(AppTokens.radiusMD),
+        border: Border.all(
+          color: borderColor,
+          width: widget.isSelected ? 1.5 : 1,
+        ),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppTokens.radiusSM),
+        child: CachedNetworkImage(
+          imageUrl: widget.imageUrl,
+          fit: BoxFit.cover,
+          placeholder: (_, __) => const ColoredBox(
+            color: AppColors.elevated,
+          ),
+          errorWidget: (_, __, ___) => const ColoredBox(
+            color: AppColors.elevated,
+            child: Icon(
+              Icons.broken_image_outlined,
+              color: AppColors.textMuted,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TimelineItem extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String value;
+  final bool isLast;
+
+  const _TimelineItem({
+    required this.icon,
+    required this.title,
+    required this.value,
+    this.isLast = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: EdgeInsets.only(bottom: isLast ? 0 : AppTokens.spaceMD),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: AppColors.accent.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 16, color: AppColors.accent),
+          ),
+          const SizedBox(width: AppTokens.spaceSM),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppColors.textMuted,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),

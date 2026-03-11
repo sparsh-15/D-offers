@@ -105,13 +105,15 @@ async function listOffers(req, res, next) {
       }),
       prisma.shopkeeperProfile.findMany({
         where: { userId: { in: shopkeeperIds } },
-        select: { userId: true, shopName: true },
+        select: { userId: true, shopName: true, logoUrl: true },
       }),
     ]);
 
     const shopNameByUserId = {};
+    const shopLogoByUserId = {};
     profiles.forEach((p) => {
       shopNameByUserId[p.userId] = p.shopName || 'Shop';
+      shopLogoByUserId[p.userId] = p.logoUrl || null;
     });
 
     const tierOrder = { top3: 3, priority: 2, normal: 1 };
@@ -212,6 +214,7 @@ async function listOffers(req, res, next) {
         id: o.id,
         shopkeeperId: o.shopkeeperId,
         shopName: o._shopName || null,
+        shopLogoUrl: shopLogoByUserId[o.shopkeeperId] || null,
         title: o.title || '',
         description: o.description || '',
         photos: o.photos || [],
@@ -270,11 +273,13 @@ async function getLikedOffers(req, res, next) {
     });
     const profiles = await prisma.shopkeeperProfile.findMany({
       where: { userId: { in: offers.map((o) => o.shopkeeperId) } },
-      select: { userId: true, shopName: true },
+      select: { userId: true, shopName: true, logoUrl: true },
     });
     const shopNameByUserId = {};
+    const shopLogoByUserId = {};
     profiles.forEach((p) => {
       shopNameByUserId[p.userId] = p.shopName || 'Shop';
+      shopLogoByUserId[p.userId] = p.logoUrl || null;
     });
     res.status(200).json({
       success: true,
@@ -282,6 +287,7 @@ async function getLikedOffers(req, res, next) {
         id: o.id,
         shopkeeperId: o.shopkeeperId,
         shopName: shopNameByUserId[o.shopkeeperId] || null,
+        shopLogoUrl: shopLogoByUserId[o.shopkeeperId] || null,
         title: o.title || '',
         description: o.description || '',
         photos: o.photos || [],

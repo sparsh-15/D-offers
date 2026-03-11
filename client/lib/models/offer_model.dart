@@ -2,6 +2,7 @@ class OfferModel {
   final String id;
   final String shopkeeperId;
   final String? shopName;
+  final String? shopLogoUrl;
   final String title;
   final String description;
   final List<String> photos;
@@ -23,6 +24,7 @@ class OfferModel {
     required this.id,
     required this.shopkeeperId,
     this.shopName,
+    this.shopLogoUrl,
     required this.title,
     required this.description,
     this.photos = const [],
@@ -45,6 +47,7 @@ class OfferModel {
     String? id,
     String? shopkeeperId,
     String? shopName,
+    String? shopLogoUrl,
     String? title,
     String? description,
     List<String>? photos,
@@ -66,6 +69,7 @@ class OfferModel {
       id: id ?? this.id,
       shopkeeperId: shopkeeperId ?? this.shopkeeperId,
       shopName: shopName ?? this.shopName,
+      shopLogoUrl: shopLogoUrl ?? this.shopLogoUrl,
       title: title ?? this.title,
       description: description ?? this.description,
       photos: photos ?? this.photos,
@@ -90,6 +94,7 @@ class OfferModel {
       id: json['id']?.toString() ?? '',
       shopkeeperId: json['shopkeeperId']?.toString() ?? '',
       shopName: json['shopName']?.toString(),
+      shopLogoUrl: json['shopLogoUrl']?.toString() ?? json['logoUrl']?.toString(),
       title: json['title']?.toString() ?? '',
       description: json['description']?.toString() ?? '',
       photos: json['photos'] != null
