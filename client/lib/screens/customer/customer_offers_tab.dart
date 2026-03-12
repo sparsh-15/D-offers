@@ -57,7 +57,7 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
   bool _isLoadingMore = false;
   bool _isFilterPincodeLoading = false;
   String? _errorText;
-  String? _nextCursor;
+  int _nextOffset = 0;
   bool _hasMore = true;
   final List<OfferModel> _items = [];
   static const String _allKey = 'all';
@@ -78,8 +78,13 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
-    _loadCategories();
-    _loadInitial();
+    _initializeOffers();
+  }
+
+  Future<void> _initializeOffers() async {
+    await _loadCategories();
+    await _tryAutoApplyCurrentLocation();
+    await _loadInitial();
   }
 
   void _onScroll() {
@@ -96,11 +101,53 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
       _isInitialLoading = true;
       _isLoadingMore = false;
       _errorText = null;
-      _nextCursor = null;
+      _nextOffset = 0;
       _hasMore = true;
       _items.clear();
     });
     await _fetchPage();
+  }
+
+  Future<void> _tryAutoApplyCurrentLocation() async {
+    try {
+      final locationData =
+          await LocationService.instance.getCurrentLocationWithAddress();
+      if (!mounted) return;
+
+      final pincode = locationData['pincode'] as String?;
+      final city = locationData['city'] as String?;
+      final state = locationData['state'] as String?;
+
+      if ((pincode == null || pincode.isEmpty) &&
+          (city == null || city.isEmpty) &&
+          (state == null || state.isEmpty)) {
+        return;
+      }
+
+      setState(() {
+        _pincodeFilter = (pincode?.isNotEmpty ?? false) ? pincode : null;
+        _cityFilter = (city?.isNotEmpty ?? false) ? city : null;
+        _stateFilter = (state?.isNotEmpty ?? false) ? state : null;
+        _currentLocationText = [
+          if (city?.isNotEmpty == true) city,
+          if (pincode?.isNotEmpty == true) pincode,
+        ].join(', ');
+        _useCurrentLocation = true;
+        _locationFromCurrent = true;
+      });
+
+      if (pincode != null && pincode.isNotEmpty) {
+        _pincodeController.text = pincode;
+      }
+      if (city != null && city.isNotEmpty) {
+        _cityController.text = city;
+      }
+      if (state != null && state.isNotEmpty) {
+        _stateController.text = state;
+      }
+    } catch (_) {
+      // Silent fallback: if location isn't available, user can set filters manually.
+    }
   }
 
   Future<void> _loadCategories() async {
@@ -168,20 +215,21 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
         category: _categoryFilter == _allKey ? null : _categoryFilter,
         sort: _sortBy,
         limit: _pageSize,
-        cursor: _nextCursor,
+        offset: _nextOffset,
       );
       final offers = page['offers'] as List<OfferModel>;
       final pageInfo = (page['pageInfo'] as Map<String, dynamic>?) ?? const {};
-      final nextCursor = pageInfo['nextCursor']?.toString();
+      final dynamic nextOffsetValue = pageInfo['nextOffset'];
+      final parsedNextOffset = nextOffsetValue is int
+          ? nextOffsetValue
+          : int.tryParse(nextOffsetValue?.toString() ?? '');
       final hasMore = pageInfo['hasMore'] == true;
 
       if (!mounted) return;
       setState(() {
         _items.addAll(offers);
-        _nextCursor = (nextCursor != null && nextCursor.isNotEmpty)
-            ? nextCursor
-            : null;
-        _hasMore = hasMore && _nextCursor != null;
+        _nextOffset = parsedNextOffset ?? (_nextOffset + offers.length);
+        _hasMore = hasMore;
         _isInitialLoading = false;
         _isLoadingMore = false;
       });
@@ -711,7 +759,7 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
 
     // Pre-fill controllers from current filters
     _cityController.text = _cityFilter ?? '';
-    _pincodeController.text = _pincodeFilter ?? defaultPincode;
+    _pincodeController.text = _pincodeFilter ?? '';
     _stateController.text = _stateFilter ?? '';
 
     showDialog(
@@ -782,7 +830,9 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
                   decoration: InputDecoration(
                     labelText: 'Pincode',
                     prefixIcon: const Icon(Icons.pin_drop_rounded),
-                    hintText: defaultPincode.isNotEmpty ? defaultPincode : null,
+                    hintText: defaultPincode.isNotEmpty
+                        ? 'Optional (e.g. $defaultPincode)'
+                        : 'Optional',
                     isDense: true,
                   ),
                   onChanged: (value) {
@@ -838,13 +888,17 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
                   alignment: Alignment.centerRight,
                   child: ElevatedButton(
                     onPressed: () {
+                      final normalizedCity = _cityController.text
+                        .trim()
+                        .replaceAll(RegExp(r'\s+'), ' ');
+
                       setState(() {
                         _stateFilter = _stateController.text.trim().isEmpty
                             ? null
                             : _stateController.text.trim();
-                        _cityFilter = _cityController.text.trim().isEmpty
+                      _cityFilter = normalizedCity.isEmpty
                             ? null
-                            : _cityController.text.trim();
+                        : normalizedCity;
                         _pincodeFilter =
                             _pincodeController.text.trim().isEmpty
                                 ? null

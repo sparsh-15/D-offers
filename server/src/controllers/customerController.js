@@ -10,6 +10,10 @@ function ci(value) {
   return String(value || '').trim();
 }
 
+function normalizeCity(value) {
+  return ci(value).replace(/\s+/g, ' ');
+}
+
 function normalizeAgentMaxDiscount(value) {
   if (value === undefined || value === null || value === '') return DEFAULT_AGENT_MAX_DISCOUNT;
   const parsed = Number(value);
@@ -23,6 +27,7 @@ async function listOffers(req, res, next) {
     const {
       status,
       limit,
+      offset,
       skip,
       pincode,
       city,
@@ -33,11 +38,47 @@ async function listOffers(req, res, next) {
       segment,
     } = req.query;
 
-    const limitNum = Math.min(Math.max(parseInt(limit, 10) || 100, 1), 200);
-    const skipNum = Math.max(parseInt(skip, 10) || 0, 0);
+    const limitNum = Math.min(Math.max(parseInt(limit, 10) || 30, 1), 100);
+    const rawOffset = offset !== undefined ? offset : skip;
+    const offsetNum = Math.max(parseInt(rawOffset, 10) || 0, 0);
 
-    const where = {};
-    if (status) where.status = status;
+    const pgUserId =
+      (await resolvePgId('users', req.user.userId)) || req.user.userId;
+    const requester = await prisma.user.findUnique({
+      where: { id: pgUserId },
+      select: { pincode: true, city: true, state: true },
+    });
+
+    const explicitPincode = ci(pincode);
+    const explicitCity = normalizeCity(city);
+    const explicitState = ci(state);
+
+    // Priority: explicit pincode > explicit city > explicit state > profile city > profile state
+    // Do not auto-fallback to profile pincode; this blocks intentional city-only searches.
+    const requestedPincode = explicitPincode;
+    const requestedCity =
+      !requestedPincode && (explicitCity || normalizeCity(requester?.city));
+    const requestedState =
+      !requestedPincode && !requestedCity && (explicitState || ci(requester?.state));
+
+    // Location-first feed: if we still don't have any location context, return empty.
+    if (!requestedPincode && !requestedCity && !requestedState) {
+      return res.status(200).json({
+        success: true,
+        offers: [],
+        pageInfo: {
+          offset: offsetNum,
+          limit: limitNum,
+          total: 0,
+          hasMore: false,
+          nextOffset: null,
+        },
+      });
+    }
+
+    const where = {
+      status: status || 'active',
+    };
 
     const baseUserFilter = {
       role: 'shopkeeper',
@@ -45,69 +86,163 @@ async function listOffers(req, res, next) {
       approvalStatus: { not: 'rejected' },
     };
 
-    const locationFilter = {};
-    if (ci(pincode)) locationFilter.pincode = ci(pincode);
-    if (ci(city))
-      locationFilter.city = { equals: ci(city), mode: 'insensitive' };
-    if (ci(state))
-      locationFilter.state = { equals: ci(state), mode: 'insensitive' };
+    let shopkeeperIds = [];
+    let filterSource = 'none';
 
-    // Start with visible shopkeepers filtered by user location fields
-    const visibleShopkeepers = await prisma.user.findMany({
-      where: { ...baseUserFilter, ...locationFilter },
-      select: { id: true },
-    });
-
-    let shopkeeperIds = visibleShopkeepers.map((u) => u.id);
-
-    // If a pincode is provided, also include any shopkeepers whose profile has that pincode,
-    // even if their user row doesn't have the pincode synced yet.
-    if (ci(pincode)) {
-      const profileMatches = await prisma.shopkeeperProfile.findMany({
+    if (requestedPincode) {
+      filterSource = 'pincode';
+      const [visibleShopkeepers, profileMatches] = await Promise.all([
+        prisma.user.findMany({
+          where: { ...baseUserFilter, pincode: requestedPincode },
+          select: { id: true },
+        }),
+        prisma.shopkeeperProfile.findMany({
+          where: { pincode: requestedPincode },
+          select: { userId: true },
+        }),
+      ]);
+      shopkeeperIds = Array.from(
+        new Set([
+          ...visibleShopkeepers.map((u) => u.id),
+          ...profileMatches.map((p) => p.userId),
+        ]),
+      );
+    } else if (requestedCity) {
+      filterSource = 'city';
+      const [visibleShopkeepers, profileMatches] = await Promise.all([
+        prisma.user.findMany({
+          where: {
+            ...baseUserFilter,
+            city: { equals: requestedCity, mode: 'insensitive' },
+          },
+          select: { id: true },
+        }),
+        prisma.shopkeeperProfile.findMany({
+          where: { city: { equals: requestedCity, mode: 'insensitive' } },
+          select: { userId: true },
+        }),
+      ]);
+      shopkeeperIds = Array.from(
+        new Set([
+          ...visibleShopkeepers.map((u) => u.id),
+          ...profileMatches.map((p) => p.userId),
+        ]),
+      );
+    } else if (requestedState) {
+      filterSource = 'state';
+      const visibleShopkeepers = await prisma.user.findMany({
         where: {
-          pincode: ci(pincode),
+          ...baseUserFilter,
+          state: { equals: requestedState, mode: 'insensitive' },
         },
-        select: { userId: true },
-      });
-      const extraIds = profileMatches.map((p) => p.userId);
-      shopkeeperIds = Array.from(new Set([...shopkeeperIds, ...extraIds]));
-    }
-
-    // If no specific location matched, fall back to all visible shopkeepers
-    if (!shopkeeperIds.length) {
-      const allVisible = await prisma.user.findMany({
-        where: baseUserFilter,
         select: { id: true },
       });
-      shopkeeperIds = allVisible.map((u) => u.id);
+      shopkeeperIds = visibleShopkeepers.map((u) => u.id);
     }
 
     if (!shopkeeperIds.length) {
-      return res.status(200).json({ success: true, offers: [] });
+      return res.status(200).json({
+        success: true,
+        offers: [],
+        pageInfo: {
+          offset: offsetNum,
+          limit: limitNum,
+          total: 0,
+          hasMore: false,
+          nextOffset: null,
+        },
+        filterContext: {
+          source: filterSource,
+        },
+      });
     }
+
     where.shopkeeperId = { in: shopkeeperIds };
 
     const categoryCi = ci(category);
     if (categoryCi) {
-      // Match both canonical codes and human labels (e.g. "clothing" vs "Clothing & Fashion")
       where.category = { contains: categoryCi, mode: 'insensitive' };
     }
 
-    const [offersRaw, subscriptions, profiles] = await Promise.all([
-      prisma.offer.findMany({
-        where,
-        orderBy: { createdAt: 'desc' },
-      }),
-      prisma.subscription.findMany({
+    const qCi = ci(q);
+    if (qCi) {
+      where.OR = [
+        { title: { contains: qCi, mode: 'insensitive' } },
+        { description: { contains: qCi, mode: 'insensitive' } },
+        { category: { contains: qCi, mode: 'insensitive' } },
+      ];
+    }
+
+    const featuredOnly =
+      typeof segment === 'string' &&
+      ['featured', 'true', '1'].includes(segment.trim().toLowerCase());
+
+    if (featuredOnly) {
+      const subscriptions = await prisma.subscription.findMany({
         where: { shopkeeperId: { in: shopkeeperIds }, status: 'active' },
         orderBy: { createdAt: 'desc' },
         select: { shopkeeperId: true, planSnapshot: true },
+      });
+      const featuredShopkeepers = new Set();
+      subscriptions.forEach((s) => {
+        const tier =
+          s.planSnapshot && s.planSnapshot.rankingTier
+            ? String(s.planSnapshot.rankingTier).toLowerCase()
+            : 'normal';
+        if (tier === 'top3' || tier === 'priority') {
+          featuredShopkeepers.add(s.shopkeeperId);
+        }
+      });
+      const featuredIds = Array.from(featuredShopkeepers);
+      if (!featuredIds.length) {
+        return res.status(200).json({
+          success: true,
+          offers: [],
+          pageInfo: {
+            offset: offsetNum,
+            limit: limitNum,
+            total: 0,
+            hasMore: false,
+            nextOffset: null,
+          },
+          filterContext: {
+            source: filterSource,
+          },
+        });
+      }
+      where.shopkeeperId = { in: featuredIds };
+    }
+
+    const sortMode = (sort || '').toString().toLowerCase();
+    const orderBy = [];
+    if (sortMode === 'most_liked') {
+      orderBy.push({ likesCount: 'desc' });
+    } else if (sortMode === 'discount_high_to_low') {
+      orderBy.push({ discountValue: 'desc' });
+    } else if (sortMode === 'discount_low_to_high') {
+      orderBy.push({ discountValue: 'asc' });
+    }
+    orderBy.push({ createdAt: 'desc' });
+
+    const [offersRaw, total] = await Promise.all([
+      prisma.offer.findMany({
+        where,
+        orderBy,
+        skip: offsetNum,
+        take: limitNum,
       }),
-      prisma.shopkeeperProfile.findMany({
-        where: { userId: { in: shopkeeperIds } },
-        select: { userId: true, shopName: true, logoUrl: true },
-      }),
+      prisma.offer.count({ where }),
     ]);
+
+    const offerShopkeeperIds = Array.from(
+      new Set(offersRaw.map((o) => o.shopkeeperId)),
+    );
+    const profiles = offerShopkeeperIds.length
+      ? await prisma.shopkeeperProfile.findMany({
+          where: { userId: { in: offerShopkeeperIds } },
+          select: { userId: true, shopName: true, logoUrl: true },
+        })
+      : [];
 
     const shopNameByUserId = {};
     const shopLogoByUserId = {};
@@ -116,104 +251,21 @@ async function listOffers(req, res, next) {
       shopLogoByUserId[p.userId] = p.logoUrl || null;
     });
 
-    const tierOrder = { top3: 3, priority: 2, normal: 1 };
-    const tierByShop = {};
-    subscriptions.forEach((s) => {
-      if (!tierByShop[s.shopkeeperId]) {
-        const tier =
-          s.planSnapshot && s.planSnapshot.rankingTier
-            ? s.planSnapshot.rankingTier
-            : 'normal';
-        tierByShop[s.shopkeeperId] = tierOrder[tier] ?? 1;
-      }
-    });
-
-    const qCi = ci(q).toLowerCase();
-    const hasQuery = !!qCi;
-
-    const featuredOnly =
-      typeof segment === 'string' &&
-      ['featured', 'true', '1'].includes(segment.trim().toLowerCase());
-
-    let offersWithMeta = offersRaw
-      .map((o) => {
-        const shopName = shopNameByUserId[o.shopkeeperId] || 'Shop';
-        const tierScore = tierByShop[o.shopkeeperId] ?? 1;
-
-        let matchesQuery = true;
-        if (hasQuery) {
-          const haystack = (
-            (o.title || '') +
-            ' ' +
-            (o.description || '') +
-            ' ' +
-            (o.category || '') +
-            ' ' +
-            shopName
-          )
-            .toString()
-            .toLowerCase();
-          matchesQuery = haystack.includes(qCi);
-        }
-
-        return {
-          ...o,
-          _tierScore: tierScore,
-          _shopName: shopName,
-          _matchesQuery: matchesQuery,
-        };
-      })
-      .filter((o) => o._matchesQuery);
-
-    if (featuredOnly) {
-      offersWithMeta = offersWithMeta.filter((o) => o._tierScore > 1);
-    }
-
-    const sortMode = (sort || '').toString().toLowerCase();
-
-    offersWithMeta.sort((a, b) => {
-      // Higher subscription tier first for all modes
-      if (b._tierScore !== a._tierScore) {
-        return b._tierScore - a._tierScore;
-      }
-
-      if (sortMode === 'most_liked') {
-        if ((b.likesCount || 0) !== (a.likesCount || 0)) {
-          return (b.likesCount || 0) - (a.likesCount || 0);
-        }
-      } else if (sortMode === 'discount_high_to_low') {
-        const aVal = a.discountValue ? Number(a.discountValue) : 0;
-        const bVal = b.discountValue ? Number(b.discountValue) : 0;
-        if (bVal !== aVal) return bVal - aVal;
-      } else if (sortMode === 'discount_low_to_high') {
-        const aVal = a.discountValue ? Number(a.discountValue) : 0;
-        const bVal = b.discountValue ? Number(b.discountValue) : 0;
-        if (aVal !== bVal) return aVal - bVal;
-      } else {
-        // newest (default): fall through to createdAt below
-      }
-
-      const aDate = a.createdAt || new Date(0);
-      const bDate = b.createdAt || new Date(0);
-      return bDate - aDate;
-    });
-
-    const sliced = offersWithMeta.slice(skipNum, skipNum + limitNum);
-
-    const pgUserId =
-      (await resolvePgId('users', req.user.userId)) || req.user.userId;
     const likes = await prisma.offerLike.findMany({
-      where: { userId: pgUserId, offerId: { in: sliced.map((o) => o.id) } },
+      where: { userId: pgUserId, offerId: { in: offersRaw.map((o) => o.id) } },
       select: { offerId: true },
     });
     const likedOfferIds = new Set(likes.map((l) => l.offerId));
 
+    const nextOffset = offsetNum + offersRaw.length;
+    const hasMore = nextOffset < total;
+
     res.status(200).json({
       success: true,
-      offers: sliced.map((o) => ({
+      offers: offersRaw.map((o) => ({
         id: o.id,
         shopkeeperId: o.shopkeeperId,
-        shopName: o._shopName || null,
+        shopName: shopNameByUserId[o.shopkeeperId] || null,
         shopLogoUrl: shopLogoByUserId[o.shopkeeperId] || null,
         title: o.title || '',
         description: o.description || '',
@@ -230,6 +282,16 @@ async function listOffers(req, res, next) {
         createdAt: o.createdAt ? o.createdAt.toISOString() : null,
         updatedAt: o.updatedAt ? o.updatedAt.toISOString() : null,
       })),
+      pageInfo: {
+        offset: offsetNum,
+        limit: limitNum,
+        total,
+        hasMore,
+        nextOffset: hasMore ? nextOffset : null,
+      },
+      filterContext: {
+        source: filterSource,
+      },
     });
   } catch (err) {
     next(err);

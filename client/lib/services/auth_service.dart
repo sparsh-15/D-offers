@@ -422,7 +422,7 @@ class AuthService {
     String? sort,
     String? segment,
     int? limit,
-    String? cursor,
+    int? offset,
   }) async {
     final page = await getCustomerOffersPage(
       state: state,
@@ -433,7 +433,7 @@ class AuthService {
       sort: sort,
       segment: segment,
       limit: limit,
-      cursor: cursor,
+      offset: offset,
     );
     return page['offers'] as List<OfferModel>;
   }
@@ -447,6 +447,7 @@ class AuthService {
     String? sort,
     String? segment,
     int? limit,
+    int? offset,
     String? cursor,
   }) async {
     final token = AuthStore.token;
@@ -455,18 +456,34 @@ class AuthService {
     if (pincode != null && pincode.isNotEmpty) {
       params['pincode'] = pincode;
     } else {
-      if (city != null && city.isNotEmpty) params['city'] = city;
-      if (state != null && state.isNotEmpty) params['state'] = state;
+      if (city != null && city.isNotEmpty) {
+        params['city'] = city;
+      }
+      if (state != null && state.isNotEmpty) {
+        params['state'] = state;
+      }
     }
-    if (q != null && q.trim().isNotEmpty) params['q'] = q.trim();
-    if (category != null && category.trim().isNotEmpty)
+    if (q != null && q.trim().isNotEmpty) {
+      params['q'] = q.trim();
+    }
+    if (category != null && category.trim().isNotEmpty) {
       params['category'] = category.trim();
-    if (sort != null && sort.trim().isNotEmpty) params['sort'] = sort.trim();
-    if (segment != null && segment.trim().isNotEmpty)
+    }
+    if (sort != null && sort.trim().isNotEmpty) {
+      params['sort'] = sort.trim();
+    }
+    if (segment != null && segment.trim().isNotEmpty) {
       params['segment'] = segment.trim();
-    if (limit != null && limit > 0) params['limit'] = limit.toString();
-    if (cursor != null && cursor.trim().isNotEmpty)
+    }
+    if (limit != null && limit > 0) {
+      params['limit'] = limit.toString();
+    }
+    if (offset != null && offset >= 0) {
+      params['offset'] = offset.toString();
+    } else if (cursor != null && cursor.trim().isNotEmpty) {
+      // Backward compatibility: older callers may still pass cursor.
       params['cursor'] = cursor.trim();
+    }
     final uri = Uri.parse('${ApiConfig.baseUrl}/customer/offers')
         .replace(queryParameters: params.isEmpty ? null : params);
 
