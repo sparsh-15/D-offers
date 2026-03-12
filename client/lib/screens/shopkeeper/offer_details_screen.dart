@@ -513,6 +513,59 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
     );
   }
 
+  void _openPhotoPreview({String? networkUrl, File? localFile}) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black87,
+      builder: (context) {
+        return Dialog(
+          insetPadding: const EdgeInsets.all(12),
+          backgroundColor: Colors.transparent,
+          child: Stack(
+            children: [
+              InteractiveViewer(
+                minScale: 1,
+                maxScale: 4,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: networkUrl != null
+                      ? Image.network(
+                          networkUrl,
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) => Container(
+                            color: AppColors.black,
+                            padding: const EdgeInsets.all(24),
+                            child: const Icon(
+                              Icons.broken_image,
+                              color: AppColors.white,
+                              size: 48,
+                            ),
+                          ),
+                        )
+                      : Image.file(
+                          localFile!,
+                          fit: BoxFit.contain,
+                        ),
+                ),
+              ),
+              Positioned(
+                top: 8,
+                right: 8,
+                child: IconButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.close, color: AppColors.white),
+                  style: IconButton.styleFrom(
+                    backgroundColor: AppColors.black54,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -993,27 +1046,41 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
                         final isUrl = index < _photoUrls.length;
                         return Stack(
                           children: [
-                            Container(
-                              width: 120,
-                              margin: const EdgeInsets.only(right: 8),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(12),
-                                color: AppColors.grey300,
-                              ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
-                                child: isUrl
-                                    ? Image.network(
-                                        _photoUrls[index],
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (_, __, ___) =>
-                                            const Icon(Icons.broken_image),
-                                      )
-                                    : Image.file(
-                                        _localPhotos[
-                                            index - _photoUrls.length],
-                                        fit: BoxFit.cover,
-                                      ),
+                            GestureDetector(
+                              onTap: () {
+                                if (isUrl) {
+                                  _openPhotoPreview(
+                                    networkUrl: _photoUrls[index],
+                                  );
+                                } else {
+                                  _openPhotoPreview(
+                                    localFile: _localPhotos[
+                                        index - _photoUrls.length],
+                                  );
+                                }
+                              },
+                              child: Container(
+                                width: 120,
+                                margin: const EdgeInsets.only(right: 8),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(12),
+                                  color: AppColors.grey300,
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: isUrl
+                                      ? Image.network(
+                                          _photoUrls[index],
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (_, __, ___) =>
+                                              const Icon(Icons.broken_image),
+                                        )
+                                      : Image.file(
+                                          _localPhotos[
+                                              index - _photoUrls.length],
+                                          fit: BoxFit.cover,
+                                        ),
+                                ),
                               ),
                             ),
                             Positioned(

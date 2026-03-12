@@ -261,6 +261,48 @@ class _CustomerLoansTabState extends State<CustomerLoansTab> {
                               return null;
                             },
                           ),
+                          const SizedBox(height: AppTokens.spaceMD),
+                          CustomTextField(
+                            controller: _loanAmountController,
+                            label: 'Loan amount required',
+                            hint: 'Enter desired loan amount',
+                            prefixIcon: Icons.currency_rupee_rounded,
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return 'Please enter loan amount';
+                              }
+                              return null;
+                            },
+                          ),
+                          const SizedBox(height: AppTokens.spaceLG),
+                          _SectionHeader(
+                            title: 'Identification',
+                            subtitle: 'PAN is required for credit check and KYC verification.',
+                          ),
+                          const SizedBox(height: AppTokens.spaceMD),
+                          CustomTextField(
+                            controller: _panController,
+                            label: 'PAN number',
+                            hint: 'Example: ABCDE1234F',
+                            prefixIcon: Icons.badge_outlined,
+                            textCapitalization: TextCapitalization.characters,
+                            maxLength: 10,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
+                            ],
+                            validator: (value) {
+                              final pan = (value ?? '').trim().toUpperCase();
+                              if (pan.isEmpty) {
+                                return 'Please enter PAN number';
+                              }
+                              if (!RegExp(r'^[A-Z]{5}[0-9]{4}[A-Z]{1}$').hasMatch(pan)) {
+                                return 'Enter a valid PAN (e.g. ABCDE1234F)';
+                              }
+                              return null;
+                            },
+                          ),
                           const SizedBox(height: AppTokens.spaceLG),
                           _SectionHeader(
                             title: 'Bank details',

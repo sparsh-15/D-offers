@@ -12,7 +12,7 @@ class ApiConfig {
   /// - Physical Android/iOS on same Wi‑Fi: use this (e.g. 192.168.29.47).
   /// - Android emulator: use '10.0.2.2' to reach host.
   /// Find your IP: Windows `ipconfig`, Mac/Linux `ifconfig` or `ip addr`.
-  static const String devHost = '10.63.200.228';
+  static const String devHost = '192.168.1.9';
 
   static String get baseUrl {
     if (useProduction) {
