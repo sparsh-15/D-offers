@@ -154,6 +154,7 @@ model User {
   shopLeadsAsCsa         ShopLead[]                     @relation("ShopLeadCsa")
   shopLeadsAsShopkeeper  ShopLead[]                     @relation("ShopLeadUser")
   loginHistory           LoginHistory[]
+  loanApplications       LoanApplication[]
 
   @@index([role, approvalStatus, createdAt(sort: Desc)], map: "idx_users_role_approval_created_desc")
   @@index([role, isActive, createdAt(sort: Desc)], map: "idx_users_role_active_created_desc")
@@ -510,6 +511,34 @@ model ShopLead {
   @@index([shopkeeperUserId], map: "idx_shop_leads_shopkeeper_user_id")
   @@index([couponCode], map: "idx_shop_leads_coupon_code")
   @@map("shop_leads")
+}
+
+model LoanApplication {
+  id                      String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  customerId              String   @map("customer_id") @db.Uuid
+  fullName                String   @map("full_name")
+  mobileNumber            String   @map("mobile_number")
+  employmentType          String   @map("employment_type")
+  monthlySalaryIncome     Decimal  @map("monthly_salary_income") @db.Decimal(14, 2)
+  loanAmount              Decimal  @map("loan_amount") @db.Decimal(14, 2)
+  panNumber               String   @map("pan_number")
+  bankName                String   @map("bank_name")
+  accountType             String   @map("account_type")
+  last4AccountDigits      String   @map("last_4_account_digits")
+  cibilConsent            Boolean  @default(false) @map("cibil_consent")
+  communicationConsent    Boolean  @default(false) @map("communication_consent")
+  status                  String   @default("pending")
+  cibilScore              Int?     @map("cibil_score")
+  eligibilityStatus       String?  @map("eligibility_status")
+  evaluatedAt             DateTime? @map("evaluated_at") @db.Timestamptz(6)
+  createdAt               DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt               DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  customer User @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId, createdAt(sort: Desc)], map: "idx_loan_applications_customer_created_desc")
+  @@index([status], map: "idx_loan_applications_status")
+  @@map("loan_applications")
 }
 
 

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../core/constants/app_colors.dart';
+import '../../core/constants/app_design_tokens.dart';
 import '../../core/constants/app_strings.dart';
 import '../../core/utils/dialog_helper.dart';
 import '../../models/role_enum.dart';
@@ -39,7 +40,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _isLoadingPincode = false;
   List<Map<String, dynamic>> _availableAreas = [];
   String? _selectedArea;
-  bool _acceptedTerms = false;
+  bool _acceptedTerms = true;
   String? _selectedGender;
   DateTime? _selectedDob;
 
@@ -134,6 +135,35 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
+  String _subtitle() {
+    switch (widget.role) {
+      case UserRole.customer:
+        return 'start exploring local offers.';
+      case UserRole.shopkeeper:
+        return 'Start your onboarding in a few quick steps.';
+      case UserRole.companySalesAgent:
+        return 'Set up your agent account to continue.';
+      case UserRole.ssa:
+      case UserRole.admin:
+        return 'Signup for this role is restricted.';
+    }
+  }
+
+  IconData _roleIcon() {
+    switch (widget.role) {
+      case UserRole.customer:
+        return Iconsax.profile_circle;
+      case UserRole.shopkeeper:
+        return Iconsax.shop;
+      case UserRole.companySalesAgent:
+        return Iconsax.ticket_discount;
+      case UserRole.ssa:
+        return Iconsax.security_user;
+      case UserRole.admin:
+        return Iconsax.shield_tick;
+    }
+  }
+
   Future<void> _pickDob() async {
     final now = DateTime.now();
     final firstDate = DateTime(now.year - 80, now.month, now.day);
@@ -156,262 +186,418 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     final isShopkeeper = widget.role == UserRole.shopkeeper;
+    final theme = Theme.of(context);
+
     return Scaffold(
+      backgroundColor: AppColors.background,
       body: Container(
         decoration: BoxDecoration(
           gradient: ThemeHelper.getBackgroundGradient(context),
         ),
         child: SafeArea(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const SizedBox(height: 20),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: IconButton(
-                      icon: const Icon(Iconsax.arrow_left_2),
-                      onPressed: () => Navigator.pop(context),
-                      color: AppColors.primary,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    _title(),
-                    style: Theme.of(context).textTheme.displaySmall,
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    isShopkeeper
-                        ? 'Enter your basic details. You can complete your shop profile later.'
-                        : 'Enter your details to signup',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 32),
-                  CustomTextField(
-                    controller: _nameController,
-                    label: 'Full Name',
-                    hint: 'Enter your name',
-                    prefixIcon: Iconsax.user,
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Please enter your name';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  CustomTextField(
-                    controller: _phoneController,
-                    label: AppStrings.enterMobile,
-                    hint: AppStrings.mobileHint,
-                    prefixIcon: Iconsax.mobile,
-                    keyboardType: TextInputType.phone,
-                    maxLength: 10,
-                    inputFormatters: [
-                      FilteringTextInputFormatter.digitsOnly,
-                    ],
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter mobile number';
-                      }
-                      if (value.length != 10) {
-                        return 'Please enter valid 10-digit mobile number';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  PincodeLocationSection(
-                    pincodeController: _pincodeController,
-                    cityController: _cityController,
-                    stateController: _stateController,
-                    addressController: _addressController,
-                    isLoadingPincode: _isLoadingPincode,
-                    availableAreas: _availableAreas,
-                    selectedArea: _selectedArea,
-                    onAreaChanged: _onAreaSelected,
-                    addressLabel: isShopkeeper
-                        ? 'Owner address (optional – detailed shop address can be added later)'
-                        : 'Address (optional)',
-                    pincodeValidator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter pincode';
-                      }
-                      if (value.length != 6) {
-                        return 'Please enter valid 6-digit pincode';
-                      }
-                      return null;
-                    },
-                    cityValidator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'City required';
-                      }
-                      return null;
-                    },
-                    areaValidator: (value) {
-                      if (_availableAreas.isNotEmpty &&
-                          (value == null || value.trim().isEmpty)) {
-                        return 'Please select area';
-                      }
-                      return null;
-                    },
-                    stateValidator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'State required';
-                      }
-                      return null;
-                    },
-                  ),
-                  if (widget.role == UserRole.customer) ...[
-                    const SizedBox(height: 16),
-                    DropdownButtonFormField<String>(
-                      value: _selectedGender,
-                      decoration: const InputDecoration(
-                        labelText: 'Gender (optional)',
-                        prefixIcon: Icon(Icons.person_outline_rounded),
-                      ),
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'male',
-                          child: Text('Male'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'female',
-                          child: Text('Female'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'other',
-                          child: Text('Other'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'prefer_not_to_say',
-                          child: Text('Prefer not to say'),
-                        ),
-                      ],
-                      onChanged: (value) {
-                        setState(() => _selectedGender = value);
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    InkWell(
-                      onTap: _pickDob,
-                      borderRadius: BorderRadius.circular(12),
-                      child: InputDecorator(
-                        decoration: const InputDecoration(
-                          labelText: 'Date of birth (optional)',
-                          prefixIcon: Icon(Icons.cake_rounded),
-                        ),
-                        child: Text(
-                          _selectedDob == null
-                              ? 'Tap to select DOB'
-                              : '${_selectedDob!.day}/${_selectedDob!.month}/${_selectedDob!.year}',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: _selectedDob == null
-                                    ? AppColors.textMuted
-                                    : AppColors.textPrimary,
-                              ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    CustomTextField(
-                      controller: _occupationController,
-                      label: 'Occupation (optional)',
-                      hint: 'e.g. Doctor, Student, Engineer',
-                      prefixIcon: Icons.work_outline_rounded,
-                      validator: (_) => null,
-                    ),
-                    const SizedBox(height: 16),
-                    CustomTextField(
-                      controller: _aboutMeController,
-                      label: 'About me (optional)',
-                      hint: 'I work as a doctor',
-                      prefixIcon: Icons.info_outline_rounded,
-                      maxLines: 3,
-                      validator: (_) => null,
-                    ),
-                  ],
-                  if (widget.role == UserRole.shopkeeper) ...[
-                    const SizedBox(height: 16),
-                    CustomTextField(
-                      controller: _couponController,
-                      label: 'Referral / Coupon code (optional)',
-                      hint: 'Enter code if you have one',
-                      prefixIcon: Iconsax.ticket_discount,
-                      validator: (_) => null,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'You can change this later on the payment page.',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppColors.textSecondary,
-                          ),
-                    ),
-                  ],
-                  const SizedBox(height: 24),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppTokens.spaceLG,
+              vertical: AppTokens.spaceMD,
+            ),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 560),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Checkbox(
-                        value: _acceptedTerms,
-                        onChanged: (value) {
-                          setState(() {
-                            _acceptedTerms = value ?? false;
-                          });
-                        },
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: IconButton(
+                          icon: const Icon(Iconsax.arrow_left_2),
+                          onPressed: () => Navigator.pop(context),
+                          color: AppColors.primary,
+                          visualDensity: VisualDensity.compact,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(
+                            minWidth: 36,
+                            minHeight: 36,
+                          ),
+                        ),
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const TermsScreen(),
-                              ),
-                            );
-                          },
-                          child: RichText(
-                            text: TextSpan(
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodyMedium
-                                  ?.copyWith(color: AppColors.textPrimary),
+                      const SizedBox(height: AppTokens.spaceSM),
+                      Container(
+                        padding: const EdgeInsets.all(AppTokens.spaceMD),
+                        decoration: BoxDecoration(
+                          color: AppColors.elevated,
+                          borderRadius: BorderRadius.circular(AppTokens.radiusXL),
+                          border: Border.all(color: AppColors.borderMid),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
-                                const TextSpan(text: 'I agree to the '),
-                                TextSpan(
-                                  text: 'Terms & Conditions',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodyMedium
-                                      ?.copyWith(
-                                        color: AppColors.primary,
-                                        fontWeight: FontWeight.w600,
-                                        decoration: TextDecoration.underline,
-                                      ),
+                                Container(
+                                  width: 52,
+                                  height: 52,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.cardBackground,
+                                    borderRadius: BorderRadius.circular(AppTokens.radiusMD),
+                                    border: Border.all(color: AppColors.borderMid),
+                                  ),
+                                  clipBehavior: Clip.antiAlias,
+                                  child: Image.asset(
+                                    'assets/Dofferlogo.png',
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => Icon(
+                                      _roleIcon(),
+                                      color: AppColors.accent,
+                                      size: AppTokens.iconXL,
+                                    ),
+                                  ),
                                 ),
-                                const TextSpan(text: ' of ${AppStrings.appName}'),
+                                const SizedBox(width: AppTokens.spaceMD),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        AppStrings.appName,
+                                        style: theme.textTheme.labelMedium?.copyWith(
+                                          color: AppColors.accent,
+                                          fontWeight: FontWeight.w700,
+                                          letterSpacing: 0.3,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        _title(),
+                                        style: theme.textTheme.headlineSmall?.copyWith(
+                                          fontWeight: FontWeight.w500,
+                                          color: AppColors.textPrimary,
+                                          height: 1.0,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        _subtitle(),
+                                        style: theme.textTheme.bodySmall?.copyWith(
+                                          color: AppColors.textSecondary,
+                                          height: 1.25,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: AppTokens.spaceSM),
+                                Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.accent.withValues(alpha: 0.12),
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: AppColors.accent.withValues(alpha: 0.18),
+                                    ),
+                                  ),
+                                  child: Icon(
+                                    _roleIcon(),
+                                    color: AppColors.accent,
+                                    size: AppTokens.iconMD,
+                                  ),
+                                ),
                               ],
                             ),
-                          ),
+                            const SizedBox(height: AppTokens.spaceSM),
+                            Container(
+                              height: 1,
+                              color: AppColors.borderSubtle,
+                            ),
+                            const SizedBox(height: AppTokens.spaceSM),
+                            Text(
+                              'Secure OTP signup',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: AppColors.textMuted,
+                                letterSpacing: 0.2,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: AppTokens.spaceLG),
+                      Container(
+                        padding: const EdgeInsets.all(AppTokens.spaceLG),
+                        decoration: BoxDecoration(
+                          color: AppColors.cardBackground,
+                          borderRadius: BorderRadius.circular(AppTokens.radiusXL),
+                          border: Border.all(color: AppColors.borderMid),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _FormSectionTitle(
+                              title: 'Basic details',
+                              subtitle: 'Use the same mobile number you will use for OTP login.',
+                            ),
+                            const SizedBox(height: AppTokens.spaceMD),
+                            CustomTextField(
+                              controller: _nameController,
+                              label: 'Full Name',
+                              hint: 'Enter your name',
+                              prefixIcon: Iconsax.user,
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'Please enter your name';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: AppTokens.spaceMD),
+                            CustomTextField(
+                              controller: _phoneController,
+                              label: AppStrings.enterMobile,
+                              hint: AppStrings.mobileHint,
+                              prefixIcon: Iconsax.mobile,
+                              keyboardType: TextInputType.phone,
+                              maxLength: 10,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                              ],
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Please enter mobile number';
+                                }
+                                if (value.length != 10) {
+                                  return 'Please enter valid 10-digit mobile number';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: AppTokens.spaceLG),
+                            _FormSectionTitle(
+                              title: 'Location details',
+                              subtitle: isShopkeeper
+                                  ? 'Add your owner location now. Detailed business address can be completed later.'
+                                  : 'This helps us show relevant local offers and services.',
+                            ),
+                            const SizedBox(height: AppTokens.spaceMD),
+                            PincodeLocationSection(
+                              pincodeController: _pincodeController,
+                              cityController: _cityController,
+                              stateController: _stateController,
+                              addressController: _addressController,
+                              isLoadingPincode: _isLoadingPincode,
+                              availableAreas: _availableAreas,
+                              selectedArea: _selectedArea,
+                              onAreaChanged: _onAreaSelected,
+                              addressLabel: isShopkeeper
+                                  ? 'Owner address (optional - detailed shop address can be added later)'
+                                  : 'Address (optional)',
+                              pincodeValidator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Please enter pincode';
+                                }
+                                if (value.length != 6) {
+                                  return 'Please enter valid 6-digit pincode';
+                                }
+                                return null;
+                              },
+                              cityValidator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'City required';
+                                }
+                                return null;
+                              },
+                              areaValidator: (value) {
+                                if (_availableAreas.isNotEmpty &&
+                                    (value == null || value.trim().isEmpty)) {
+                                  return 'Please select area';
+                                }
+                                return null;
+                              },
+                              stateValidator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'State required';
+                                }
+                                return null;
+                              },
+                            ),
+                            if (widget.role == UserRole.customer) ...[
+                              const SizedBox(height: AppTokens.spaceLG),
+                              const _FormSectionTitle(
+                                title: 'Profile details',
+                                subtitle: 'Optional details help personalize offers and conversations.',
+                              ),
+                              const SizedBox(height: AppTokens.spaceMD),
+                              DropdownButtonFormField<String>(
+                                value: _selectedGender,
+                                decoration: const InputDecoration(
+                                  labelText: 'Gender (optional)',
+                                  prefixIcon: Icon(Icons.person_outline_rounded),
+                                ),
+                                items: const [
+                                  DropdownMenuItem(
+                                    value: 'male',
+                                    child: Text('Male'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'female',
+                                    child: Text('Female'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'other',
+                                    child: Text('Other'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'prefer_not_to_say',
+                                    child: Text('Prefer not to say'),
+                                  ),
+                                ],
+                                onChanged: (value) {
+                                  setState(() => _selectedGender = value);
+                                },
+                              ),
+                              const SizedBox(height: AppTokens.spaceMD),
+                              InkWell(
+                                onTap: _pickDob,
+                                borderRadius: BorderRadius.circular(AppTokens.radiusMD),
+                                child: InputDecorator(
+                                  decoration: const InputDecoration(
+                                    labelText: 'Date of birth (optional)',
+                                    prefixIcon: Icon(Icons.cake_rounded),
+                                  ),
+                                  child: Text(
+                                    _selectedDob == null
+                                        ? 'Tap to select DOB'
+                                        : '${_selectedDob!.day}/${_selectedDob!.month}/${_selectedDob!.year}',
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      color: _selectedDob == null
+                                          ? AppColors.textMuted
+                                          : AppColors.textPrimary,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: AppTokens.spaceMD),
+                              CustomTextField(
+                                controller: _occupationController,
+                                label: 'Occupation (optional)',
+                                hint: 'e.g. Doctor, Student, Engineer',
+                                prefixIcon: Icons.work_outline_rounded,
+                                validator: (_) => null,
+                              ),
+                              const SizedBox(height: AppTokens.spaceMD),
+                              CustomTextField(
+                                controller: _aboutMeController,
+                                label: 'About me (optional)',
+                                hint: 'I work as a doctor',
+                                prefixIcon: Icons.info_outline_rounded,
+                                maxLines: 3,
+                                validator: (_) => null,
+                              ),
+                            ],
+                            if (widget.role == UserRole.shopkeeper) ...[
+                              const SizedBox(height: AppTokens.spaceLG),
+                              const _FormSectionTitle(
+                                title: 'Referral details',
+                                subtitle: 'Add a referral or coupon code if it applies to your onboarding.',
+                              ),
+                              const SizedBox(height: AppTokens.spaceMD),
+                              CustomTextField(
+                                controller: _couponController,
+                                label: 'Referral / Coupon code (optional)',
+                                hint: 'Enter code if you have one',
+                                prefixIcon: Iconsax.ticket_discount,
+                                validator: (_) => null,
+                              ),
+                              const SizedBox(height: AppTokens.spaceSM),
+                              Text(
+                                'You can change this later on the payment page.',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                            const SizedBox(height: AppTokens.spaceLG),
+                            Container(
+                              padding: const EdgeInsets.all(AppTokens.spaceMD),
+                              decoration: BoxDecoration(
+                                color: AppColors.elevated,
+                                borderRadius: BorderRadius.circular(AppTokens.radiusLG),
+                                border: Border.all(color: AppColors.borderMid),
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Checkbox(
+                                    value: _acceptedTerms,
+                                    onChanged: (value) {
+                                      setState(() {
+                                        _acceptedTerms = value ?? false;
+                                      });
+                                    },
+                                  ),
+                                  const SizedBox(width: AppTokens.spaceSM),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text.rich(
+                                          TextSpan(
+                                            style: theme.textTheme.bodyMedium?.copyWith(
+                                              color: AppColors.textPrimary,
+                                              height: 1.45,
+                                            ),
+                                            children: [
+                                              const TextSpan(text: 'I agree to the '),
+                                              TextSpan(
+                                                text: 'Terms & Conditions',
+                                                style: theme.textTheme.bodyMedium?.copyWith(
+                                                  color: AppColors.primary,
+                                                  fontWeight: FontWeight.w600,
+                                                  decoration: TextDecoration.underline,
+                                                ),
+                                              ),
+                                              TextSpan(text: ' of ${AppStrings.appName}.'),
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(height: AppTokens.spaceXS),
+                                        TextButton(
+                                          onPressed: () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) => const TermsScreen(),
+                                              ),
+                                            );
+                                          },
+                                          style: TextButton.styleFrom(
+                                            padding: EdgeInsets.zero,
+                                            minimumSize: const Size(0, 0),
+                                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                            alignment: Alignment.centerLeft,
+                                          ),
+                                          child: const Text('Read full terms'),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: AppTokens.spaceLG),
+                            CustomButton(
+                              text: AppStrings.sendOtp,
+                              onPressed: _handleSignup,
+                              isLoading: _isLoading,
+                              icon: Iconsax.arrow_right_1,
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 24),
-                  CustomButton(
-                    text: AppStrings.sendOtp,
-                    onPressed: _handleSignup,
-                    isLoading: _isLoading,
-                    icon: Iconsax.arrow_right_1,
-                  ),
-                ],
+                ),
               ),
             ),
           ),
@@ -491,5 +677,41 @@ class _RegisterScreenState extends State<RegisterScreen> {
         setState(() => _isLoading = false);
       }
     }
+  }
+}
+
+class _FormSectionTitle extends StatelessWidget {
+  final String title;
+  final String subtitle;
+
+  const _FormSectionTitle({
+    required this.title,
+    required this.subtitle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        const SizedBox(height: AppTokens.spaceXS),
+        Text(
+          subtitle,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: AppColors.textSecondary,
+            height: 1.45,
+          ),
+        ),
+      ],
+    );
   }
 }
