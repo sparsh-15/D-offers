@@ -70,6 +70,30 @@ enum PaymentMethodEnum {
   @@map("payment_method_enum")
 }
 
+enum CampaignStatusEnum {
+  draft
+  pending_payment
+  paid
+  queued
+  sending
+  completed
+  cancelled
+  failed
+
+  @@map("campaign_status_enum")
+}
+
+enum DeliveryStatusEnum {
+  pending
+  sent
+  delivered
+  opened
+  clicked
+  failed
+
+  @@map("delivery_status_enum")
+}
+
 enum AuditActionEnum {
   user_activated
   user_deactivated
@@ -155,6 +179,10 @@ model User {
   shopLeadsAsShopkeeper  ShopLead[]                     @relation("ShopLeadUser")
   loginHistory           LoginHistory[]
   loanApplications       LoanApplication[]
+  campaigns              Campaign[]                     @relation("UserCampaigns")
+  campaignDeliveries     CampaignDelivery[]             @relation("CustomerDeliveries")
+  inboxMessages          InboxMessage[]                 @relation("CustomerInbox")
+  sentInboxMessages      InboxMessage[]                 @relation("InboxSender")
 
   @@index([role, approvalStatus, createdAt(sort: Desc)], map: "idx_users_role_approval_created_desc")
   @@index([role, isActive, createdAt(sort: Desc)], map: "idx_users_role_active_created_desc")
@@ -209,6 +237,7 @@ model Offer {
 
   shopkeeper User        @relation("OfferShopkeeper", fields: [shopkeeperId], references: [id])
   likes      OfferLike[]
+  campaigns  Campaign[]  @relation("OfferCampaigns")
 
   @@index([shopkeeperId, createdAt(sort: Desc)], map: "idx_offers_shopkeeper_created_desc")
   @@index([status, createdAt(sort: Desc)], map: "idx_offers_status_created_desc")
@@ -229,6 +258,118 @@ model OfferLike {
   @@index([userId, createdAt(sort: Desc)], map: "idx_offer_likes_user_created_desc")
   @@index([offerId], map: "idx_offer_likes_offer")
   @@map("offer_likes")
+}
+
+model Campaign {
+  id                    String             @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  shopkeeperId          String             @map("shopkeeper_id") @db.Uuid
+  offerId               String?            @map("offer_id") @db.Uuid
+  title                 String
+  description           String?
+  bannerUrl             String?            @map("banner_url")
+  bannerType            String             @default("template") @map("banner_type")
+  shopCategory          String             @map("shop_category")
+  channels              String[]           @default([])
+  status                CampaignStatusEnum @default(draft)
+  targetCity            String?            @map("target_city")
+  targetArea            String?            @map("target_area")
+  targetPincode         String?            @map("target_pincode")
+  targetState           String?            @map("target_state")
+  targetAgeMin          Int?               @map("target_age_min")
+  targetAgeMax          Int?               @map("target_age_max")
+  targetGender          String?            @map("target_gender")
+  estimatedAudience     Int                @default(0) @map("estimated_audience")
+  selectedAudienceSize  Int                @default(0) @map("selected_audience_size")
+  actualAudienceReached Int                @default(0) @map("actual_audience_reached")
+  whatsappUnitPrice     Decimal?           @map("whatsapp_unit_price") @db.Decimal(8, 2)
+  inboxUnitPrice        Decimal?           @map("inbox_unit_price") @db.Decimal(8, 2)
+  totalCost             Decimal            @map("total_cost") @db.Decimal(12, 2)
+  paymentStatus         PaymentStatusEnum  @default(pending) @map("payment_status")
+  paymentMethod         PaymentMethodEnum? @map("payment_method")
+  transactionId         String?            @map("transaction_id")
+  scheduledAt           DateTime?          @map("scheduled_at") @db.Timestamptz(6)
+  launchedAt            DateTime?          @map("launched_at") @db.Timestamptz(6)
+  completedAt           DateTime?          @map("completed_at") @db.Timestamptz(6)
+  createdAt             DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  shopkeeper User               @relation("UserCampaigns", fields: [shopkeeperId], references: [id], onDelete: Cascade)
+  offer      Offer?             @relation("OfferCampaigns", fields: [offerId], references: [id], onDelete: SetNull)
+  deliveries CampaignDelivery[]
+  inboxMessages InboxMessage[]
+
+  @@index([shopkeeperId, status], map: "idx_campaigns_shopkeeper_status")
+  @@index([shopkeeperId, createdAt(sort: Desc)], map: "idx_campaigns_shopkeeper_created_desc")
+  @@index([status, scheduledAt], map: "idx_campaigns_status_scheduled_at")
+  @@map("campaigns")
+}
+
+model CampaignDelivery {
+  id           String             @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  campaignId   String             @map("campaign_id") @db.Uuid
+  customerId   String             @map("customer_id") @db.Uuid
+  channel      String
+  status       DeliveryStatusEnum @default(pending)
+  sentAt       DateTime?          @map("sent_at") @db.Timestamptz(6)
+  deliveredAt  DateTime?          @map("delivered_at") @db.Timestamptz(6)
+  openedAt     DateTime?          @map("opened_at") @db.Timestamptz(6)
+  clickedAt    DateTime?          @map("clicked_at") @db.Timestamptz(6)
+  errorMessage String?            @map("error_message")
+  createdAt    DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  customer User     @relation("CustomerDeliveries", fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, customerId, channel], map: "uniq_campaign_delivery_channel")
+  @@index([campaignId, status], map: "idx_campaign_deliveries_campaign_status")
+  @@index([customerId, createdAt(sort: Desc)], map: "idx_campaign_deliveries_customer_created_desc")
+  @@map("campaign_deliveries")
+}
+
+model InboxMessage {
+  id          String    @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  customerId  String    @map("customer_id") @db.Uuid
+  campaignId  String?   @map("campaign_id") @db.Uuid
+  shopkeeperId String?  @map("shopkeeper_id") @db.Uuid
+  title       String
+  body        String
+  bannerUrl   String?   @map("banner_url")
+  offerId     String?   @map("offer_id") @db.Uuid
+  isRead      Boolean   @default(false) @map("is_read")
+  readAt      DateTime? @map("read_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  customer   User      @relation("CustomerInbox", fields: [customerId], references: [id], onDelete: Cascade)
+  campaign   Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  shopkeeper User?     @relation("InboxSender", fields: [shopkeeperId], references: [id], onDelete: SetNull)
+
+  @@index([customerId, isRead, createdAt(sort: Desc)], map: "idx_inbox_messages_customer_read_created_desc")
+  @@index([campaignId], map: "idx_inbox_messages_campaign_id")
+  @@map("inbox_messages")
+}
+
+model CampaignTemplate {
+  id          String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  name        String
+  category    String
+  bannerUrl   String   @map("banner_url")
+  description String?
+  isActive    Boolean  @default(true) @map("is_active")
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([category, isActive], map: "idx_campaign_templates_category_active")
+  @@map("campaign_templates")
+}
+
+model CampaignPricing {
+  id              String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  channel         String   @unique
+  pricePerMessage Decimal  @map("price_per_message") @db.Decimal(8, 2)
+  isActive        Boolean  @default(true) @map("is_active")
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("campaign_pricing")
 }
 
 model SubscriptionPlan {
