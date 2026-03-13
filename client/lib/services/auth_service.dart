@@ -517,6 +517,18 @@ class AuthService {
     }
   }
 
+  Future<OfferModel> getCustomerOffer(String offerId) async {
+    final token = AuthStore.token;
+    if (token == null) throw Exception('Not authenticated');
+    final uri = Uri.parse('${ApiConfig.baseUrl}/customer/offers/$offerId');
+    final resp = await _makeRequest(() => _client.get(
+          uri,
+          headers: {'Authorization': 'Bearer $token'},
+        ));
+    final data = _handleResponse(resp) as Map<String, dynamic>;
+    return OfferModel.fromJson(data['offer'] as Map<String, dynamic>);
+  }
+
   Future<Map<String, dynamic>> toggleOfferLike(String offerId) async {
     final token = AuthStore.token;
     if (token == null) throw Exception('Not authenticated');

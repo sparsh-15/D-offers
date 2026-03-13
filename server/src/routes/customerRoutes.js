@@ -23,6 +23,7 @@ router.use(
 router.get('/offers', customerController.listOffers);
 router.post('/offers/:id/like', customerController.toggleLike);
 router.get('/offers/liked', customerController.getLikedOffers);
+router.get('/offers/:id', customerController.getOfferById);
 router.post('/callbacks', customerController.requestCallback);
 router.post('/become-ssa', customerController.becomeSSA);
 router.get('/inbox', campaignController.listInbox);

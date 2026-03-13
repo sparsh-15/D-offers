@@ -490,4 +490,53 @@ async function becomeSSA(req, res, next) {
   }
 }
 
-module.exports = { listOffers, toggleLike, getLikedOffers, requestCallback, becomeSSA };
+async function getOfferById(req, res, next) {
+  try {
+    const { id } = req.params;
+    const pgUserId =
+      (await resolvePgId('users', req.user.userId)) || req.user.userId;
+
+    const offer = await prisma.offer.findUnique({ where: { id } });
+    if (!offer) {
+      return res.status(404).json({ success: false, message: 'Offer not found' });
+    }
+
+    const [profile, like] = await Promise.all([
+      prisma.shopkeeperProfile.findFirst({
+        where: { userId: offer.shopkeeperId },
+        select: { shopName: true, logoUrl: true },
+      }),
+      prisma.offerLike.findFirst({
+        where: { userId: pgUserId, offerId: offer.id },
+      }),
+    ]);
+
+    res.status(200).json({
+      success: true,
+      offer: {
+        id: offer.id,
+        shopkeeperId: offer.shopkeeperId,
+        shopName: profile?.shopName || null,
+        shopLogoUrl: profile?.logoUrl || null,
+        title: offer.title || '',
+        description: offer.description || '',
+        photos: offer.photos || [],
+        termsAndConditions: offer.termsAndConditions || '',
+        category: offer.category || '',
+        discountType: offer.discountType || '',
+        discountValue: offer.discountValue,
+        validFrom: offer.validFrom ? offer.validFrom.toISOString() : null,
+        validTo: offer.validTo ? offer.validTo.toISOString() : null,
+        status: offer.status || 'active',
+        likesCount: offer.likesCount || 0,
+        isLiked: !!like,
+        createdAt: offer.createdAt ? offer.createdAt.toISOString() : null,
+        updatedAt: offer.updatedAt ? offer.updatedAt.toISOString() : null,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { listOffers, getOfferById, toggleLike, getLikedOffers, requestCallback, becomeSSA };
