@@ -11,6 +11,7 @@ const shopkeeperProfileController = require('../controllers/shopkeeperProfileCon
 const offerController = require('../controllers/offerController');
 const subscriptionPlanController = require('../controllers/subscriptionPlanController');
 const shopkeeperAiController = require('../controllers/shopkeeperAiController');
+const campaignController = require('../controllers/campaignController');
 
 const router = express.Router();
 
@@ -53,5 +54,20 @@ router.get('/offers', requireActiveSubscription, offerController.list);
 router.get('/offers/:id', requireActiveSubscription, offerController.getOne);
 router.put('/offers/:id', requireActiveSubscription, offerController.update);
 router.delete('/offers/:id', requireActiveSubscription, offerController.remove);
+
+// Campaign routes - require active subscription
+router.post(
+  '/campaigns/estimate-audience',
+  requireActiveSubscription,
+  campaignController.estimateAudienceHandler,
+);
+router.post('/campaigns', requireActiveSubscription, campaignController.createCampaign);
+router.get('/campaigns', requireActiveSubscription, campaignController.listCampaigns);
+router.get('/campaigns/templates', requireActiveSubscription, campaignController.getCampaignTemplates);
+router.get('/campaigns/:id', requireActiveSubscription, campaignController.getCampaign);
+router.put('/campaigns/:id', requireActiveSubscription, campaignController.updateCampaign);
+router.post('/campaigns/:id/pay', requireActiveSubscription, campaignController.payCampaign);
+router.post('/campaigns/:id/cancel', requireActiveSubscription, campaignController.cancelCampaign);
+router.delete('/campaigns/:id', requireActiveSubscription, campaignController.deleteCampaign);
 
 module.exports = router;

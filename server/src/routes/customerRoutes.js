@@ -4,6 +4,7 @@ const { requireRole } = require('../middleware/roleCheck');
 const customerController = require('../controllers/customerController');
 const shopkeeperProfileController = require('../controllers/shopkeeperProfileController');
 const loanController = require('../controllers/loanController');
+const campaignController = require('../controllers/campaignController');
 
 const router = express.Router();
 
@@ -24,6 +25,9 @@ router.post('/offers/:id/like', customerController.toggleLike);
 router.get('/offers/liked', customerController.getLikedOffers);
 router.post('/callbacks', customerController.requestCallback);
 router.post('/become-ssa', customerController.becomeSSA);
+router.get('/inbox', campaignController.listInbox);
+router.get('/inbox/unread-count', campaignController.getUnreadInboxCount);
+router.patch('/inbox/:id/read', campaignController.markInboxMessageRead);
 
 // Loan application routes
 router.post('/loans/apply', loanController.submitLoanApplication);
