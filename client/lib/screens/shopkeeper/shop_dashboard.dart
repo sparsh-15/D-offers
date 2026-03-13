@@ -14,6 +14,8 @@ import '../common/offer_detail_screen.dart';
 import 'offer_details_screen.dart';
 import 'onboarding_flow.dart';
 import 'subscription_plans_screen.dart';
+import 'campaigns_tab.dart';
+import 'create_campaign_screen.dart';
 
 class ShopDashboard extends StatefulWidget {
   const ShopDashboard({super.key});
@@ -25,6 +27,7 @@ class ShopDashboard extends StatefulWidget {
 class _ShopDashboardState extends State<ShopDashboard> {
   int _selectedIndex = 0;
   VoidCallback? _refreshOffers;
+  VoidCallback? _refreshCampaigns;
   bool _showOnboarding = true;
   bool _hasActiveSubscription = false;
 
@@ -41,7 +44,11 @@ class _ShopDashboardState extends State<ShopDashboard> {
           _refreshOffers = callback;
         },
       ),
-      const LeadsTab(),
+      CampaignsTab(
+        onRefreshCallbackSet: (callback) {
+          _refreshCampaigns = callback;
+        },
+      ),
       const ShopProfileTab(),
     ];
   }
@@ -126,10 +133,10 @@ class _ShopDashboardState extends State<ShopDashboard> {
             ),
             BottomNavigationBarItem(
               icon: Icon(
-                Icons.people_rounded,
+                Icons.campaign_rounded,
                 color: !_hasActiveSubscription ? AppColors.grey : null,
               ),
-              label: 'Leads',
+              label: 'Campaigns',
             ),
             const BottomNavigationBarItem(
               icon: Icon(Icons.store_rounded),
@@ -137,21 +144,30 @@ class _ShopDashboardState extends State<ShopDashboard> {
             ),
           ],
         ),
-        floatingActionButton: _selectedIndex == 1 && _hasActiveSubscription
+        floatingActionButton: (_selectedIndex == 1 || _selectedIndex == 2) &&
+                _hasActiveSubscription
             ? FloatingActionButton.extended(
                 onPressed: () {
+                  if (_selectedIndex == 1) {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => OfferDetailsScreen(
+                          onSaved: () {
+                            _refreshOffers?.call();
+                          },
+                        ),
+                      ),
+                    );
+                    return;
+                  }
                   Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (_) => OfferDetailsScreen(
-                        onSaved: () {
-                          _refreshOffers?.call();
-                        },
-                      ),
+                      builder: (_) => const CreateCampaignScreen(),
                     ),
-                  );
+                  ).then((_) => _refreshCampaigns?.call());
                 },
                 icon: const Icon(Icons.add_rounded),
-                label: const Text('Add Offer'),
+                label: Text(_selectedIndex == 1 ? 'Add Offer' : 'New Campaign'),
               )
             : null,
       ),
@@ -611,36 +627,6 @@ class _OffersManagementBodyState extends State<_OffersManagementBody> {
       if (!context.mounted) return;
       DialogHelper.showErrorSnackBar(context, e.toString());
     }
-  }
-}
-
-class LeadsTab extends StatelessWidget {
-  const LeadsTab({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration:
-          BoxDecoration(gradient: ThemeHelper.getBackgroundGradient(context)),
-      child: SafeArea(
-        child: Column(
-          children: [
-            AppBar(
-              backgroundColor: AppColors.transparent,
-              title: const Text('Customer Leads'),
-            ),
-            Expanded(
-              child: Center(
-                child: Text(
-                  'Customer leads will appear here',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }
 

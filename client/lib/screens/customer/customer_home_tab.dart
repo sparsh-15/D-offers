@@ -3,12 +3,14 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_design_tokens.dart';
 import '../../services/auth_service.dart';
 import '../../services/auth_store.dart';
+import '../../services/campaign_service.dart';
 import '../../services/location_service.dart';
 import '../../models/offer_model.dart';
 import '../../widgets/offer_card.dart';
 import '../../core/utils/dialog_helper.dart';
 import '../../services/subscription_service.dart';
 import 'dart:async';
+import 'customer_inbox_screen.dart';
 
 class CustomerHomeTab extends StatefulWidget {
   const CustomerHomeTab({super.key, this.onViewAllOffers});
@@ -29,19 +31,22 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
   String _searchQuery = '';
   bool _useCurrentLocation = false;
   bool _isLoadingLocation = false;
+  bool _loadingInboxCount = false;
   String? _currentLocationText;
   String? _currentPincode;
   String? _currentCity;
   String? _currentState;
   String? _selectedCategory;
-   String _sortBy = 'newest';
+  String _sortBy = 'newest';
   List<Map<String, dynamic>> _categories = [];
+  int _unreadInboxCount = 0;
 
   @override
   void initState() {
     super.initState();
     _loadCategories();
     _loadDeals();
+    _loadUnreadInboxCount();
   }
 
   @override
@@ -52,7 +57,32 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
   }
 
   Future<void> _refresh() async {
-    await _loadDeals();
+    await Future.wait([
+      _loadDeals(),
+      _loadUnreadInboxCount(),
+    ]);
+  }
+
+  Future<void> _loadUnreadInboxCount() async {
+    setState(() => _loadingInboxCount = true);
+    try {
+      final count = await CampaignService.instance.getUnreadInboxCount();
+      if (!mounted) return;
+      setState(() {
+        _unreadInboxCount = count;
+        _loadingInboxCount = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loadingInboxCount = false);
+    }
+  }
+
+  Future<void> _openInbox() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const CustomerInboxScreen()),
+    );
+    _loadUnreadInboxCount();
   }
 
   Future<void> _loadDeals() async {
@@ -284,6 +314,48 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                 ],
               ),
               actions: [
+                IconButton(
+                  onPressed: _openInbox,
+                  tooltip: 'Inbox',
+                  icon: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      const Icon(Icons.inbox_rounded),
+                      if (_loadingInboxCount)
+                        const Positioned(
+                          right: -2,
+                          top: -2,
+                          child: SizedBox(
+                            width: 10,
+                            height: 10,
+                            child: CircularProgressIndicator(strokeWidth: 1.8),
+                          ),
+                        )
+                      else if (_unreadInboxCount > 0)
+                        Positioned(
+                          right: -6,
+                          top: -6,
+                          child: Container(
+                            width: 18,
+                            height: 18,
+                            alignment: Alignment.center,
+                            decoration: const BoxDecoration(
+                              color: AppColors.accent,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Text(
+                              _unreadInboxCount > 9 ? '9+' : '$_unreadInboxCount',
+                              style: const TextStyle(
+                                color: AppColors.black,
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
                 GestureDetector(
                   onTap: _toggleLocation,
                   child: Container(
