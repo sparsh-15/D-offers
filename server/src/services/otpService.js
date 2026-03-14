@@ -32,6 +32,11 @@ function constantTimeCompare(a, b) {
   return result === 0;
 }
 
+function normalizeOptionalString(value) {
+  if (value == null) return '';
+  return String(value).trim();
+}
+
 async function sendSmsIfEnabled(phone, otp) {
   if (!config.otp.sendViaSms) return;
   if (config.sms.provider === 'twilio' && config.sms.twilio.accountSid && config.sms.twilio.authToken) {
@@ -139,11 +144,44 @@ async function sendOtp(phone, role, signupData = {}) {
     signupData.occupation != null ? String(signupData.occupation).trim() : '';
   const aboutMe =
     signupData.aboutMe != null ? String(signupData.aboutMe).trim() : '';
+  const shopRegistrationNumber = normalizeOptionalString(
+    signupData.shopRegistrationNumber,
+  );
+  const gstNumber = normalizeOptionalString(signupData.gstNumber).toUpperCase();
+  const electricityConsumerNumber = normalizeOptionalString(
+    signupData.electricityConsumerNumber,
+  );
+  const aadhaarNumber = normalizeOptionalString(signupData.aadhaarNumber)
+    .replace(/\s+/g, '');
+  const panNumber = normalizeOptionalString(signupData.panNumber).toUpperCase();
 
   if (!name || !pincode) {
     const err = new Error('Name and pincode are required for signup');
     err.statusCode = 400;
     throw err;
+  }
+
+  if (role === 'shopkeeper') {
+    if (!aadhaarNumber) {
+      const err = new Error('Aadhaar number is required for shopkeeper signup');
+      err.statusCode = 400;
+      throw err;
+    }
+    if (!/^\d{12}$/.test(aadhaarNumber)) {
+      const err = new Error('Aadhaar number must be 12 digits');
+      err.statusCode = 400;
+      throw err;
+    }
+    if (!panNumber) {
+      const err = new Error('PAN number is required for shopkeeper signup');
+      err.statusCode = 400;
+      throw err;
+    }
+    if (!/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(panNumber)) {
+      const err = new Error('PAN number must be valid (e.g. ABCDE1234F)');
+      err.statusCode = 400;
+      throw err;
+    }
   }
 
   const resolved = await resolveCityStateFromPincode(pincode);
@@ -194,6 +232,21 @@ async function sendOtp(phone, role, signupData = {}) {
   }
   if (aboutMe) {
     update.aboutMe = aboutMe;
+  }
+  if (shopRegistrationNumber) {
+    update.shopRegistrationNumber = shopRegistrationNumber;
+  }
+  if (gstNumber) {
+    update.gstNumber = gstNumber;
+  }
+  if (electricityConsumerNumber) {
+    update.electricityConsumerNumber = electricityConsumerNumber;
+  }
+  if (aadhaarNumber) {
+    update.aadhaarNumber = aadhaarNumber;
+  }
+  if (panNumber) {
+    update.panNumber = panNumber;
   }
 
   if (signupCouponCode && role === 'shopkeeper') {

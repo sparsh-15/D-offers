@@ -17,6 +17,11 @@ function toUserShape(user) {
     region: user.region,
     territory: user.territory,
     address: user.address,
+    shopRegistrationNumber: user.shopRegistrationNumber ?? null,
+    gstNumber: user.gstNumber ?? null,
+    electricityConsumerNumber: user.electricityConsumerNumber ?? null,
+    aadhaarNumber: user.aadhaarNumber ?? null,
+    panNumber: user.panNumber ?? null,
     maxCouponDiscountPercent: user.maxCouponDiscountPercent,
     approvalStatus: user.approvalStatus,
     permissions: user.permissions || [],
@@ -77,6 +82,11 @@ async function create(data) {
       dob: data.dob || null,
       occupation: data.occupation || null,
       aboutMe: data.aboutMe || null,
+      shopRegistrationNumber: data.shopRegistrationNumber || null,
+      gstNumber: data.gstNumber || null,
+      electricityConsumerNumber: data.electricityConsumerNumber || null,
+      aadhaarNumber: data.aadhaarNumber || null,
+      panNumber: data.panNumber || null,
       maxCouponDiscountPercent:
         data.maxCouponDiscountPercent !== undefined
           ? data.maxCouponDiscountPercent

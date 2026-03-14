@@ -33,6 +33,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _stateController = TextEditingController();
   final _addressController = TextEditingController();
   final _couponController = TextEditingController();
+  final _shopRegistrationController = TextEditingController();
+  final _gstController = TextEditingController();
+  final _electricityBillController = TextEditingController();
+  final _aadhaarController = TextEditingController();
+  final _panController = TextEditingController();
   final _occupationController = TextEditingController();
   final _aboutMeController = TextEditingController();
 
@@ -60,6 +65,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _stateController.dispose();
     _addressController.dispose();
     _couponController.dispose();
+    _shopRegistrationController.dispose();
+    _gstController.dispose();
+    _electricityBillController.dispose();
+    _aadhaarController.dispose();
+    _panController.dispose();
     _occupationController.dispose();
     _aboutMeController.dispose();
     super.dispose();
@@ -498,6 +508,82 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             if (widget.role == UserRole.shopkeeper) ...[
                               const SizedBox(height: AppTokens.spaceLG),
                               const _FormSectionTitle(
+                                title: 'Business and KYC details',
+                                subtitle:
+                                    'Aadhaar and PAN are mandatory. Shop registration, GST, and electricity account details are optional.',
+                              ),
+                              const SizedBox(height: AppTokens.spaceMD),
+                              CustomTextField(
+                                controller: _shopRegistrationController,
+                                label:
+                                    'Shop registration certificate number (optional)',
+                                hint: 'Enter registration number',
+                                prefixIcon: Iconsax.document_text,
+                                validator: (_) => null,
+                              ),
+                              const SizedBox(height: AppTokens.spaceMD),
+                              CustomTextField(
+                                controller: _gstController,
+                                label: 'GST number (optional)',
+                                hint: 'Enter GST number',
+                                prefixIcon: Iconsax.receipt_2,
+                                textCapitalization:
+                                    TextCapitalization.characters,
+                                validator: (_) => null,
+                              ),
+                              const SizedBox(height: AppTokens.spaceMD),
+                              CustomTextField(
+                                controller: _electricityBillController,
+                                label: 'Electricity bill account number (optional)',
+                                hint: 'Enter consumer number',
+                                prefixIcon: Iconsax.flash_1,
+                                validator: (_) => null,
+                              ),
+                              const SizedBox(height: AppTokens.spaceMD),
+                              CustomTextField(
+                                controller: _aadhaarController,
+                                label: 'Aadhaar number',
+                                hint: '12-digit Aadhaar number',
+                                prefixIcon: Iconsax.card,
+                                keyboardType: TextInputType.number,
+                                maxLength: 12,
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.digitsOnly,
+                                ],
+                                validator: (value) {
+                                  final aadhaar = (value ?? '').trim();
+                                  if (aadhaar.isEmpty) {
+                                    return 'Please enter Aadhaar number';
+                                  }
+                                  if (!RegExp(r'^\d{12}$').hasMatch(aadhaar)) {
+                                    return 'Aadhaar must be 12 digits';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              const SizedBox(height: AppTokens.spaceMD),
+                              CustomTextField(
+                                controller: _panController,
+                                label: 'PAN number',
+                                hint: 'Enter PAN number',
+                                prefixIcon: Iconsax.card_pos,
+                                textCapitalization:
+                                    TextCapitalization.characters,
+                                maxLength: 10,
+                                validator: (value) {
+                                  final pan = (value ?? '').trim().toUpperCase();
+                                  if (pan.isEmpty) {
+                                    return 'Please enter PAN number';
+                                  }
+                                  if (!RegExp(r'^[A-Z]{5}[0-9]{4}[A-Z]{1}$')
+                                      .hasMatch(pan)) {
+                                    return 'Enter a valid PAN (e.g. ABCDE1234F)';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              const SizedBox(height: AppTokens.spaceLG),
+                              const _FormSectionTitle(
                                 title: 'Referral details',
                                 subtitle: 'Add a referral or coupon code if it applies to your onboarding.',
                               ),
@@ -639,6 +725,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ? null
                 : _couponController.text.trim())
             : null,
+        shopRegistrationNumber: widget.role == UserRole.shopkeeper
+          ? (_shopRegistrationController.text.trim().isEmpty
+            ? null
+            : _shopRegistrationController.text.trim())
+          : null,
+        gstNumber: widget.role == UserRole.shopkeeper
+          ? (_gstController.text.trim().isEmpty
+            ? null
+            : _gstController.text.trim().toUpperCase())
+          : null,
+        electricityConsumerNumber: widget.role == UserRole.shopkeeper
+          ? (_electricityBillController.text.trim().isEmpty
+            ? null
+            : _electricityBillController.text.trim())
+          : null,
+        aadhaarNumber: widget.role == UserRole.shopkeeper
+          ? _aadhaarController.text.trim()
+          : null,
+        panNumber: widget.role == UserRole.shopkeeper
+          ? _panController.text.trim().toUpperCase()
+          : null,
       );
       if (!mounted) return;
       DialogHelper.showSuccessSnackBar(context, 'OTP sent for signup');

@@ -206,7 +206,7 @@ class _ShopHomeTabState extends State<ShopHomeTab> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'My Shop Dashboard',
+                    'Namaskaar 🙏',
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                   Text(

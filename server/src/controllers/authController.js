@@ -28,6 +28,11 @@ async function signup(req, res, next) {
       dob,
       occupation,
       aboutMe,
+      shopRegistrationNumber,
+      gstNumber,
+      electricityConsumerNumber,
+      aadhaarNumber,
+      panNumber,
     } = req.body;
     if (!phone || !role || !name || !pincode) {
       return res.status(400).json({
@@ -46,6 +51,11 @@ async function signup(req, res, next) {
       dob,
       occupation,
       aboutMe,
+      shopRegistrationNumber,
+      gstNumber,
+      electricityConsumerNumber,
+      aadhaarNumber,
+      panNumber,
     });
     res.status(200).json({ success: true, message: 'Signup OTP sent' });
   } catch (err) {
