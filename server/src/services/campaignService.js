@@ -10,7 +10,7 @@ function ci(value) {
 }
 
 function normalizeChannels(channels) {
-  const allowed = new Set(['app_inbox', 'whatsapp']);
+  const allowed = new Set(['app_inbox']);
   if (!Array.isArray(channels)) return [];
   return Array.from(
     new Set(
@@ -34,6 +34,7 @@ function normalizeFilters(input = {}) {
     targetArea: ci(input.targetArea) || null,
     targetPincode: ci(input.targetPincode) || null,
     targetState: ci(input.targetState) || null,
+    isPanIndia: input.isPanIndia === true,
     targetGender: ci(input.targetGender).toLowerCase() || null,
     targetAgeMin: ageMin,
     targetAgeMax: ageMax,
@@ -47,12 +48,14 @@ function buildAudienceWhere(filters) {
     approvalStatus: 'approved',
   };
 
-  if (filters.targetPincode) {
-    where.pincode = filters.targetPincode;
-  } else if (filters.targetCity) {
-    where.city = { equals: filters.targetCity, mode: 'insensitive' };
-  } else if (filters.targetState) {
-    where.state = { equals: filters.targetState, mode: 'insensitive' };
+  if (!filters.isPanIndia) {
+    if (filters.targetPincode) {
+      where.pincode = filters.targetPincode;
+    } else if (filters.targetCity) {
+      where.city = { equals: filters.targetCity, mode: 'insensitive' };
+    } else if (filters.targetState) {
+      where.state = { equals: filters.targetState, mode: 'insensitive' };
+    }
   }
 
   if (filters.targetArea) {

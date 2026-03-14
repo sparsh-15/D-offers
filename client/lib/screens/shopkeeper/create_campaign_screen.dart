@@ -1,7 +1,4 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../models/campaign_model.dart';
@@ -9,9 +6,6 @@ import '../../models/offer_model.dart';
 import '../../models/shopkeeper_profile_model.dart';
 import '../../services/auth_service.dart';
 import '../../services/campaign_service.dart';
-import '../../services/shopkeeper_ai_service.dart';
-import '../../services/subscription_service.dart';
-import '../../services/upload_service.dart';
 
 class CreateCampaignScreen extends StatefulWidget {
   const CreateCampaignScreen({super.key});
@@ -21,38 +15,56 @@ class CreateCampaignScreen extends StatefulWidget {
 }
 
 class _CreateCampaignScreenState extends State<CreateCampaignScreen> {
-  final _titleController = TextEditingController();
-  final _descriptionController = TextEditingController();
-  final _cityController = TextEditingController();
-  final _areaController = TextEditingController();
   final _pincodeController = TextEditingController();
   final _stateController = TextEditingController();
-  final _audienceSizeController = TextEditingController();
-  final ImagePicker _picker = ImagePicker();
+  final _targetAudienceSizeController = TextEditingController();
+  final _estimatedAudienceSizeController = TextEditingController();
 
   int _currentStep = 0;
   bool _loadingBootstrap = true;
   bool _estimating = false;
   bool _submitting = false;
-  bool _generatingBanner = false;
-  bool _uploadingBanner = false;
 
   List<OfferModel> _offers = const [];
-  List<Map<String, dynamic>> _categories = const [];
-  List<CampaignTemplateModel> _templates = const [];
   ShopkeeperProfileModel? _profile;
 
-  bool _linkOffer = false;
   String? _selectedOfferId;
-  String? _selectedCategory;
+  String? _selectedBannerUrl;
+
+  String _targetMode = 'pincode';
+  DateTime? _scheduledAt;
+
   String _gender = 'all';
   RangeValues _ageRange = const RangeValues(18, 35);
   final Set<String> _channels = {'app_inbox'};
-
-  String _bannerMode = 'template';
-  CampaignTemplateModel? _selectedTemplate;
-  String? _bannerUrl;
   AudienceEstimate? _estimate;
+
+  static const List<_ChannelOption> _channelOptions = [
+    _ChannelOption(
+      key: 'app_inbox',
+      label: 'App Notification',
+      enabled: true,
+      subtitle: 'Delivered inside the MyOffers app inbox.',
+    ),
+    _ChannelOption(
+      key: 'whatsapp',
+      label: 'WhatsApp',
+      enabled: false,
+      subtitle: 'Coming soon: provider not integrated yet.',
+    ),
+    _ChannelOption(
+      key: 'email',
+      label: 'Email Text',
+      enabled: false,
+      subtitle: 'Coming soon: provider not integrated yet.',
+    ),
+    _ChannelOption(
+      key: 'push_notification',
+      label: 'Push Notification',
+      enabled: false,
+      subtitle: 'Coming soon: device-token push pipeline pending.',
+    ),
+  ];
 
   @override
   void initState() {
@@ -62,13 +74,10 @@ class _CreateCampaignScreenState extends State<CreateCampaignScreen> {
 
   @override
   void dispose() {
-    _titleController.dispose();
-    _descriptionController.dispose();
-    _cityController.dispose();
-    _areaController.dispose();
     _pincodeController.dispose();
     _stateController.dispose();
-    _audienceSizeController.dispose();
+    _targetAudienceSizeController.dispose();
+    _estimatedAudienceSizeController.dispose();
     super.dispose();
   }
 
@@ -77,18 +86,12 @@ class _CreateCampaignScreenState extends State<CreateCampaignScreen> {
     try {
       final results = await Future.wait([
         AuthService.instance.getShopkeeperOffers(),
-        SubscriptionService.instance.getCategories(),
         AuthService.instance.getShopkeeperProfile(),
       ]);
       _offers = results[0] as List<OfferModel>;
-      _categories = results[1] as List<Map<String, dynamic>>;
-      _profile = results[2] as ShopkeeperProfileModel?;
-      _selectedCategory = _profile?.category.isNotEmpty == true
-          ? _profile!.category
-          : null;
-      _cityController.text = _profile?.city ?? '';
+      _profile = results[1] as ShopkeeperProfileModel?;
       _pincodeController.text = _profile?.pincode ?? '';
-      await _loadTemplates();
+        _stateController.text = '';
     } catch (_) {
       // Keep the wizard usable even when some bootstrap data fails.
     } finally {
@@ -96,24 +99,6 @@ class _CreateCampaignScreenState extends State<CreateCampaignScreen> {
         setState(() => _loadingBootstrap = false);
       }
     }
-  }
-
-  Future<void> _loadTemplates() async {
-    try {
-      final templates = await CampaignService.instance.getCampaignTemplates(
-        category: _selectedCategory,
-      );
-      if (!mounted) return;
-      setState(() {
-        _templates = templates;
-        if (_selectedTemplate == null && templates.isNotEmpty) {
-          _selectedTemplate = templates.first;
-          if (_bannerMode == 'template') {
-            _bannerUrl = _selectedTemplate?.bannerUrl;
-          }
-        }
-      });
-    } catch (_) {}
   }
 
   OfferModel? get _selectedOffer {
@@ -125,33 +110,42 @@ class _CreateCampaignScreenState extends State<CreateCampaignScreen> {
   }
 
   Map<String, dynamic> _campaignPayload() {
-    final audience = int.tryParse(_audienceSizeController.text.trim()) ??
+    final offer = _selectedOffer;
+    final audience = int.tryParse(_targetAudienceSizeController.text.trim()) ??
         _estimate?.audienceCount ??
         0;
-    return {
-      'title': _titleController.text.trim(),
-      'description': _descriptionController.text.trim(),
-      if (_linkOffer && _selectedOfferId != null) 'offerId': _selectedOfferId,
-      if (_selectedCategory != null && _selectedCategory!.isNotEmpty)
-        'shopCategory': _selectedCategory,
-      'targetCity': _cityController.text.trim(),
-      'targetArea': _areaController.text.trim(),
-      'targetPincode': _pincodeController.text.trim(),
-      'targetState': _stateController.text.trim(),
+
+    final payload = <String, dynamic>{
+      'title': offer?.title ?? 'Campaign',
+      'description': offer?.description ?? '',
+      if (offer?.id != null) 'offerId': offer!.id,
+      if (offer != null && offer.category.isNotEmpty) 'shopCategory': offer.category,
       'targetAgeMin': _ageRange.start.round(),
       'targetAgeMax': _ageRange.end.round(),
       if (_gender != 'all') 'targetGender': _gender,
       'channels': _channels.toList(),
       'selectedAudienceSize': audience,
-      if (_bannerUrl != null && _bannerUrl!.isNotEmpty) 'bannerUrl': _bannerUrl,
-      'bannerType': _bannerMode,
+      if (_selectedBannerUrl != null && _selectedBannerUrl!.isNotEmpty)
+        'bannerUrl': _selectedBannerUrl,
+      'bannerType': 'offer_banner',
+      'scheduledAt': _scheduledAt?.toIso8601String(),
+      'isPanIndia': _targetMode == 'pan_india',
     };
+
+    if (_targetMode == 'pincode') {
+      payload['targetPincode'] = _pincodeController.text.trim();
+    }
+    if (_targetMode == 'state') {
+      payload['targetState'] = _stateController.text.trim();
+    }
+
+    return payload;
   }
 
   double get _estimatedTotalCost {
     final estimate = _estimate;
     if (estimate == null) return 0;
-    final audience = int.tryParse(_audienceSizeController.text.trim()) ??
+    final audience = int.tryParse(_targetAudienceSizeController.text.trim()) ??
         estimate.selectedAudienceSize;
     double total = 0;
     if (_channels.contains('app_inbox')) {
@@ -175,8 +169,8 @@ class _CreateCampaignScreenState extends State<CreateCampaignScreen> {
       if (!mounted) return;
       setState(() {
         _estimate = estimate;
-        _audienceSizeController.text =
-            estimate.selectedAudienceSize.toString();
+        _targetAudienceSizeController.text = estimate.selectedAudienceSize.toString();
+        _estimatedAudienceSizeController.text = estimate.audienceCount.toString();
       });
     } catch (error) {
       if (!mounted) return;
@@ -194,17 +188,17 @@ class _CreateCampaignScreenState extends State<CreateCampaignScreen> {
     String? error;
     switch (step) {
       case 0:
-        if (_titleController.text.trim().isEmpty) {
-          error = 'Campaign title is required.';
-        } else if (_selectedCategory == null || _selectedCategory!.isEmpty) {
-          error = 'Select a business category.';
+        if (_selectedOfferId == null || _selectedOffer == null) {
+          error = 'Please select an offer.';
+        } else if (_selectedBannerUrl == null || _selectedBannerUrl!.isEmpty) {
+          error = 'Please select one offer banner.';
         }
         break;
       case 1:
-        if (_cityController.text.trim().isEmpty &&
-            _pincodeController.text.trim().isEmpty &&
-            _stateController.text.trim().isEmpty) {
-          error = 'Add at least one location filter.';
+        if (_targetMode == 'pincode' && _pincodeController.text.trim().isEmpty) {
+          error = 'Pincode is required for pincode mode.';
+        } else if (_targetMode == 'state' && _stateController.text.trim().isEmpty) {
+          error = 'State is required for state-wise mode.';
         }
         break;
       case 2:
@@ -212,11 +206,18 @@ class _CreateCampaignScreenState extends State<CreateCampaignScreen> {
           error = 'Select at least one delivery channel.';
         } else if (_estimate == null) {
           error = 'Estimate the audience before continuing.';
+        } else {
+          final target = int.tryParse(_targetAudienceSizeController.text.trim()) ?? 0;
+          if (target <= 0) {
+            error = 'Target audience size must be greater than 0.';
+          } else if (target > _estimate!.audienceCount) {
+            error = 'Target audience cannot exceed estimated audience.';
+          }
         }
         break;
       case 3:
-        if (_bannerUrl == null || _bannerUrl!.isEmpty) {
-          error = 'Select, upload, or generate a banner.';
+        if (_scheduledAt == null) {
+          error = 'Please select campaign schedule date & time.';
         }
         break;
       default:
@@ -234,87 +235,38 @@ class _CreateCampaignScreenState extends State<CreateCampaignScreen> {
   void _onOfferSelection(String? offerId) {
     setState(() {
       _selectedOfferId = offerId;
+      _selectedBannerUrl = null;
     });
-    final offer = _selectedOffer;
-    if (offer == null) return;
-    if (_titleController.text.trim().isEmpty) {
-      _titleController.text = offer.title;
-    }
-    if (_descriptionController.text.trim().isEmpty) {
-      _descriptionController.text = offer.description;
-    }
-    if ((_selectedCategory == null || _selectedCategory!.isEmpty) &&
-        offer.category.isNotEmpty) {
-      _selectedCategory = offer.category;
-      _loadTemplates();
-    }
   }
 
-  Future<void> _generateAiBanner() async {
-    if (_titleController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter the campaign title before AI generation.')),
-      );
-      return;
-    }
-    setState(() => _generatingBanner = true);
-    try {
-      final offer = _selectedOffer;
-      final bannerUrl = await ShopkeeperAiService.instance.generateBannerImageUrl(
-        title: _titleController.text.trim(),
-        description: _descriptionController.text.trim(),
-        category: _selectedCategory,
-        discountType: offer?.discountType,
-        discountValue: offer?.discountValue is num ? offer?.discountValue as num : null,
-        shopName: _profile?.shopName,
-        shopLocation: [
-          if ((_profile?.city ?? '').isNotEmpty) _profile?.city,
-          if ((_profile?.pincode ?? '').isNotEmpty) _profile?.pincode,
-        ].whereType<String>().join(', '),
-      );
-      if (!mounted) return;
-      setState(() {
-        _bannerMode = 'ai_generated';
-        _bannerUrl = bannerUrl;
-      });
-    } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString())),
-      );
-    } finally {
-      if (mounted) {
-        setState(() => _generatingBanner = false);
-      }
-    }
-  }
-
-  Future<void> _pickAndUploadBanner() async {
-    final image = await _picker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 1920,
-      maxHeight: 1080,
-      imageQuality: 85,
+  Future<void> _pickSchedule() async {
+    final now = DateTime.now();
+    final date = await showDatePicker(
+      context: context,
+      initialDate: _scheduledAt ?? now,
+      firstDate: now,
+      lastDate: now.add(const Duration(days: 365)),
     );
-    if (image == null) return;
-    setState(() => _uploadingBanner = true);
-    try {
-      final url = await UploadService.instance.uploadImage(File(image.path));
-      if (!mounted) return;
-      setState(() {
-        _bannerMode = 'custom_upload';
-        _bannerUrl = url;
-      });
-    } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString())),
-      );
-    } finally {
-      if (mounted) {
-        setState(() => _uploadingBanner = false);
-      }
-    }
+    if (date == null || !mounted) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: _scheduledAt != null
+          ? TimeOfDay.fromDateTime(_scheduledAt!)
+          : TimeOfDay.fromDateTime(now.add(const Duration(minutes: 15))),
+    );
+    if (time == null || !mounted) return;
+
+    final scheduled = DateTime(
+      date.year,
+      date.month,
+      date.day,
+      time.hour,
+      time.minute,
+    );
+
+    setState(() {
+      _scheduledAt = scheduled;
+    });
   }
 
   Future<void> _createCampaign() async {
@@ -393,72 +345,82 @@ class _CreateCampaignScreenState extends State<CreateCampaignScreen> {
         },
         steps: [
           Step(
-            title: const Text('Basics'),
+            title: const Text('Offer & Banner'),
             isActive: _currentStep >= 0,
             content: Column(
               children: [
-                TextFormField(
-                  controller: _titleController,
-                  decoration: const InputDecoration(labelText: 'Campaign title'),
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _descriptionController,
-                  decoration: const InputDecoration(labelText: 'Description'),
-                  maxLines: 3,
-                ),
-                const SizedBox(height: 16),
-                SwitchListTile.adaptive(
-                  value: _linkOffer,
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Link to an existing offer'),
-                  subtitle: const Text('Optional. Reuse offer copy and connect analytics to that offer.'),
-                  onChanged: (value) {
-                    setState(() {
-                      _linkOffer = value;
-                      if (!value) {
-                        _selectedOfferId = null;
-                      }
-                    });
-                  },
-                ),
-                if (_linkOffer)
-                  DropdownButtonFormField<String>(
-                    initialValue: _selectedOfferId,
-                    decoration: const InputDecoration(labelText: 'Select offer'),
-                    items: _offers
-                        .map(
-                          (offer) => DropdownMenuItem(
-                            value: offer.id,
-                            child: Text(offer.title),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: _onOfferSelection,
-                  ),
-                const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  initialValue: _selectedCategory,
-                  decoration: const InputDecoration(labelText: 'Business category'),
-                  items: _categories
+                  initialValue: _selectedOfferId,
+                  decoration: const InputDecoration(labelText: 'Select offer'),
+                  items: _offers
                       .map(
-                        (category) => DropdownMenuItem(
-                          value: category['slug']?.toString() ?? category['name']?.toString() ?? category['value']?.toString() ?? '',
-                          child: Text(category['label']?.toString() ?? category['name']?.toString() ?? category['value']?.toString() ?? ''),
+                        (offer) => DropdownMenuItem(
+                          value: offer.id,
+                          child: Text(offer.title),
                         ),
                       )
                       .toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      _selectedCategory = value;
-                      _selectedTemplate = null;
-                      if (_bannerMode == 'template') {
-                        _bannerUrl = null;
-                      }
-                    });
-                    _loadTemplates();
-                  },
+                  onChanged: _onOfferSelection,
                 ),
+                const SizedBox(height: 12),
+                if (_selectedOffer != null)
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Select one banner from this offer',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                  ),
+                const SizedBox(height: 8),
+                if (_selectedOffer != null && _selectedOffer!.photos.isEmpty)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: AppColors.borderMid),
+                    ),
+                    child: const Text('Selected offer has no banners/photos. Please upload offer banners first.'),
+                  ),
+                if (_selectedOffer != null && _selectedOffer!.photos.isNotEmpty)
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: _selectedOffer!.photos.map((photoUrl) {
+                      final isSelected = _selectedBannerUrl == photoUrl;
+                      return GestureDetector(
+                        onTap: () {
+                          setState(() => _selectedBannerUrl = photoUrl);
+                        },
+                        child: Container(
+                          width: 140,
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isSelected ? AppColors.accent : AppColors.borderMid,
+                              width: isSelected ? 2 : 1,
+                            ),
+                          ),
+                          child: AspectRatio(
+                            aspectRatio: 1.9,
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.network(
+                                photoUrl,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Container(
+                                  color: AppColors.surface,
+                                  child: const Icon(Icons.image_not_supported_rounded),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
               ],
             ),
           ),
@@ -467,26 +429,43 @@ class _CreateCampaignScreenState extends State<CreateCampaignScreen> {
             isActive: _currentStep >= 1,
             content: Column(
               children: [
-                TextFormField(
-                  controller: _cityController,
-                  decoration: const InputDecoration(labelText: 'City'),
+                DropdownButtonFormField<String>(
+                  initialValue: _targetMode,
+                  decoration: const InputDecoration(labelText: 'Targeting mode'),
+                  items: const [
+                    DropdownMenuItem(value: 'pincode', child: Text('Pincode')),
+                    DropdownMenuItem(value: 'pan_india', child: Text('Pan India')),
+                    DropdownMenuItem(value: 'state', child: Text('State-wise')),
+                  ],
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setState(() => _targetMode = value);
+                  },
                 ),
                 const SizedBox(height: 12),
-                TextFormField(
-                  controller: _areaController,
-                  decoration: const InputDecoration(labelText: 'Area'),
-                ),
+                if (_targetMode == 'pincode')
+                  TextFormField(
+                    controller: _pincodeController,
+                    decoration: const InputDecoration(labelText: 'Pincode'),
+                    keyboardType: TextInputType.number,
+                  ),
                 const SizedBox(height: 12),
-                TextFormField(
-                  controller: _pincodeController,
-                  decoration: const InputDecoration(labelText: 'Pincode'),
-                  keyboardType: TextInputType.number,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _stateController,
-                  decoration: const InputDecoration(labelText: 'State'),
-                ),
+                if (_targetMode == 'state')
+                  TextFormField(
+                    controller: _stateController,
+                    decoration: const InputDecoration(labelText: 'State'),
+                  ),
+                if (_targetMode == 'pan_india')
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: AppColors.borderMid),
+                    ),
+                    child: const Text('Pan India selected. Campaign will target all eligible customers in India.'),
+                  ),
                 const SizedBox(height: 16),
                 Align(
                   alignment: Alignment.centerLeft,
@@ -568,49 +547,43 @@ class _CreateCampaignScreenState extends State<CreateCampaignScreen> {
             content: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                CheckboxListTile(
-                  contentPadding: EdgeInsets.zero,
-                  value: _channels.contains('app_inbox'),
-                  onChanged: (value) {
-                    setState(() {
-                      if (value == true) {
-                        _channels.add('app_inbox');
-                      } else {
-                        _channels.remove('app_inbox');
-                      }
-                    });
-                  },
-                  title: const Text('App Inbox Notification'),
-                  subtitle: Text(
-                    _estimate == null
-                        ? 'Estimate audience to get pricing'
-                        : 'Rs ${_estimate!.inboxUnitPrice.toStringAsFixed(2)} per message',
-                  ),
-                ),
-                CheckboxListTile(
-                  contentPadding: EdgeInsets.zero,
-                  value: _channels.contains('whatsapp'),
-                  onChanged: (value) {
-                    setState(() {
-                      if (value == true) {
-                        _channels.add('whatsapp');
-                      } else {
-                        _channels.remove('whatsapp');
-                      }
-                    });
-                  },
-                  title: const Text('WhatsApp Broadcast'),
-                  subtitle: Text(
-                    _estimate == null
-                        ? 'Estimate audience to get pricing'
-                        : 'Rs ${_estimate!.whatsappUnitPrice.toStringAsFixed(2)} per message',
-                  ),
+                ..._channelOptions.map((option) {
+                  final selected = _channels.contains(option.key);
+                  final subtitle = option.key == 'app_inbox' && _estimate != null
+                      ? 'Rs ${_estimate!.inboxUnitPrice.toStringAsFixed(2)} per message'
+                      : option.subtitle;
+                  return CheckboxListTile(
+                    contentPadding: EdgeInsets.zero,
+                    value: selected,
+                    onChanged: option.enabled
+                        ? (value) {
+                            setState(() {
+                              if (value == true) {
+                                _channels.add(option.key);
+                              } else {
+                                _channels.remove(option.key);
+                              }
+                            });
+                          }
+                        : null,
+                    title: Text(option.label),
+                    subtitle: Text(subtitle),
+                  );
+                }),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _targetAudienceSizeController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: 'Audience Size To Target'),
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
-                  controller: _audienceSizeController,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Audience size to target'),
+                  controller: _estimatedAudienceSizeController,
+                  readOnly: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Estimated Audience',
+                    helperText: 'Target / Estimated format example: 2 / 100',
+                  ),
                 ),
                 if (_estimate != null) ...[
                   const SizedBox(height: 16),
@@ -626,109 +599,32 @@ class _CreateCampaignScreenState extends State<CreateCampaignScreen> {
             ),
           ),
           Step(
-            title: const Text('Banner'),
+            title: const Text('Campaign Schedule'),
             isActive: _currentStep >= 3,
             content: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SegmentedButton<String>(
-                  segments: const [
-                    ButtonSegment(value: 'template', label: Text('Template')),
-                    ButtonSegment(value: 'ai_generated', label: Text('AI')),
-                    ButtonSegment(value: 'custom_upload', label: Text('Upload')),
-                  ],
-                  selected: {_bannerMode},
-                  onSelectionChanged: (selection) {
-                    setState(() {
-                      _bannerMode = selection.first;
-                      if (_bannerMode == 'template') {
-                        _bannerUrl = _selectedTemplate?.bannerUrl;
-                      }
-                    });
-                  },
+                FilledButton.icon(
+                  onPressed: _pickSchedule,
+                  icon: const Icon(Icons.schedule_rounded),
+                  label: Text(
+                    _scheduledAt == null
+                        ? 'Select Campaign Schedule'
+                        : 'Change Schedule',
+                  ),
                 ),
-                const SizedBox(height: 16),
-                if (_bannerMode == 'template') ...[
-                  if (_templates.isEmpty)
-                    const Text('No templates available for this category yet.'),
-                  Wrap(
-                    spacing: 12,
-                    runSpacing: 12,
-                    children: _templates.map((template) {
-                      final isSelected = _selectedTemplate?.id == template.id;
-                      return GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _selectedTemplate = template;
-                            _bannerUrl = template.bannerUrl;
-                          });
-                        },
-                        child: Container(
-                          width: 140,
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: isSelected ? AppColors.accent : AppColors.borderMid,
-                              width: isSelected ? 2 : 1,
-                            ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              AspectRatio(
-                                aspectRatio: 1.9,
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Image.network(
-                                    template.bannerUrl,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => Container(
-                                      color: AppColors.surface,
-                                      child: const Icon(Icons.image_not_supported_rounded),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(template.name, maxLines: 2, overflow: TextOverflow.ellipsis),
-                            ],
-                          ),
-                        ),
-                      );
-                    }).toList(),
+                const SizedBox(height: 12),
+                if (_scheduledAt != null)
+                  Text(
+                    'Scheduled for: ${_scheduledAt!.toLocal()}',
+                    style: Theme.of(context).textTheme.titleSmall,
                   ),
-                ],
-                if (_bannerMode == 'ai_generated')
-                  FilledButton.icon(
-                    onPressed: _generatingBanner ? null : _generateAiBanner,
-                    icon: _generatingBanner
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.auto_awesome_rounded),
-                    label: const Text('Generate AI banner'),
-                  ),
-                if (_bannerMode == 'custom_upload')
-                  FilledButton.icon(
-                    onPressed: _uploadingBanner ? null : _pickAndUploadBanner,
-                    icon: _uploadingBanner
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.upload_rounded),
-                    label: const Text('Upload custom banner'),
-                  ),
-                const SizedBox(height: 16),
-                if (_bannerUrl != null && _bannerUrl!.isNotEmpty)
+                if (_selectedBannerUrl != null && _selectedBannerUrl!.isNotEmpty) ...[
+                  const SizedBox(height: 16),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(16),
                     child: Image.network(
-                      _bannerUrl!,
+                      _selectedBannerUrl!,
                       height: 180,
                       width: double.infinity,
                       fit: BoxFit.cover,
@@ -740,6 +636,7 @@ class _CreateCampaignScreenState extends State<CreateCampaignScreen> {
                       ),
                     ),
                   ),
+                ],
               ],
             ),
           ),
@@ -749,15 +646,18 @@ class _CreateCampaignScreenState extends State<CreateCampaignScreen> {
             content: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _ReviewTile(label: 'Title', value: _titleController.text.trim()),
-                _ReviewTile(label: 'Category', value: _selectedCategory ?? '-'),
+                _ReviewTile(label: 'Offer', value: _selectedOffer?.title ?? '-'),
                 _ReviewTile(
-                  label: 'Target area',
-                  value: [
-                    _cityController.text.trim(),
-                    _areaController.text.trim(),
-                    _pincodeController.text.trim(),
-                  ].where((part) => part.isNotEmpty).join(', '),
+                  label: 'Banner',
+                  value: _selectedBannerUrl?.isNotEmpty == true ? 'Selected' : 'Not selected',
+                ),
+                _ReviewTile(
+                  label: 'Targeting',
+                  value: _targetMode == 'pan_india'
+                      ? 'Pan India'
+                      : _targetMode == 'state'
+                          ? 'State: ${_stateController.text.trim()}'
+                          : 'Pincode: ${_pincodeController.text.trim()}',
                 ),
                 _ReviewTile(label: 'Channels', value: _channels.join(', ')),
                 _ReviewTile(
@@ -765,21 +665,25 @@ class _CreateCampaignScreenState extends State<CreateCampaignScreen> {
                   value: _estimate?.audienceCount.toString() ?? 'Not estimated',
                 ),
                 _ReviewTile(
-                  label: 'Selected audience',
-                  value: _audienceSizeController.text.trim().isEmpty
+                  label: 'Target audience',
+                  value: _targetAudienceSizeController.text.trim().isEmpty
                       ? '-'
-                      : _audienceSizeController.text.trim(),
+                      : _targetAudienceSizeController.text.trim(),
                 ),
                 _ReviewTile(
                   label: 'Estimated total',
                   value: 'Rs ${_estimatedTotalCost.toStringAsFixed(2)}',
                 ),
-                if (_bannerUrl != null && _bannerUrl!.isNotEmpty) ...[
+                _ReviewTile(
+                  label: 'Schedule',
+                  value: _scheduledAt?.toLocal().toString() ?? '-',
+                ),
+                if (_selectedBannerUrl != null && _selectedBannerUrl!.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(16),
                     child: Image.network(
-                      _bannerUrl!,
+                      _selectedBannerUrl!,
                       height: 160,
                       width: double.infinity,
                       fit: BoxFit.cover,
@@ -793,6 +697,20 @@ class _CreateCampaignScreenState extends State<CreateCampaignScreen> {
       ),
     );
   }
+}
+
+class _ChannelOption {
+  final String key;
+  final String label;
+  final bool enabled;
+  final String subtitle;
+
+  const _ChannelOption({
+    required this.key,
+    required this.label,
+    required this.enabled,
+    required this.subtitle,
+  });
 }
 
 class _ReviewTile extends StatelessWidget {

@@ -18,6 +18,24 @@ function toNumber(value) {
   return Number.isFinite(num) ? num : null;
 }
 
+const SUPPORTED_LIVE_CHANNELS = new Set(['app_inbox']);
+const ANNOUNCED_CHANNELS = new Set(['app_inbox', 'whatsapp', 'email', 'push_notification']);
+
+function getUnsupportedChannels(channels) {
+  if (!Array.isArray(channels)) return [];
+  return channels
+    .map((channel) => ci(channel).toLowerCase())
+    .filter((channel) => channel && !SUPPORTED_LIVE_CHANNELS.has(channel));
+}
+
+function hasUnknownChannels(channels) {
+  if (!Array.isArray(channels)) return false;
+  return channels.some((channel) => {
+    const normalized = ci(channel).toLowerCase();
+    return normalized && !ANNOUNCED_CHANNELS.has(normalized);
+  });
+}
+
 function serializeCampaign(campaign, analytics = null) {
   return {
     id: campaign.id,
@@ -51,6 +69,25 @@ function serializeCampaign(campaign, analytics = null) {
     completedAt: campaign.completedAt,
     createdAt: campaign.createdAt,
     updatedAt: campaign.updatedAt,
+    isPanIndia:
+      !campaign.targetPincode &&
+      !campaign.targetCity &&
+      !campaign.targetState,
+    channelAvailability: {
+      app_inbox: { enabled: true },
+      whatsapp: {
+        enabled: false,
+        reason: 'Coming soon: provider not integrated yet',
+      },
+      email: {
+        enabled: false,
+        reason: 'Coming soon: provider not integrated yet',
+      },
+      push_notification: {
+        enabled: false,
+        reason: 'Coming soon: device-token push pipeline pending',
+      },
+    },
     offer: campaign.offer
       ? {
           id: campaign.offer.id,
@@ -109,12 +146,28 @@ async function createCampaign(req, res, next) {
       return res.status(400).json({ success: false, message: 'Campaign title is required' });
     }
 
+    const isPanIndia = req.body?.isPanIndia === true;
     const hasLocation =
-      ci(req.body?.targetCity) || ci(req.body?.targetPincode) || ci(req.body?.targetState);
+      isPanIndia || ci(req.body?.targetCity) || ci(req.body?.targetPincode) || ci(req.body?.targetState);
     if (!hasLocation) {
       return res.status(400).json({
         success: false,
         message: 'At least one location filter is required',
+      });
+    }
+
+    if (hasUnknownChannels(req.body?.channels || [])) {
+      return res.status(400).json({
+        success: false,
+        message: 'Unsupported campaign channel requested',
+      });
+    }
+
+    const unsupportedChannels = getUnsupportedChannels(req.body?.channels || []);
+    if (unsupportedChannels.length) {
+      return res.status(400).json({
+        success: false,
+        message: `These channels are not live yet: ${unsupportedChannels.join(', ')}`,
       });
     }
 
@@ -265,6 +318,21 @@ async function getCampaign(req, res, next) {
 
 async function updateCampaign(req, res, next) {
   try {
+        if (hasUnknownChannels(req.body?.channels || [])) {
+          return res.status(400).json({
+            success: false,
+            message: 'Unsupported campaign channel requested',
+          });
+        }
+
+        const unsupportedChannels = getUnsupportedChannels(req.body?.channels || []);
+        if (unsupportedChannels.length) {
+          return res.status(400).json({
+            success: false,
+            message: `These channels are not live yet: ${unsupportedChannels.join(', ')}`,
+          });
+        }
+
     const shopkeeperId = await resolvePgId('users', req.user.userId);
     const campaignId = (await resolvePgId('campaigns', req.params.id)) || req.params.id;
     const existing = await prisma.campaign.findUnique({ where: { id: campaignId } });
