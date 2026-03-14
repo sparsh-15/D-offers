@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_design_tokens.dart';
@@ -170,6 +171,48 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
         _shopError = e.toString();
       });
     }
+  }
+
+  bool get _hasShopMapLocation =>
+      _shopProfile?.latitude != null && _shopProfile?.longitude != null;
+
+  String? get _shopMapPreviewUrl {
+    if (!_hasShopMapLocation) return null;
+    final latitude = _shopProfile!.latitude!;
+    final longitude = _shopProfile!.longitude!;
+    return 'https://staticmap.openstreetmap.de/staticmap.php?center=$latitude,$longitude&zoom=15&size=800x360&markers=$latitude,$longitude,lightgreen1';
+  }
+
+  Future<void> _openShopLocationInMaps() async {
+    if (!_hasShopMapLocation) return;
+
+    final latitude = _shopProfile!.latitude!;
+    final longitude = _shopProfile!.longitude!;
+    final label = _shopProfile!.shopName.isNotEmpty
+        ? _shopProfile!.shopName
+        : (widget.offer.shopName?.trim().isNotEmpty == true
+            ? widget.offer.shopName!.trim()
+            : 'Shop location');
+
+    final geoUri = Uri.parse('geo:$latitude,$longitude?q=$latitude,$longitude(${Uri.encodeComponent(label)})');
+    final googleMapsUri = Uri.parse(
+      'https://www.google.com/maps/search/?api=1&query=$latitude,$longitude',
+    );
+
+    if (await canLaunchUrl(geoUri)) {
+      await launchUrl(geoUri);
+      return;
+    }
+
+    if (await canLaunchUrl(googleMapsUri)) {
+      await launchUrl(googleMapsUri, mode: LaunchMode.externalApplication);
+      return;
+    }
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Could not open map application.')),
+    );
   }
 
   void _claimOffer() {
@@ -986,6 +1029,129 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                                       _shopProfile!.pincode,
                                   ].join(', '),
                                 ),
+                              if (_hasShopMapLocation) ...[
+                                const SizedBox(height: AppTokens.spaceMD),
+                                Text(
+                                  'Map location',
+                                  style: theme.textTheme.titleSmall?.copyWith(
+                                    color: AppColors.textPrimary,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                const SizedBox(height: AppTokens.spaceSM),
+                                GestureDetector(
+                                  onTap: _openShopLocationInMaps,
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: AppColors.cardBackground,
+                                      borderRadius: BorderRadius.circular(
+                                        AppTokens.radiusMD,
+                                      ),
+                                      border: Border.all(
+                                        color: AppColors.borderMid,
+                                      ),
+                                    ),
+                                    clipBehavior: Clip.antiAlias,
+                                    child: Stack(
+                                      children: [
+                                        AspectRatio(
+                                          aspectRatio: 16 / 9,
+                                          child: CachedNetworkImage(
+                                            imageUrl: _shopMapPreviewUrl!,
+                                            fit: BoxFit.cover,
+                                            placeholder: (_, __) => const ColoredBox(
+                                              color: AppColors.cardBackground,
+                                              child: Center(
+                                                child: SizedBox(
+                                                  width: 22,
+                                                  height: 22,
+                                                  child: CircularProgressIndicator(
+                                                    strokeWidth: 2,
+                                                    color: AppColors.accentDim,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                            errorWidget: (_, __, ___) => Container(
+                                              color: AppColors.cardBackground,
+                                              padding: const EdgeInsets.all(
+                                                AppTokens.spaceMD,
+                                              ),
+                                              child: Column(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
+                                                children: [
+                                                  const Icon(
+                                                    Icons.map_outlined,
+                                                    color: AppColors.textMuted,
+                                                    size: 30,
+                                                  ),
+                                                  const SizedBox(
+                                                    height: AppTokens.spaceSM,
+                                                  ),
+                                                  Text(
+                                                    'Map preview unavailable',
+                                                    style: theme.textTheme.bodyMedium
+                                                        ?.copyWith(
+                                                      color: AppColors.textSecondary,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        Positioned(
+                                          left: AppTokens.spaceSM,
+                                          right: AppTokens.spaceSM,
+                                          bottom: AppTokens.spaceSM,
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: AppTokens.spaceSM,
+                                              vertical: 10,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: AppColors.background
+                                                  .withValues(alpha: 0.78),
+                                              borderRadius:
+                                                  BorderRadius.circular(
+                                                AppTokens.radiusSM,
+                                              ),
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                const Icon(
+                                                  Icons.place_rounded,
+                                                  color: AppColors.accent,
+                                                  size: 18,
+                                                ),
+                                                const SizedBox(
+                                                  width: AppTokens.spaceXS,
+                                                ),
+                                                Expanded(
+                                                  child: Text(
+                                                    'Tap to open in Maps',
+                                                    style: theme.textTheme.bodySmall
+                                                        ?.copyWith(
+                                                      color: AppColors.textPrimary,
+                                                      fontWeight: FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                ),
+                                                const Icon(
+                                                  Icons.open_in_new_rounded,
+                                                  color: AppColors.textSecondary,
+                                                  size: 16,
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
                               if (_shopProfile!.description.isNotEmpty)
                                 _ShopDetailRow(
                                   icon: Icons.info_outline_rounded,
