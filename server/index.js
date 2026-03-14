@@ -3,6 +3,7 @@ const config = require('./src/config');
 const app = require('./src/app');
 const { seedAdminFromEnv } = require('./src/bootstrap/seedAdmin');
 const { prisma } = require('./src/db/prisma');
+const { startCampaignScheduler, stopCampaignScheduler } = require('./src/services/campaignScheduler');
 
 async function startServer() {
   try {
@@ -18,17 +19,20 @@ async function startServer() {
   app.listen(config.port, () => {
     console.log(`Server running on port ${config.port}`);
     console.log('DB provider: postgres');
+    startCampaignScheduler();
   });
 }
 
 startServer();
 
 process.on('SIGINT', async () => {
+  stopCampaignScheduler();
   await prisma.$disconnect();
   process.exit(0);
 });
 
 process.on('SIGTERM', async () => {
+  stopCampaignScheduler();
   await prisma.$disconnect();
   process.exit(0);
 });

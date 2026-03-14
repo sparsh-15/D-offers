@@ -2,15 +2,38 @@ const { prisma } = require('../db/prisma');
 const { resolvePgId } = require('../repositories/idResolver');
 const { getAvailableCredits } = require('../services/aiWalletService');
 
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isPrismaP1001(error) {
+  return error && error.code === 'P1001';
+}
+
 async function requireActiveSubscription(req, res, next) {
+  let lastError;
   try {
     if (req.user.role !== 'shopkeeper') return next();
 
     const shopkeeperId = await resolvePgId('users', req.user.userId);
-    const subscription = await prisma.subscription.findFirst({
-      where: { shopkeeperId, status: 'active' },
-      orderBy: { createdAt: 'desc' },
-    });
+    let subscription = null;
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+      try {
+        subscription = await prisma.subscription.findFirst({
+          where: { shopkeeperId, status: 'active' },
+          orderBy: { createdAt: 'desc' },
+        });
+        break;
+      } catch (error) {
+        lastError = error;
+        if (!isPrismaP1001(error) || attempt === 3) {
+          throw error;
+        }
+        const delay = 150 * attempt;
+        console.warn(`[SUBSCRIPTION_CHECK] P1001 retry ${attempt}/3 in ${delay}ms`);
+        await wait(delay);
+      }
+    }
 
     if (!subscription) {
       return res.status(403).json({
@@ -52,6 +75,13 @@ async function requireActiveSubscription(req, res, next) {
     next();
   } catch (error) {
     console.error('[SUBSCRIPTION_CHECK] Error:', error);
+    if (isPrismaP1001(error || lastError)) {
+      return res.status(503).json({
+        success: false,
+        message: 'Service temporarily unavailable. Please retry in a moment.',
+        code: 'DATABASE_TEMPORARILY_UNAVAILABLE',
+      });
+    }
     res.status(500).json({ success: false, message: 'Failed to verify subscription' });
   }
 }

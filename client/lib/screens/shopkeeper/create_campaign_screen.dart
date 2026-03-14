@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../../core/constants/app_colors.dart';
@@ -16,7 +18,6 @@ class CreateCampaignScreen extends StatefulWidget {
 
 class _CreateCampaignScreenState extends State<CreateCampaignScreen> {
   final _pincodeController = TextEditingController();
-  final _stateController = TextEditingController();
   final _targetAudienceSizeController = TextEditingController();
   final _estimatedAudienceSizeController = TextEditingController();
 
@@ -30,6 +31,14 @@ class _CreateCampaignScreenState extends State<CreateCampaignScreen> {
 
   String? _selectedOfferId;
   String? _selectedBannerUrl;
+  String? _selectedState;
+  String? _selectedCity;
+
+  List<String> _states = const [];
+  List<String> _cities = const [];
+  bool _loadingStates = false;
+  bool _loadingCities = false;
+  final Set<String> _failedBannerUrls = <String>{};
 
   String _targetMode = 'pincode';
   DateTime? _scheduledAt;
@@ -75,7 +84,6 @@ class _CreateCampaignScreenState extends State<CreateCampaignScreen> {
   @override
   void dispose() {
     _pincodeController.dispose();
-    _stateController.dispose();
     _targetAudienceSizeController.dispose();
     _estimatedAudienceSizeController.dispose();
     super.dispose();
@@ -91,12 +99,60 @@ class _CreateCampaignScreenState extends State<CreateCampaignScreen> {
       _offers = results[0] as List<OfferModel>;
       _profile = results[1] as ShopkeeperProfileModel?;
       _pincodeController.text = _profile?.pincode ?? '';
-        _stateController.text = '';
+      await _loadStates();
     } catch (_) {
       // Keep the wizard usable even when some bootstrap data fails.
     } finally {
       if (mounted) {
         setState(() => _loadingBootstrap = false);
+      }
+    }
+  }
+
+  Future<void> _loadStates() async {
+    setState(() => _loadingStates = true);
+    try {
+      final states = await AuthService.instance.getTargetStates();
+      if (!mounted) return;
+      setState(() {
+        _states = states;
+        if (_selectedState != null && !_states.contains(_selectedState)) {
+          _selectedState = null;
+          _selectedCity = null;
+          _cities = const [];
+        }
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _states = const []);
+    } finally {
+      if (mounted) {
+        setState(() => _loadingStates = false);
+      }
+    }
+  }
+
+  Future<void> _onStateSelected(String? state) async {
+    setState(() {
+      _selectedState = state;
+      _selectedCity = null;
+      _cities = const [];
+    });
+    if (state == null || state.trim().isEmpty) return;
+
+    setState(() => _loadingCities = true);
+    try {
+      final cities = await AuthService.instance.getTargetCitiesByState(state);
+      if (!mounted) return;
+      setState(() {
+        _cities = cities;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _cities = const []);
+    } finally {
+      if (mounted) {
+        setState(() => _loadingCities = false);
       }
     }
   }
@@ -136,7 +192,11 @@ class _CreateCampaignScreenState extends State<CreateCampaignScreen> {
       payload['targetPincode'] = _pincodeController.text.trim();
     }
     if (_targetMode == 'state') {
-      payload['targetState'] = _stateController.text.trim();
+      payload['targetState'] = (_selectedState ?? '').trim();
+    }
+    if (_targetMode == 'city') {
+      payload['targetState'] = (_selectedState ?? '').trim();
+      payload['targetCity'] = (_selectedCity ?? '').trim();
     }
 
     return payload;
@@ -197,8 +257,14 @@ class _CreateCampaignScreenState extends State<CreateCampaignScreen> {
       case 1:
         if (_targetMode == 'pincode' && _pincodeController.text.trim().isEmpty) {
           error = 'Pincode is required for pincode mode.';
-        } else if (_targetMode == 'state' && _stateController.text.trim().isEmpty) {
+        } else if (_targetMode == 'state' && (_selectedState ?? '').trim().isEmpty) {
           error = 'State is required for state-wise mode.';
+        } else if (_targetMode == 'city') {
+          if ((_selectedState ?? '').trim().isEmpty) {
+            error = 'State is required for city-wise mode.';
+          } else if ((_selectedCity ?? '').trim().isEmpty) {
+            error = 'City is required for city-wise mode.';
+          }
         }
         break;
       case 2:
@@ -236,7 +302,105 @@ class _CreateCampaignScreenState extends State<CreateCampaignScreen> {
     setState(() {
       _selectedOfferId = offerId;
       _selectedBannerUrl = null;
+      _failedBannerUrls.clear();
     });
+  }
+
+  String _bannerErrorText(Object error) {
+    final message = error.toString();
+    if (error is SocketException || message.contains('Failed host lookup')) {
+      return 'Cannot load banner: network/DNS issue.';
+    }
+    return 'Banner preview unavailable.';
+  }
+
+  Widget _buildBannerErrorBox({
+    required String imageUrl,
+    required String message,
+    required double height,
+  }) {
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _failedBannerUrls.remove(imageUrl);
+        });
+      },
+      child: Container(
+        height: height,
+        color: AppColors.highlight,
+        alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.wifi_off_rounded,
+              color: AppColors.textSecondary,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              message,
+              style: const TextStyle(color: AppColors.textSecondary),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Tap to retry',
+              style: TextStyle(color: AppColors.accent, fontSize: 12),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBannerImage(
+    String imageUrl, {
+    required double height,
+    required double width,
+    BoxFit fit = BoxFit.cover,
+  }) {
+    if (_failedBannerUrls.contains(imageUrl)) {
+      return _buildBannerErrorBox(
+        imageUrl: imageUrl,
+        message: 'Cannot load banner: network/DNS issue.',
+        height: height,
+      );
+    }
+
+    return Image.network(
+      imageUrl,
+      height: height,
+      width: width,
+      fit: fit,
+      loadingBuilder: (context, child, progress) {
+        if (progress == null) return child;
+        return Container(
+          height: height,
+          width: width,
+          color: AppColors.highlight,
+          alignment: Alignment.center,
+          child: const SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        );
+      },
+      errorBuilder: (_, error, ___) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          if (_failedBannerUrls.add(imageUrl)) {
+            setState(() {});
+          }
+        });
+        return _buildBannerErrorBox(
+          imageUrl: imageUrl,
+          message: _bannerErrorText(error),
+          height: height,
+        );
+      },
+    );
   }
 
   Future<void> _pickSchedule() async {
@@ -407,13 +571,10 @@ class _CreateCampaignScreenState extends State<CreateCampaignScreen> {
                             aspectRatio: 1.9,
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(8),
-                              child: Image.network(
+                              child: _buildBannerImage(
                                 photoUrl,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Container(
-                                  color: AppColors.surface,
-                                  child: const Icon(Icons.image_not_supported_rounded),
-                                ),
+                                height: double.infinity,
+                                width: double.infinity,
                               ),
                             ),
                           ),
@@ -434,12 +595,20 @@ class _CreateCampaignScreenState extends State<CreateCampaignScreen> {
                   decoration: const InputDecoration(labelText: 'Targeting mode'),
                   items: const [
                     DropdownMenuItem(value: 'pincode', child: Text('Pincode')),
+                    DropdownMenuItem(value: 'city', child: Text('City-wise')),
                     DropdownMenuItem(value: 'pan_india', child: Text('Pan India')),
                     DropdownMenuItem(value: 'state', child: Text('State-wise')),
                   ],
                   onChanged: (value) {
                     if (value == null) return;
-                    setState(() => _targetMode = value);
+                    setState(() {
+                      _targetMode = value;
+                      if (value == 'pincode') {
+                        _selectedState = null;
+                        _selectedCity = null;
+                        _cities = const [];
+                      }
+                    });
                   },
                 ),
                 const SizedBox(height: 12),
@@ -451,10 +620,50 @@ class _CreateCampaignScreenState extends State<CreateCampaignScreen> {
                   ),
                 const SizedBox(height: 12),
                 if (_targetMode == 'state')
-                  TextFormField(
-                    controller: _stateController,
-                    decoration: const InputDecoration(labelText: 'State'),
+                  DropdownButtonFormField<String>(
+                    initialValue: _selectedState,
+                    decoration: InputDecoration(
+                      labelText: 'State',
+                      helperText: _loadingStates ? 'Loading states...' : null,
+                    ),
+                    items: _states
+                        .map((state) => DropdownMenuItem(value: state, child: Text(state)))
+                        .toList(),
+                    onChanged: _loadingStates ? null : _onStateSelected,
                   ),
+                if (_targetMode == 'city') ...[
+                  DropdownButtonFormField<String>(
+                    initialValue: _selectedState,
+                    decoration: InputDecoration(
+                      labelText: 'State',
+                      helperText: _loadingStates ? 'Loading states...' : null,
+                    ),
+                    items: _states
+                        .map((state) => DropdownMenuItem(value: state, child: Text(state)))
+                        .toList(),
+                    onChanged: _loadingStates ? null : _onStateSelected,
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    initialValue: _selectedCity,
+                    decoration: InputDecoration(
+                      labelText: 'City',
+                      helperText: _loadingCities
+                          ? 'Loading cities...'
+                          : _selectedState == null
+                              ? 'Select state first'
+                              : null,
+                    ),
+                    items: _cities
+                        .map((city) => DropdownMenuItem(value: city, child: Text(city)))
+                        .toList(),
+                    onChanged: (_loadingCities || _selectedState == null)
+                        ? null
+                        : (value) {
+                            setState(() => _selectedCity = value);
+                          },
+                  ),
+                ],
                 if (_targetMode == 'pan_india')
                   Container(
                     width: double.infinity,
@@ -530,9 +739,6 @@ class _CreateCampaignScreenState extends State<CreateCampaignScreen> {
                         const SizedBox(height: 8),
                         Text(
                           'App inbox: Rs ${_estimate!.inboxUnitPrice.toStringAsFixed(2)} per message',
-                        ),
-                        Text(
-                          'WhatsApp: Rs ${_estimate!.whatsappUnitPrice.toStringAsFixed(2)} per message',
                         ),
                       ],
                     ),
@@ -623,17 +829,10 @@ class _CreateCampaignScreenState extends State<CreateCampaignScreen> {
                   const SizedBox(height: 16),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(16),
-                    child: Image.network(
+                    child: _buildBannerImage(
                       _selectedBannerUrl!,
                       height: 180,
                       width: double.infinity,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        height: 180,
-                        color: AppColors.surface,
-                        alignment: Alignment.center,
-                        child: const Text('Banner preview unavailable'),
-                      ),
                     ),
                   ),
                 ],
@@ -655,8 +854,10 @@ class _CreateCampaignScreenState extends State<CreateCampaignScreen> {
                   label: 'Targeting',
                   value: _targetMode == 'pan_india'
                       ? 'Pan India'
+                      : _targetMode == 'city'
+                        ? 'State: ${_selectedState ?? '-'}, City: ${_selectedCity ?? '-'}'
                       : _targetMode == 'state'
-                          ? 'State: ${_stateController.text.trim()}'
+                        ? 'State: ${_selectedState ?? '-'}'
                           : 'Pincode: ${_pincodeController.text.trim()}',
                 ),
                 _ReviewTile(label: 'Channels', value: _channels.join(', ')),
@@ -682,11 +883,10 @@ class _CreateCampaignScreenState extends State<CreateCampaignScreen> {
                   const SizedBox(height: 12),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(16),
-                    child: Image.network(
+                    child: _buildBannerImage(
                       _selectedBannerUrl!,
                       height: 160,
                       width: double.infinity,
-                      fit: BoxFit.cover,
                     ),
                   ),
                 ],

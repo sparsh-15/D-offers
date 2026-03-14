@@ -747,6 +747,25 @@ class AuthService {
     };
   }
 
+  Future<List<String>> getTargetStates() async {
+    final uri = Uri.parse('${ApiConfig.metaUrl}/states');
+    final resp = await _client.get(uri);
+    final response = _handleResponse(resp) as Map<String, dynamic>;
+    final data = response['data'] as Map<String, dynamic>?;
+    final raw = (data?['states'] as List<dynamic>? ?? const []);
+    return raw.map((entry) => entry.toString()).where((entry) => entry.trim().isNotEmpty).toList();
+  }
+
+  Future<List<String>> getTargetCitiesByState(String state) async {
+    final encodedState = Uri.encodeComponent(state);
+    final uri = Uri.parse('${ApiConfig.metaUrl}/states/$encodedState/cities');
+    final resp = await _client.get(uri);
+    final response = _handleResponse(resp) as Map<String, dynamic>;
+    final data = response['data'] as Map<String, dynamic>?;
+    final raw = (data?['cities'] as List<dynamic>? ?? const []);
+    return raw.map((entry) => entry.toString()).where((entry) => entry.trim().isNotEmpty).toList();
+  }
+
   // Admin shopkeepers
   Future<Map<String, dynamic>> getAdminStats() async {
     final token = AuthStore.token;

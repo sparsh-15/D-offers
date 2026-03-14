@@ -170,6 +170,10 @@ async function launchCampaign(campaignId) {
     throw error;
   }
 
+  if (campaign.launchedAt || ['sending', 'completed', 'queued'].includes(campaign.status)) {
+    return campaign;
+  }
+
   const channels = normalizeChannels(campaign.channels);
   await prisma.campaign.update({
     where: { id: campaignId },

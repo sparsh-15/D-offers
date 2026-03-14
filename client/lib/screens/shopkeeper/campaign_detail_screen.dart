@@ -59,6 +59,15 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
+          backgroundColor: AppColors.elevated,
+          surfaceTintColor: Colors.transparent,
+          titleTextStyle: Theme.of(context).textTheme.titleLarge?.copyWith(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w700,
+              ),
+          contentTextStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: AppColors.textPrimary,
+              ),
           title: const Text('Launch Campaign'),
           content: StatefulBuilder(
             builder: (context, setModalState) {
@@ -138,6 +147,10 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Campaign Detail'),
+        titleTextStyle: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w700,
+            ),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
@@ -174,6 +187,17 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                         _InfoSection(
                           title: 'Audience',
                           children: [
+                            _InfoRow(
+                              label: 'Targeting mode',
+                              value: campaign.targetPincode != null && campaign.targetPincode!.isNotEmpty
+                                  ? 'Pincode'
+                                  : campaign.targetCity != null && campaign.targetCity!.isNotEmpty
+                                      ? 'City-wise'
+                                      : campaign.targetState != null && campaign.targetState!.isNotEmpty
+                                          ? 'State-wise'
+                                          : 'Pan India',
+                            ),
+                            _InfoRow(label: 'State', value: campaign.targetState ?? '-'),
                             _InfoRow(label: 'City', value: campaign.targetCity ?? '-'),
                             _InfoRow(label: 'Area', value: campaign.targetArea ?? '-'),
                             _InfoRow(label: 'Pincode', value: campaign.targetPincode ?? '-'),
@@ -188,6 +212,10 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                         _InfoSection(
                           title: 'Analytics',
                           children: [
+                            _InfoRow(
+                              label: 'Scheduled at',
+                              value: campaign.scheduledAt?.toLocal().toString() ?? '-',
+                            ),
                             _InfoRow(
                               label: 'Reached',
                               value: '${campaign.analytics?.totalReached ?? campaign.actualAudienceReached}',

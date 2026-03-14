@@ -63,15 +63,15 @@ offer details ....shopkeeper location ---doine
 in login page hyper local ek hi word hai ---done
 welcome to MyOffers color green login page --- done 
 SHopkeeper signup page - read full terms, of MyOffers X -- done
-    shop registration certificate/gst no/ electricity bill not mandatory, adhaar no , pan no.
-    Namaskaar hand closing emoji on shopkeeper dashboard, 
+    shop registration certificate/gst no/ electricity bill not mandatory, adhaar no , pan no. ~~~ done
+    Namaskaar hand closing emoji on shopkeeper dashboard, ~~~ done
 
 campaign title and description field remove and category remove just a offer dropdown then show all its banner of that offer select one banner which should be send 
-1st option will be pincode, can be pan india, state wise 
-4 option in campaign  app notification , whatsap, email text, push notification
-2 input box audience size to target 2/100
-banner option remove 
-campaign schedule 
+1st option will be pincode, can be pan india, state wise ~~~ done
+4 option in campaign  app notification , whatsap, email text, push notification ~~~ done
+2 input box audience size to target 2/100 ~~~ done
+banner option remove  ~~~ done
+campaign schedule ~~~ done
 
 
 loan last 3 statement 

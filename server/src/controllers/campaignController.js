@@ -409,15 +409,30 @@ async function payCampaign(req, res, next) {
       return res.status(400).json({ success: false, message: 'Campaign cannot be paid in its current state' });
     }
 
-    await prisma.campaign.update({
+    const now = new Date();
+    const hasFutureSchedule = campaign.scheduledAt && new Date(campaign.scheduledAt) > now;
+
+    const paidCampaign = await prisma.campaign.update({
       where: { id: campaign.id },
       data: {
         paymentStatus: 'paid',
         paymentMethod: req.body?.paymentMethod || 'upi',
         transactionId: ci(req.body?.transactionId) || null,
-        status: 'paid',
+        status: hasFutureSchedule ? 'queued' : 'paid',
+      },
+      include: {
+        offer: { select: { id: true, title: true, photos: true, status: true } },
       },
     });
+
+    if (hasFutureSchedule) {
+      const analytics = await getCampaignAnalytics(campaign.id);
+      return res.status(200).json({
+        success: true,
+        campaign: serializeCampaign(paidCampaign, analytics),
+        message: 'Campaign payment received and queued for scheduled launch.',
+      });
+    }
 
     const launched = await launchCampaign(campaign.id);
     const analytics = await getCampaignAnalytics(campaign.id);
