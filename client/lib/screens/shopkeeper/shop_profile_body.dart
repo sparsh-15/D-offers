@@ -9,6 +9,7 @@ import '../../core/utils/dialog_helper.dart';
 import '../../services/auth_service.dart';
 import '../../services/auth_store.dart';
 import '../../models/shopkeeper_profile_model.dart';
+import '../../services/location_service.dart';
 import '../../services/subscription_service.dart';
 import '../../services/upload_service.dart';
 import 'ai_credit_packs_screen.dart';
@@ -341,7 +342,7 @@ class _ShopProfileBodyState extends State<ShopProfileBody> {
     final int usedThisCycle = (sub['usedThisCycle'] as num?)?.toInt() ?? 0;
     final int extraCredits =
         (sub['extraCreditsCurrentCycle'] as num?)?.toInt() ?? 0;
-    String? offerLabel;
+    late final String offerLabel;
     if (maxOffers == null || maxOffers == -1) {
       offerLabel = 'Unlimited offers';
     } else {
@@ -380,15 +381,13 @@ class _ShopProfileBodyState extends State<ShopProfileBody> {
                   color: AppColors.textSecondary,
                 ),
           ),
-          if (offerLabel != null) ...[
-            const SizedBox(height: 4),
-            Text(
-              offerLabel,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-            ),
-          ],
+          const SizedBox(height: 4),
+          Text(
+            offerLabel,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+          ),
           if (aiLabel != null) ...[
             const SizedBox(height: 4),
             Text(
@@ -428,7 +427,7 @@ class _ShopProfileBodyState extends State<ShopProfileBody> {
   }
 
   Future<void> _openEditProfileDialog(BuildContext context) async {
-    final result = await showDialog<Map<String, String>?>(
+    final result = await showDialog<Map<String, dynamic>?>(
       context: context,
       builder: (context) => _EditProfileDialog(profile: _profile),
     );
@@ -452,12 +451,16 @@ class _ShopProfileBodyState extends State<ShopProfileBody> {
         city: result['city']?.trim().isEmpty ?? true
             ? null
             : result['city']!.trim(),
+        latitude: result['latitude'] as double?,
+        longitude: result['longitude'] as double?,
         category: result['category']?.trim().isEmpty ?? true
             ? null
             : result['category']!.trim(),
         description: result['description']?.trim().isEmpty ?? true
             ? null
             : result['description']!.trim(),
+        clearLocationCoordinates:
+          result['clearLocationCoordinates'] as bool? ?? false,
       );
       if (!mounted) return;
       setState(() => _profile = updated);
@@ -496,10 +499,16 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
 
   bool _isLoadingPincode = false;
   bool _isLoadingCategories = false;
+  bool _isLoadingCurrentLocation = false;
   List<Map<String, dynamic>> _availableAreas = [];
   List<Map<String, dynamic>> _categories = [];
   String? _selectedArea;
   String? _selectedCategory;
+  double? _latitude;
+  double? _longitude;
+  bool _shouldClearCoordinates = false;
+  bool _suppressLocationChangeTracking = false;
+  bool _suppressPincodeLookup = false;
 
   @override
   void initState() {
@@ -514,6 +523,8 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
     stateController = TextEditingController();
     descriptionController =
         TextEditingController(text: widget.profile?.description ?? '');
+    _latitude = widget.profile?.latitude;
+    _longitude = widget.profile?.longitude;
 
     // Prefill from current user if profile is empty so shopkeepers don't retype
     // everything they already entered during signup.
@@ -536,12 +547,18 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
     // Category will be set after loading categories in _loadCategories()
 
     pincodeController.addListener(_onPincodeChanged);
+    pincodeController.addListener(_onLocationFieldEdited);
+    cityController.addListener(_onLocationFieldEdited);
+    addressController.addListener(_onLocationFieldEdited);
     _loadCategories();
   }
 
   @override
   void dispose() {
     pincodeController.removeListener(_onPincodeChanged);
+    pincodeController.removeListener(_onLocationFieldEdited);
+    cityController.removeListener(_onLocationFieldEdited);
+    addressController.removeListener(_onLocationFieldEdited);
     shopNameController.dispose();
     addressController.dispose();
     pincodeController.dispose();
@@ -584,17 +601,43 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
   }
 
   void _onPincodeChanged() {
+    if (_suppressPincodeLookup) return;
     final pincode = pincodeController.text;
     if (pincode.length == 6) {
       _lookupPincode(pincode);
     } else {
-      setState(() {
-        _availableAreas = [];
-        _selectedArea = null;
+      _runWithSuppressedLocationChangeTracking(() {
+        setState(() {
+          _availableAreas = [];
+          _selectedArea = null;
+        });
+        cityController.clear();
+        stateController.clear();
       });
-      cityController.clear();
-      stateController.clear();
     }
+  }
+
+  void _onLocationFieldEdited() {
+    if (_suppressLocationChangeTracking) return;
+    if (_latitude == null && _longitude == null) return;
+
+    setState(() {
+      _latitude = null;
+      _longitude = null;
+      _shouldClearCoordinates = true;
+    });
+  }
+
+  void _runWithSuppressedLocationChangeTracking(VoidCallback action) {
+    _suppressLocationChangeTracking = true;
+    action();
+    _suppressLocationChangeTracking = false;
+  }
+
+  double? _parseLocationCoordinate(dynamic value) {
+    if (value == null) return null;
+    if (value is num) return value.toDouble();
+    return double.tryParse(value.toString().trim());
   }
 
   Future<void> _lookupPincode(String pincode) async {
@@ -606,10 +649,12 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
       final areas = result['areas'] as List<Map<String, dynamic>>? ?? [];
 
       setState(() {
-        stateController.text = result['state']?.toString() ?? '';
         _availableAreas = areas;
-        cityController.text = result['district']?.toString() ?? '';
         _selectedArea = areas.isNotEmpty ? areas[0]['name']?.toString() : null;
+      });
+      _runWithSuppressedLocationChangeTracking(() {
+        stateController.text = result['state']?.toString() ?? '';
+        cityController.text = result['district']?.toString() ?? '';
       });
     } catch (e) {
       // Silently fail - user can enter manually
@@ -617,6 +662,68 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
       if (mounted) {
         setState(() => _isLoadingPincode = false);
       }
+    }
+  }
+
+  Future<void> _useCurrentLocation() async {
+    FocusScope.of(context).unfocus();
+    setState(() => _isLoadingCurrentLocation = true);
+    try {
+      final locationData =
+          await LocationService.instance.getCurrentLocationWithAddress();
+      final pincode = (locationData['pincode']?.toString() ?? '').trim();
+      final city = (locationData['city']?.toString() ?? '').trim();
+      final state = (locationData['state']?.toString() ?? '').trim();
+      final street = (locationData['street']?.toString() ?? '').trim();
+      final subLocality =
+          (locationData['subLocality']?.toString() ?? '').trim();
+      final detectedAddress = [street, subLocality]
+          .where((value) => value.isNotEmpty)
+          .join(', ');
+
+      _suppressPincodeLookup = true;
+      _runWithSuppressedLocationChangeTracking(() {
+        if (pincode.isNotEmpty) {
+          pincodeController.text = pincode;
+        }
+        if (city.isNotEmpty) {
+          cityController.text = city;
+        }
+        stateController.text = state;
+        if (detectedAddress.isNotEmpty) {
+          addressController.text = detectedAddress;
+        }
+      });
+      _suppressPincodeLookup = false;
+
+      if (pincode.length == 6) {
+        await _lookupPincode(pincode);
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _latitude = _parseLocationCoordinate(locationData['latitude']);
+        _longitude = _parseLocationCoordinate(locationData['longitude']);
+        _shouldClearCoordinates = false;
+        _isLoadingCurrentLocation = false;
+      });
+
+      DialogHelper.showSuccessSnackBar(
+        context,
+        'Current shop location added.',
+      );
+    } catch (e) {
+      _suppressPincodeLookup = false;
+      if (!mounted) return;
+      setState(() => _isLoadingCurrentLocation = false);
+      var message = 'Could not detect current location.';
+      final errorText = e.toString().toLowerCase();
+      if (errorText.contains('denied')) {
+        message = 'Location permission denied.';
+      } else if (errorText.contains('disabled')) {
+        message = 'Location services are disabled.';
+      }
+      DialogHelper.showErrorSnackBar(context, message);
     }
   }
 
@@ -629,8 +736,64 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return AlertDialog(
-      title: const Text('Edit Shop Profile'),
+      backgroundColor: AppColors.cardBackground,
+      surfaceTintColor: AppColors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+        side: const BorderSide(color: AppColors.borderMid),
+      ),
+      titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+      contentPadding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+      actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      title: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        decoration: BoxDecoration(
+          color: AppColors.highlight,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppColors.borderMid),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: AppColors.accent.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.storefront_outlined,
+                color: AppColors.accent,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Edit Shop Profile',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Update the customer-facing details for your shop.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -650,6 +813,37 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
               ),
             ),
             const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: _isLoadingCurrentLocation ? null : _useCurrentLocation,
+                icon: _isLoadingCurrentLocation
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.my_location_outlined),
+                label: Text(
+                  _isLoadingCurrentLocation
+                      ? 'Detecting current shop location...'
+                      : 'Use current shop location',
+                ),
+              ),
+            ),
+            if (_latitude != null && _longitude != null)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(
+                    'Coordinates will be saved with this profile.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                  ),
+                ),
+              ),
             PincodeLocationSection(
               pincodeController: pincodeController,
               cityController: cityController,
@@ -717,6 +911,14 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context, null),
+          style: TextButton.styleFrom(
+            foregroundColor: AppColors.textSecondary,
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+              side: const BorderSide(color: AppColors.borderMid),
+            ),
+          ),
           child: const Text('Cancel'),
         ),
         ElevatedButton(
@@ -726,10 +928,21 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
               'address': addressController.text,
               'pincode': pincodeController.text,
               'city': cityController.text,
+              'latitude': _latitude,
+              'longitude': _longitude,
               'category': _selectedCategory ?? '',
               'description': descriptionController.text,
+              'clearLocationCoordinates': _shouldClearCoordinates,
             });
           },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.accent,
+            foregroundColor: AppColors.surface,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+          ),
           child: const Text('Save'),
         ),
       ],

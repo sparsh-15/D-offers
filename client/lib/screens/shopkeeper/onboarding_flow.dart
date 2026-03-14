@@ -6,6 +6,7 @@ import '../../core/utils/dialog_helper.dart';
 import '../../services/auth_service.dart';
 import '../../services/subscription_service.dart';
 import '../../services/auth_store.dart';
+import '../../services/location_service.dart';
 import '../../models/shopkeeper_profile_model.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/gradient_card.dart';
@@ -504,7 +505,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   }
 
   Future<void> _openProfileDialog() async {
-    final result = await showDialog<Map<String, String>?>(
+    final result = await showDialog<Map<String, dynamic>?>(
       context: context,
       builder: (context) => _ProfileDialog(profile: _profile),
     );
@@ -533,12 +534,16 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         city: result['city']?.trim().isEmpty ?? true
             ? null
             : result['city']!.trim(),
+        latitude: result['latitude'] as double?,
+        longitude: result['longitude'] as double?,
         category: result['category']?.trim().isEmpty ?? true
             ? null
             : result['category']!.trim(),
         description: result['description']?.trim().isEmpty ?? true
             ? null
             : result['description']!.trim(),
+        clearLocationCoordinates:
+          result['clearLocationCoordinates'] as bool? ?? false,
       );
       if (!mounted) return;
       try {
@@ -591,10 +596,16 @@ class _ProfileDialogState extends State<_ProfileDialog> {
 
   bool _isLoadingPincode = false;
   bool _isLoadingCategories = true;
+  bool _isLoadingCurrentLocation = false;
   List<Map<String, dynamic>> _availableAreas = [];
   List<Map<String, dynamic>> _categories = [];
   String? _selectedArea;
   String? _selectedCategory;
+  double? _latitude;
+  double? _longitude;
+  bool _shouldClearCoordinates = false;
+  bool _suppressLocationChangeTracking = false;
+  bool _suppressPincodeLookup = false;
 
   @override
   void initState() {
@@ -609,10 +620,15 @@ class _ProfileDialogState extends State<_ProfileDialog> {
     stateController = TextEditingController();
     descriptionController =
         TextEditingController(text: widget.profile?.description ?? '');
+    _latitude = widget.profile?.latitude;
+    _longitude = widget.profile?.longitude;
 
     _selectedCategory = widget.profile?.category;
 
     pincodeController.addListener(_onPincodeChanged);
+    pincodeController.addListener(_onLocationFieldEdited);
+    cityController.addListener(_onLocationFieldEdited);
+    addressController.addListener(_onLocationFieldEdited);
     _loadCategories();
   }
 
@@ -657,6 +673,9 @@ class _ProfileDialogState extends State<_ProfileDialog> {
   @override
   void dispose() {
     pincodeController.removeListener(_onPincodeChanged);
+    pincodeController.removeListener(_onLocationFieldEdited);
+    cityController.removeListener(_onLocationFieldEdited);
+    addressController.removeListener(_onLocationFieldEdited);
     shopNameController.dispose();
     addressController.dispose();
     pincodeController.dispose();
@@ -667,17 +686,43 @@ class _ProfileDialogState extends State<_ProfileDialog> {
   }
 
   void _onPincodeChanged() {
+    if (_suppressPincodeLookup) return;
     final pincode = pincodeController.text;
     if (pincode.length == 6) {
       _lookupPincode(pincode);
     } else {
-      setState(() {
-        _availableAreas = [];
-        _selectedArea = null;
+      _runWithSuppressedLocationChangeTracking(() {
+        setState(() {
+          _availableAreas = [];
+          _selectedArea = null;
+        });
+        cityController.clear();
+        stateController.clear();
       });
-      cityController.clear();
-      stateController.clear();
     }
+  }
+
+  void _onLocationFieldEdited() {
+    if (_suppressLocationChangeTracking) return;
+    if (_latitude == null && _longitude == null) return;
+
+    setState(() {
+      _latitude = null;
+      _longitude = null;
+      _shouldClearCoordinates = true;
+    });
+  }
+
+  void _runWithSuppressedLocationChangeTracking(VoidCallback action) {
+    _suppressLocationChangeTracking = true;
+    action();
+    _suppressLocationChangeTracking = false;
+  }
+
+  double? _parseLocationCoordinate(dynamic value) {
+    if (value == null) return null;
+    if (value is num) return value.toDouble();
+    return double.tryParse(value.toString().trim());
   }
 
   Future<void> _lookupPincode(String pincode) async {
@@ -689,10 +734,12 @@ class _ProfileDialogState extends State<_ProfileDialog> {
       final areas = result['areas'] as List<Map<String, dynamic>>? ?? [];
 
       setState(() {
-        stateController.text = result['state']?.toString() ?? '';
         _availableAreas = areas;
-        cityController.text = result['district']?.toString() ?? '';
         _selectedArea = areas.isNotEmpty ? areas[0]['name']?.toString() : null;
+      });
+      _runWithSuppressedLocationChangeTracking(() {
+        stateController.text = result['state']?.toString() ?? '';
+        cityController.text = result['district']?.toString() ?? '';
       });
     } catch (e) {
       // Silently fail
@@ -700,6 +747,68 @@ class _ProfileDialogState extends State<_ProfileDialog> {
       if (mounted) {
         setState(() => _isLoadingPincode = false);
       }
+    }
+  }
+
+  Future<void> _useCurrentLocation() async {
+    FocusScope.of(context).unfocus();
+    setState(() => _isLoadingCurrentLocation = true);
+    try {
+      final locationData =
+          await LocationService.instance.getCurrentLocationWithAddress();
+      final pincode = (locationData['pincode']?.toString() ?? '').trim();
+      final city = (locationData['city']?.toString() ?? '').trim();
+      final state = (locationData['state']?.toString() ?? '').trim();
+      final street = (locationData['street']?.toString() ?? '').trim();
+      final subLocality =
+          (locationData['subLocality']?.toString() ?? '').trim();
+      final detectedAddress = [street, subLocality]
+          .where((value) => value.isNotEmpty)
+          .join(', ');
+
+      _suppressPincodeLookup = true;
+      _runWithSuppressedLocationChangeTracking(() {
+        if (pincode.isNotEmpty) {
+          pincodeController.text = pincode;
+        }
+        if (city.isNotEmpty) {
+          cityController.text = city;
+        }
+        stateController.text = state;
+        if (detectedAddress.isNotEmpty) {
+          addressController.text = detectedAddress;
+        }
+      });
+      _suppressPincodeLookup = false;
+
+      if (pincode.length == 6) {
+        await _lookupPincode(pincode);
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _latitude = _parseLocationCoordinate(locationData['latitude']);
+        _longitude = _parseLocationCoordinate(locationData['longitude']);
+        _shouldClearCoordinates = false;
+        _isLoadingCurrentLocation = false;
+      });
+
+      DialogHelper.showSuccessSnackBar(
+        context,
+        'Current shop location added.',
+      );
+    } catch (e) {
+      _suppressPincodeLookup = false;
+      if (!mounted) return;
+      setState(() => _isLoadingCurrentLocation = false);
+      var message = 'Could not detect current location.';
+      final errorText = e.toString().toLowerCase();
+      if (errorText.contains('denied')) {
+        message = 'Location permission denied.';
+      } else if (errorText.contains('disabled')) {
+        message = 'Location services are disabled.';
+      }
+      DialogHelper.showErrorSnackBar(context, message);
     }
   }
 
@@ -726,6 +835,37 @@ class _ProfileDialogState extends State<_ProfileDialog> {
               ),
             ),
             const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: _isLoadingCurrentLocation ? null : _useCurrentLocation,
+                icon: _isLoadingCurrentLocation
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.my_location_outlined),
+                label: Text(
+                  _isLoadingCurrentLocation
+                      ? 'Detecting current shop location...'
+                      : 'Use current shop location',
+                ),
+              ),
+            ),
+            if (_latitude != null && _longitude != null)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Text(
+                    'Coordinates will be saved with this profile.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                  ),
+                ),
+              ),
             PincodeLocationSection(
               pincodeController: pincodeController,
               cityController: cityController,
@@ -788,8 +928,11 @@ class _ProfileDialogState extends State<_ProfileDialog> {
               'address': addressController.text,
               'pincode': pincodeController.text,
               'city': cityController.text,
+              'latitude': _latitude,
+              'longitude': _longitude,
               'category': _selectedCategory ?? '',
               'description': descriptionController.text,
+              'clearLocationCoordinates': _shouldClearCoordinates,
             });
           },
           child: const Text('Save'),

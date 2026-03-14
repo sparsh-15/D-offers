@@ -1,6 +1,10 @@
 const { prisma } = require('../db/prisma');
 const { resolvePgId } = require('./idResolver');
 
+function hasOwn(object, key) {
+  return Object.prototype.hasOwnProperty.call(object, key);
+}
+
 function toProfileShape(profile) {
   if (!profile) return null;
   return {
@@ -11,6 +15,8 @@ function toProfileShape(profile) {
     address: profile.address,
     pincode: profile.pincode,
     city: profile.city,
+    latitude: profile.latitude?.toString() ?? null,
+    longitude: profile.longitude?.toString() ?? null,
     category: profile.category,
     description: profile.description,
     shopImages: profile.shopImages || [],
@@ -45,6 +51,8 @@ async function upsertByUserId(userId, update) {
     address: update.address || user?.address || null,
     pincode: update.pincode || user?.pincode || null,
     city: update.city || user?.city || null,
+    ...(hasOwn(update, 'latitude') ? { latitude: update.latitude } : {}),
+    ...(hasOwn(update, 'longitude') ? { longitude: update.longitude } : {}),
     category: update.category || null,
     description: update.description || null,
     shopImages: update.shopImages || [],
@@ -57,6 +65,8 @@ async function upsertByUserId(userId, update) {
     address: update.address || null,
     pincode: update.pincode || null,
     city: update.city || null,
+    ...(hasOwn(update, 'latitude') ? { latitude: update.latitude } : {}),
+    ...(hasOwn(update, 'longitude') ? { longitude: update.longitude } : {}),
     category: update.category || null,
     description: update.description || null,
     ...(update.shopImages !== undefined ? { shopImages: update.shopImages } : {}),

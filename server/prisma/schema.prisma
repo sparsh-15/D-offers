@@ -200,6 +200,8 @@ model ShopkeeperProfile {
   address     String?
   pincode     String?
   city        String?
+  latitude    Decimal? @db.Decimal(9, 6)
+  longitude   Decimal? @db.Decimal(9, 6)
   category    String?
   description String?
   shopImages  String[] @default([]) @map("shop_images")

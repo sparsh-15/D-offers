@@ -298,10 +298,13 @@ class AuthService {
     String? address,
     String? pincode,
     String? city,
+    double? latitude,
+    double? longitude,
     String? category,
     String? description,
     List<String>? shopImages,
     String? logoUrl,
+    bool clearLocationCoordinates = false,
   }) async {
     final token = AuthStore.token;
     if (token == null) throw Exception('Not authenticated');
@@ -317,10 +320,13 @@ class AuthService {
         if (address != null) 'address': address,
         if (pincode != null) 'pincode': pincode,
         if (city != null) 'city': city,
+        if (latitude != null) 'latitude': latitude,
+        if (longitude != null) 'longitude': longitude,
         if (category != null) 'category': category,
         if (description != null) 'description': description,
         if (shopImages != null) 'shopImages': shopImages,
         if (logoUrl != null) 'logoUrl': logoUrl,
+        if (clearLocationCoordinates) 'clearLocationCoordinates': true,
       }),
     );
     final data = _handleResponse(resp) as Map<String, dynamic>;

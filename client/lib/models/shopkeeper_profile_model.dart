@@ -5,12 +5,23 @@ class ShopkeeperProfileModel {
   final String address;
   final String pincode;
   final String city;
+  final double? latitude;
+  final double? longitude;
   final String category;
   final String description;
   final List<String> shopImages;
   final String? logoUrl;
   final String? ownerName;
   final String? ownerPhone;
+
+  static double? _parseCoordinate(dynamic value) {
+    if (value == null) return null;
+    if (value is num) return value.toDouble();
+
+    final normalized = value.toString().trim();
+    if (normalized.isEmpty) return null;
+    return double.tryParse(normalized);
+  }
 
   ShopkeeperProfileModel({
     required this.id,
@@ -19,6 +30,8 @@ class ShopkeeperProfileModel {
     required this.address,
     required this.pincode,
     required this.city,
+    this.latitude,
+    this.longitude,
     required this.category,
     required this.description,
     required this.shopImages,
@@ -35,6 +48,8 @@ class ShopkeeperProfileModel {
       address: json['address']?.toString() ?? '',
       pincode: json['pincode']?.toString() ?? '',
       city: json['city']?.toString() ?? '',
+        latitude: _parseCoordinate(json['latitude']),
+        longitude: _parseCoordinate(json['longitude']),
       category: json['category']?.toString() ?? '',
       description: json['description']?.toString() ?? '',
       shopImages: (json['shopImages'] as List<dynamic>? ?? const [])

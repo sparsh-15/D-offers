@@ -5,6 +5,35 @@ const { getAvailableCredits } = require('../services/aiWalletService');
 
 const MAX_SHOP_IMAGES = 10;
 
+function normalizeOptionalCoordinate(value, fieldName) {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+
+  const normalizedValue = typeof value === 'string' ? value.trim() : value;
+  if (normalizedValue === '') return null;
+
+  const numericValue = Number(normalizedValue);
+  if (!Number.isFinite(numericValue)) {
+    const err = new Error(`${fieldName} must be a valid number`);
+    err.statusCode = 400;
+    throw err;
+  }
+
+  if (fieldName === 'latitude' && (numericValue < -90 || numericValue > 90)) {
+    const err = new Error('latitude must be between -90 and 90');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  if (fieldName === 'longitude' && (numericValue < -180 || numericValue > 180)) {
+    const err = new Error('longitude must be between -180 and 180');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  return numericValue;
+}
+
 function normalizeShopImages(images) {
   if (images === undefined) return undefined;
   if (!Array.isArray(images)) {
@@ -60,14 +89,42 @@ async function getProfile(req, res, next) {
 
 async function upsertProfile(req, res, next) {
   try {
-    const { shopName, address, pincode, city, category, description, shopImages, logoUrl } = req.body;
+    const {
+      shopName,
+      address,
+      pincode,
+      city,
+      category,
+      description,
+      shopImages,
+      logoUrl,
+      clearLocationCoordinates,
+    } = req.body;
     if (!shopName || typeof shopName !== 'string' || !shopName.trim()) {
       const err = new Error('shopName is required');
       err.statusCode = 400;
       return next(err);
     }
+
+    const shouldClearLocationCoordinates =
+      clearLocationCoordinates === true || clearLocationCoordinates === 'true';
+    const latitude = normalizeOptionalCoordinate(req.body.latitude, 'latitude');
+    const longitude = normalizeOptionalCoordinate(req.body.longitude, 'longitude');
+    if (shouldClearLocationCoordinates && (latitude !== undefined || longitude !== undefined)) {
+      const err = new Error('clearLocationCoordinates cannot be combined with latitude or longitude');
+      err.statusCode = 400;
+      return next(err);
+    }
+
     const normalizedShopImages = normalizeShopImages(shopImages);
     const normalizedLogoUrl = normalizeLogoUrl(logoUrl);
+    const coordinateUpdate = shouldClearLocationCoordinates
+      ? { latitude: null, longitude: null }
+      : {
+          ...(latitude !== undefined ? { latitude } : {}),
+          ...(longitude !== undefined ? { longitude } : {}),
+        };
+
     const profile = await shopkeeperProfileRepository.upsertByUserId(req.user.userId, {
       shopName: shopName.trim(),
       address: address != null ? String(address).trim() : undefined,
@@ -75,6 +132,7 @@ async function upsertProfile(req, res, next) {
       city: city != null ? String(city).trim() : undefined,
       category: category != null ? String(category).trim() : undefined,
       description: description != null ? String(description).trim() : undefined,
+      ...coordinateUpdate,
       ...(normalizedShopImages !== undefined ? { shopImages: normalizedShopImages } : {}),
       ...(normalizedLogoUrl !== undefined ? { logoUrl: normalizedLogoUrl } : {}),
     });
@@ -168,6 +226,8 @@ async function getPublicProfile(req, res, next) {
         address: profile.address || '',
         pincode: profile.pincode || '',
         city: profile.city || '',
+        latitude: profile.latitude?.toString() ?? null,
+        longitude: profile.longitude?.toString() ?? null,
         category: profile.category || '',
         description: profile.description || '',
         shopImages: profile.shopImages || [],
