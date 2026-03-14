@@ -68,9 +68,19 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 // ── Headline ──────────────────────────────────────────────────
                 
-                Text(
-                  'Welcome to ${AppStrings.appName}',
-                  style: theme.textTheme.displayMedium,
+                Text.rich(
+                  TextSpan(
+                    style: theme.textTheme.displayMedium,
+                    children: [
+                      const TextSpan(text: 'Welcome to '),
+                      TextSpan(
+                        text: AppStrings.appName,
+                        style: theme.textTheme.displayMedium?.copyWith(
+                          color: AppColors.accent,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: AppTokens.spaceSM),
                 Text(

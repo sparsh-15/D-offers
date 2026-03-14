@@ -59,10 +59,10 @@ creating offers image should be open
 
 
 
-offer details ....shopkeeper location
-in login page hyper local ek hi word hai 
-welcome to MyOffers color green login page
-SHopkeeper signup page - read full terms, of MyOffers X
+offer details ....shopkeeper location ---doine
+in login page hyper local ek hi word hai ---done
+welcome to MyOffers color green login page --- done 
+SHopkeeper signup page - read full terms, of MyOffers X -- done
     shop registration certificate/gst no/ electricity bill not mandatory, adhaar no , pan no.
     Namaskaar hand closing emoji on shopkeeper dashboard, 
 

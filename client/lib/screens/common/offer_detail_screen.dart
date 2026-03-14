@@ -199,14 +199,31 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
       'https://www.google.com/maps/search/?api=1&query=$latitude,$longitude',
     );
 
-    if (await canLaunchUrl(geoUri)) {
-      await launchUrl(geoUri);
-      return;
-    }
+    try {
+      final launchedGeo = await launchUrl(
+        geoUri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (launchedGeo) return;
 
-    if (await canLaunchUrl(googleMapsUri)) {
-      await launchUrl(googleMapsUri, mode: LaunchMode.externalApplication);
+      final launchedGoogleMaps = await launchUrl(
+        googleMapsUri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (launchedGoogleMaps) return;
+    } on MissingPluginException {
+      await Clipboard.setData(ClipboardData(text: googleMapsUri.toString()));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Maps plugin is not ready in this app session. Restart the app once. Link copied.',
+          ),
+        ),
+      );
       return;
+    } catch (_) {
+      // Fall through to the generic error message below.
     }
 
     if (!mounted) return;

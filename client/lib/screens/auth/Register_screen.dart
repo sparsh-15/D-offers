@@ -557,29 +557,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                                   decoration: TextDecoration.underline,
                                                 ),
                                               ),
-                                              TextSpan(text: ' of ${AppStrings.appName}.'),
+                                             
                                             ],
                                           ),
                                         ),
                                         const SizedBox(height: AppTokens.spaceXS),
-                                        TextButton(
-                                          onPressed: () {
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (_) => const TermsScreen(),
-                                              ),
-                                            );
-                                          },
-                                          style: TextButton.styleFrom(
-                                            padding: EdgeInsets.zero,
-                                            minimumSize: const Size(0, 0),
-                                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                            alignment: Alignment.centerLeft,
-                                          ),
-                                          child: const Text('Read full terms'),
-                                        ),
-                                      ],
+                                          ],
                                     ),
                                   ),
                                 ],
