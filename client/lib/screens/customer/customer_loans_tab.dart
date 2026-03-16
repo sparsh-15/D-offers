@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_design_tokens.dart';
@@ -8,6 +11,7 @@ import '../../core/utils/theme_helper.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_text_field.dart';
 import '../../services/loan_service.dart';
+import '../../services/upload_service.dart';
 
 class CustomerLoansTab extends StatefulWidget {
   const CustomerLoansTab({super.key});
@@ -28,9 +32,11 @@ class _CustomerLoansTabState extends State<CustomerLoansTab> {
 
   String? _employmentType;
   String? _accountType;
+  String? _bankStatementUrl;
   bool _cibilConsent = false;
   bool _communicationConsent = true;
   bool _isSubmitting = false;
+  bool _isUploadingBankStatement = false;
 
   @override
   void dispose() {
@@ -53,6 +59,13 @@ class _CustomerLoansTabState extends State<CustomerLoansTab> {
       );
       return;
     }
+    if (_bankStatementUrl == null || _bankStatementUrl!.isEmpty) {
+      DialogHelper.showErrorSnackBar(
+        context,
+        'Please upload your last 3-month bank statement.',
+      );
+      return;
+    }
 
     setState(() => _isSubmitting = true);
 
@@ -67,6 +80,7 @@ class _CustomerLoansTabState extends State<CustomerLoansTab> {
         bankName: _bankNameController.text,
         accountType: _accountType!,
         last4AccountDigits: _accountNumberController.text,
+        bankStatementUrl: _bankStatementUrl!,
         cibilConsent: _cibilConsent,
         communicationConsent: _communicationConsent,
       );
@@ -86,6 +100,7 @@ class _CustomerLoansTabState extends State<CustomerLoansTab> {
         setState(() {
           _employmentType = null;
           _accountType = null;
+          _bankStatementUrl = null;
           _cibilConsent = false;
           _communicationConsent = true;
         });
@@ -98,6 +113,38 @@ class _CustomerLoansTabState extends State<CustomerLoansTab> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _isSubmitting = false);
+      DialogHelper.showErrorSnackBar(context, e.toString());
+    }
+  }
+
+  Future<void> _uploadBankStatement() async {
+    if (_isUploadingBankStatement) return;
+
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 90,
+      maxWidth: 2000,
+      maxHeight: 2000,
+    );
+
+    if (picked == null || !mounted) return;
+
+    setState(() => _isUploadingBankStatement = true);
+    try {
+      final url = await UploadService.instance.uploadImage(File(picked.path));
+      if (!mounted) return;
+      setState(() {
+        _bankStatementUrl = url;
+        _isUploadingBankStatement = false;
+      });
+      DialogHelper.showSuccessSnackBar(
+        context,
+        'Bank statement uploaded successfully.',
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isUploadingBankStatement = false);
       DialogHelper.showErrorSnackBar(context, e.toString());
     }
   }
@@ -359,6 +406,84 @@ class _CustomerLoansTabState extends State<CustomerLoansTab> {
                               }
                               return null;
                             },
+                          ),
+                          const SizedBox(height: AppTokens.spaceLG),
+                          _SectionHeader(
+                            title: 'Bank statement',
+                            subtitle:
+                                'Upload your latest 3-month bank statement image.',
+                          ),
+                          const SizedBox(height: AppTokens.spaceMD),
+                          Container(
+                            padding: const EdgeInsets.all(AppTokens.spaceMD),
+                            decoration: BoxDecoration(
+                              color: AppColors.elevated,
+                              borderRadius: BorderRadius.circular(AppTokens.radiusLG),
+                              border: Border.all(color: AppColors.borderMid),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                if (_bankStatementUrl != null)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: AppTokens.spaceSM,
+                                      vertical: AppTokens.spaceXS,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.success.withValues(alpha: 0.12),
+                                      borderRadius:
+                                          BorderRadius.circular(AppTokens.radiusMD),
+                                      border: Border.all(
+                                        color: AppColors.success.withValues(alpha: 0.35),
+                                      ),
+                                    ),
+                                    child: const Row(
+                                      children: [
+                                        Icon(
+                                          Icons.check_circle_outline_rounded,
+                                          color: AppColors.success,
+                                          size: 18,
+                                        ),
+                                        SizedBox(width: AppTokens.spaceXS),
+                                        Expanded(
+                                          child: Text(
+                                            'Bank statement uploaded',
+                                            style: TextStyle(
+                                              color: AppColors.textPrimary,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                if (_bankStatementUrl != null)
+                                  const SizedBox(height: AppTokens.spaceSM),
+                                OutlinedButton.icon(
+                                  onPressed:
+                                      _isUploadingBankStatement ? null : _uploadBankStatement,
+                                  icon: _isUploadingBankStatement
+                                      ? const SizedBox(
+                                          width: 16,
+                                          height: 16,
+                                          child: CircularProgressIndicator(strokeWidth: 2),
+                                        )
+                                      : Icon(
+                                          _bankStatementUrl == null
+                                              ? Icons.upload_file_rounded
+                                              : Icons.refresh_rounded,
+                                        ),
+                                  label: Text(
+                                    _isUploadingBankStatement
+                                        ? 'Uploading...'
+                                        : _bankStatementUrl == null
+                                            ? 'Upload bank statement'
+                                            : 'Replace bank statement',
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                           const SizedBox(height: AppTokens.spaceLG),
                           Container(

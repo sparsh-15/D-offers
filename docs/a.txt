@@ -74,10 +74,10 @@ banner option remove  ~~~ done
 campaign schedule ~~~ done
 
 
-loan last 3 statement 
+loan last 3 statement ~~~ done
 
 
-give also a option of citywise in which thre are two dropdowns first select state then from that state all city dropdown 
-and for statewise also show dropdown of state 
-
-while viewing campaing details there are some msising details like state is empty....and like this 
+give also a option of citywise in which thre are two dropdowns first select state then from that state all city dropdown ~~~ done
+and for statewise also show dropdown of state ~~~ done
+TODO:
+while viewing campaing details there are some msising details like state is empty....and like this ~~~ done

@@ -46,6 +46,7 @@ class LoanService {
     required String bankName,
     required String accountType,
     required String last4AccountDigits,
+    required String bankStatementUrl,
     required bool cibilConsent,
     required bool communicationConsent,
   }) async {
@@ -73,6 +74,7 @@ class LoanService {
             'bankName': bankName,
             'accountType': accountType,
             'last4AccountDigits': last4AccountDigits,
+            'bankStatementUrl': bankStatementUrl,
             'cibilConsent': cibilConsent,
             'communicationConsent': communicationConsent,
           }),
@@ -194,6 +196,7 @@ class LoanApplication {
   final String bankName;
   final String accountType;
   final String last4AccountDigits;
+  final String? bankStatementUrl;
   final bool cibilConsent;
   final bool communicationConsent;
   final String status;
@@ -213,6 +216,7 @@ class LoanApplication {
     required this.bankName,
     required this.accountType,
     required this.last4AccountDigits,
+    this.bankStatementUrl,
     required this.cibilConsent,
     required this.communicationConsent,
     required this.status,
@@ -234,6 +238,7 @@ class LoanApplication {
       bankName: json['bankName'] ?? '',
       accountType: json['accountType'] ?? '',
       last4AccountDigits: json['last4AccountDigits'] ?? '',
+      bankStatementUrl: json['bankStatementUrl'],
       cibilConsent: json['cibilConsent'] ?? false,
       communicationConsent: json['communicationConsent'] ?? false,
       status: json['status'] ?? 'pending',

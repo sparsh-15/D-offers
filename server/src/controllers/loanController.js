@@ -13,16 +13,24 @@ async function submitLoanApplication(req, res, next) {
       bankName,
       accountType,
       last4AccountDigits,
+      bankStatementUrl,
       cibilConsent,
       communicationConsent,
     } = req.body;
 
     // Validate required fields
     if (!fullName || !mobileNumber || !employmentType || !monthlySalaryIncome || 
-        !loanAmount || !panNumber || !bankName || !accountType || !last4AccountDigits) {
+        !loanAmount || !panNumber || !bankName || !accountType || !last4AccountDigits || !bankStatementUrl) {
       return res.status(400).json({
         success: false,
         message: 'All fields are required',
+      });
+    }
+
+    if (typeof bankStatementUrl !== 'string' || bankStatementUrl.trim().length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: 'Valid bank statement upload is required',
       });
     }
 
@@ -89,6 +97,7 @@ async function submitLoanApplication(req, res, next) {
         bankName: bankName.trim(),
         accountType,
         last4AccountDigits: last4AccountDigits.trim(),
+        bankStatementUrl: bankStatementUrl.trim(),
         cibilConsent,
         communicationConsent,
         status: 'pending',

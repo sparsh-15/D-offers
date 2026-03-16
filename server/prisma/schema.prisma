@@ -673,6 +673,7 @@ model LoanApplication {
   bankName                String   @map("bank_name")
   accountType             String   @map("account_type")
   last4AccountDigits      String   @map("last_4_account_digits")
+  bankStatementUrl        String?  @map("bank_statement_url")
   cibilConsent            Boolean  @default(false) @map("cibil_consent")
   communicationConsent    Boolean  @default(false) @map("communication_consent")
   status                  String   @default("pending")
