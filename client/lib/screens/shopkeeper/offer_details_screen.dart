@@ -8,6 +8,7 @@ import '../../services/upload_service.dart';
 import '../../services/shopkeeper_ai_service.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/dialog_helper.dart';
+import 'subscription_plans_screen.dart';
 
 class OfferDetailsScreen extends StatefulWidget {
   final OfferModel? offer;
@@ -163,6 +164,40 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
     final m = date.month.toString().padLeft(2, '0');
     final d = date.day.toString().padLeft(2, '0');
     return '$y-$m-$d';
+  }
+
+  Future<void> _showUpgradeDialog(String title, String message) async {
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Later'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final shopCategory = (_selectedCategory ??
+                      _categoryController.text.trim())
+                  .trim();
+              Navigator.of(context).pop();
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => SubscriptionPlansScreen(
+                    shopCategory:
+                        shopCategory.isEmpty ? 'all' : shopCategory,
+                  ),
+                ),
+              );
+            },
+            child: const Text('Upgrade'),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildSubscriptionSummary(BuildContext context) {
@@ -954,13 +989,20 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
                                   );
                                 } catch (e) {
                                   if (!mounted) return;
+                                  final message = e
+                                      .toString()
+                                      .replaceFirst('Exception: ', '');
+                                  final lower = message.toLowerCase();
+                                  if (lower.contains('limit') ||
+                                      lower.contains('credit')) {
+                                    await _showUpgradeDialog(
+                                      'AI Banner Limit Reached',
+                                      '$message Upgrade to continue creating AI banners.',
+                                    );
+                                  }
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: Text(
-                                        e
-                                            .toString()
-                                            .replaceFirst('Exception: ', ''),
-                                      ),
+                                      content: Text(message),
                                       duration:
                                           const Duration(seconds: 3),
                                     ),

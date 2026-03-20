@@ -512,7 +512,9 @@ class _PlansManagementTabState extends State<PlansManagementTab> {
     String selectedTier = (plan?['tier']?.toString().trim().isNotEmpty == true)
         ? (plan!['tier'] as String)
         : 'silver';
-    String selectedRankingTier = selectedTier == 'silver'
+    String selectedRankingTier = selectedTier == 'trial'
+      ? 'normal'
+      : selectedTier == 'silver'
         ? 'normal'
         : selectedTier == 'gold'
             ? 'top3'
@@ -647,7 +649,7 @@ class _PlansManagementTabState extends State<PlansManagementTab> {
                         value: selectedTier,
                         decoration: InputDecoration(
                           labelText: 'Tier *',
-                          hintText: 'Silver / Gold / Platinum',
+                          hintText: 'Trial / Silver / Gold / Platinum',
                           helperText: 'Sets ranking & AI tier',
                           helperStyle: mutedStyle,
                           helperMaxLines: 1,
@@ -656,6 +658,7 @@ class _PlansManagementTabState extends State<PlansManagementTab> {
                         isExpanded: true,
                         menuMaxHeight: 220,
                         items: const [
+                          DropdownMenuItem(value: 'trial', child: Text('Trial')),
                           DropdownMenuItem(value: 'silver', child: Text('Silver')),
                           DropdownMenuItem(value: 'gold', child: Text('Gold')),
                           DropdownMenuItem(value: 'platinum', child: Text('Platinum')),
@@ -664,7 +667,8 @@ class _PlansManagementTabState extends State<PlansManagementTab> {
                           if (v == null) return;
                           setDialogState(() {
                             selectedTier = v;
-                            if (v == 'silver') { selectedRankingTier = 'normal'; selectedAiCreditTier = 'silver'; }
+                            if (v == 'trial') { selectedRankingTier = 'normal'; selectedAiCreditTier = 'silver'; }
+                            else if (v == 'silver') { selectedRankingTier = 'normal'; selectedAiCreditTier = 'silver'; }
                             else if (v == 'gold') { selectedRankingTier = 'top3'; selectedAiCreditTier = 'gold'; }
                             else { selectedRankingTier = 'priority'; selectedAiCreditTier = 'platinum'; }
                           });

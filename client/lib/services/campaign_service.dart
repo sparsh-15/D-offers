@@ -6,6 +6,21 @@ import '../models/campaign_model.dart';
 import 'api_config.dart';
 import 'auth_store.dart';
 
+class CampaignAccessException implements Exception {
+  final String code;
+  final String message;
+  final Map<String, dynamic> details;
+
+  CampaignAccessException({
+    required this.code,
+    required this.message,
+    this.details = const {},
+  });
+
+  @override
+  String toString() => message;
+}
+
 class CampaignService {
   CampaignService._internal();
 
@@ -43,6 +58,15 @@ class CampaignService {
       if (data is Map<String, dynamic> && data['success'] == true) {
         return;
       }
+    }
+    if (response.statusCode == 403 && data is Map<String, dynamic>) {
+      throw CampaignAccessException(
+        code: data['code']?.toString() ?? 'ACCESS_DENIED',
+        message: data['message']?.toString() ?? 'Access denied',
+        details: data['details'] is Map<String, dynamic>
+            ? Map<String, dynamic>.from(data['details'] as Map<String, dynamic>)
+            : const {},
+      );
     }
     final message = data is Map<String, dynamic>
         ? data['message']?.toString() ?? 'Request failed'

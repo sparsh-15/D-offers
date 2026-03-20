@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../models/campaign_model.dart';
 import '../../services/campaign_service.dart';
+import '../../services/subscription_service.dart';
+import 'subscription_plans_screen.dart';
 
 class CampaignDetailScreen extends StatefulWidget {
   final String campaignId;
@@ -20,6 +22,7 @@ class CampaignDetailScreen extends StatefulWidget {
 
 class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
   CampaignModel? _campaign;
+  Map<String, dynamic>? _subscription;
   bool _loading = true;
   bool _paying = false;
   String? _error;
@@ -37,10 +40,16 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
       _error = null;
     });
     try {
-      final campaign = await CampaignService.instance.getCampaign(widget.campaignId);
+      final results = await Future.wait([
+        CampaignService.instance.getCampaign(widget.campaignId),
+        SubscriptionService.instance.getSubscription(),
+      ]);
+      final campaign = results[0] as CampaignModel;
+      final subscription = results[1] as Map<String, dynamic>;
       if (!mounted) return;
       setState(() {
         _campaign = campaign;
+        _subscription = subscription;
         _loading = false;
       });
     } catch (error) {
@@ -52,7 +61,77 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
     }
   }
 
+  bool get _analyticsEnabled => _subscription?['analyticsEnabled'] == true;
+
+  Future<void> _showUpgradePrompt({
+    required String title,
+    required String message,
+    List<Map<String, dynamic>> recommendations = const [],
+  }) async {
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: AppColors.elevated,
+          title: Text(title),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(message),
+              if (recommendations.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                const Text('Recommended plans:'),
+                const SizedBox(height: 8),
+                ...recommendations.take(3).map(
+                  (plan) => Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Text(
+                      '- ${plan['name'] ?? plan['planType']} (Rs ${plan['price'] ?? '-'}/month)',
+                      style: const TextStyle(color: AppColors.textSecondary),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Later'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final shopCategory = (_campaign?.shopCategory ?? '').trim();
+                Navigator.of(context).pop();
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => SubscriptionPlansScreen(
+                      shopCategory:
+                          shopCategory.isEmpty ? 'all' : shopCategory,
+                    ),
+                  ),
+                );
+              },
+              child: const Text('Upgrade'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Future<void> _launchCampaign() async {
+    final isActive = _subscription?['isActive'] == true;
+    if (!isActive) {
+      await _showUpgradePrompt(
+        title: 'Subscription Required',
+        message: 'Your trial has ended. Upgrade to continue launching campaigns.',
+      );
+      return;
+    }
+
     String paymentMethod = 'upi';
     final controller = TextEditingController();
     final confirmed = await showDialog<bool>(
@@ -127,6 +206,18 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
       setState(() => _campaign = campaign);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Campaign launched successfully.')),
+      );
+    } on CampaignAccessException catch (error) {
+      if (!mounted) return;
+      final reached = _campaign?.analytics?.totalReached ?? _campaign?.actualAudienceReached ?? 0;
+      final details = error.details;
+      final recommendations = details['recommendedPlans'] is List
+          ? List<Map<String, dynamic>>.from(details['recommendedPlans'] as List)
+          : const <Map<String, dynamic>>[];
+      await _showUpgradePrompt(
+        title: 'Upgrade to Continue',
+        message: '${error.message} Your campaign already reached $reached users. Upgrade to continue growth.',
+        recommendations: recommendations,
       );
     } catch (error) {
       if (!mounted) return;
@@ -212,6 +303,37 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                         _InfoSection(
                           title: 'Analytics',
                           children: [
+                            if (!_analyticsEnabled)
+                              Container(
+                                margin: const EdgeInsets.only(bottom: 12),
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: AppColors.warning.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: AppColors.warning.withValues(alpha: 0.5),
+                                  ),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Advanced analytics is locked on your current plan.',
+                                      style: TextStyle(fontWeight: FontWeight.w600),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    const Text('Upgrade to unlock deeper campaign insights.'),
+                                    const SizedBox(height: 8),
+                                    TextButton(
+                                      onPressed: () => _showUpgradePrompt(
+                                        title: 'Unlock Analytics',
+                                        message: 'Get full campaign analytics with a paid plan.',
+                                      ),
+                                      child: const Text('See Upgrade Options'),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             _InfoRow(
                               label: 'Scheduled at',
                               value: campaign.scheduledAt?.toLocal().toString() ?? '-',
@@ -222,15 +344,17 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                             ),
                             _InfoRow(
                               label: 'Opened',
-                              value: '${campaign.analytics?.opened ?? 0}',
+                              value: _analyticsEnabled ? '${campaign.analytics?.opened ?? 0}' : 'Upgrade required',
                             ),
                             _InfoRow(
                               label: 'Clicked',
-                              value: '${campaign.analytics?.clicked ?? 0}',
+                              value: _analyticsEnabled ? '${campaign.analytics?.clicked ?? 0}' : 'Upgrade required',
                             ),
                             _InfoRow(
                               label: 'Open rate',
-                              value: '${campaign.analytics?.openRate.toStringAsFixed(2) ?? '0.00'}%',
+                              value: _analyticsEnabled
+                                  ? '${campaign.analytics?.openRate.toStringAsFixed(2) ?? '0.00'}%'
+                                  : 'Upgrade required',
                             ),
                           ],
                         ),

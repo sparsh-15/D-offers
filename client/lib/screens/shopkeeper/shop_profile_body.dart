@@ -334,8 +334,10 @@ class _ShopProfileBodyState extends State<ShopProfileBody> {
     }
     final planSnapshot =
         sub['planSnapshot'] as Map<String, dynamic>? ?? <String, dynamic>{};
-    final planName =
-        planSnapshot['displayName'] ?? planSnapshot['name'] ?? 'Plan';
+    final isTrial = sub['trial'] == true || planSnapshot['isTrial'] == true;
+    final planName = isTrial
+      ? (planSnapshot['trialDisplayName'] ?? 'Free Trial')
+      : (planSnapshot['displayName'] ?? planSnapshot['name'] ?? 'Plan');
     final status = (sub['status'] ?? 'inactive').toString();
     final Object? maxOffers = planSnapshot['maxOffers'];
     final Object? monthlyAiLimit = planSnapshot['monthlyAiLimit'];
