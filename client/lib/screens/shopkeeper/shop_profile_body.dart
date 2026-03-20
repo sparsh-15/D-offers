@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../core/constants/app_colors.dart';
-import '../../core/constants/app_strings.dart';
 import '../../core/utils/dialog_helper.dart';
 import '../../services/auth_service.dart';
 import '../../services/auth_store.dart';
@@ -23,6 +22,8 @@ import '../common/help_support_page.dart';
 import '../common/about_page.dart';
 import '../common/customer_experience_shell.dart';
 import 'shop_business_details_page.dart';
+import 'current_plan_details_page.dart';
+import 'subscription_plans_screen.dart';
 
 class ShopProfileBody extends StatefulWidget {
   final Map<String, dynamic>? subscription;
@@ -111,56 +112,113 @@ class _ShopProfileBodyState extends State<ShopProfileBody> {
             ThemeToggleButton(),
           ],
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 12),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Column(
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      ShopLogoWidget(
-                        logoUrl: _profile?.logoUrl,
-                        radius: 40,
-                        isEditable: true,
-                        onTap: _uploadLogo,
-                      ),
-                      if (_uploadingLogo)
-                        const Positioned.fill(
-                          child: ColoredBox(
-                            color: Color(0x66000000),
-                            child: Center(
-                              child: SizedBox(
-                                width: 28,
-                                height: 28,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                  Expanded(
+                    child: Column(
+                      children: [
+                        Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            ShopLogoWidget(
+                              logoUrl: _profile?.logoUrl,
+                              radius: 38,
+                              isEditable: true,
+                              onTap: _uploadLogo,
+                            ),
+                            if (_uploadingLogo)
+                              const Positioned.fill(
+                                child: ColoredBox(
+                                  color: Color(0x66000000),
+                                  child: Center(
+                                    child: SizedBox(
+                                      width: 24,
+                                      height: 24,
+                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                    ),
+                                  ),
+                                ),
                               ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          name,
+                          style: Theme.of(context).textTheme.titleLarge,
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (_profile?.category.isNotEmpty == true)
+                          Text(
+                            _profile!.category,
+                            style: Theme.of(context).textTheme.bodySmall,
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Container(
+                      margin: const EdgeInsets.only(top: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: AppColors.elevated,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.borderSubtle),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Customer View',
+                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Browse app as customer',
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                        color: AppColors.textSecondary,
+                                      ),
+                                ),
+                              ],
                             ),
                           ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    name,
-                    style: Theme.of(context).textTheme.titleLarge,
-                    textAlign: TextAlign.center,
-                  ),
-                  if (_profile?.category.isNotEmpty == true)
-                    Text(
-                      _profile!.category,
-                      style: Theme.of(context).textTheme.bodyMedium,
-                      textAlign: TextAlign.center,
+                          Switch.adaptive(
+                            value: true,
+                            onChanged: (_) {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const CustomerExperienceShell(
+                                    sourceLabel: 'Shopkeeper',
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
                     ),
+                  ),
                 ],
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildCompactSubscription(context),
-              ),
+              const SizedBox(height: 12),
+              _buildCompactSubscription(context),
             ],
           ),
         ),
@@ -171,84 +229,6 @@ class _ShopProfileBodyState extends State<ShopProfileBody> {
               : ListView(
                   children: [
                     const ThemeToggle(),
-                    Card(
-                      margin: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      color: AppColors.elevated,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Customer view',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodyMedium
-                                        ?.copyWith(
-                                          color: AppColors.textPrimary,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    'Switch to browse ${AppStrings.appName} as a customer',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodySmall
-                                        ?.copyWith(
-                                          color: AppColors.textSecondary,
-                                        ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Theme(
-                              data: Theme.of(context).copyWith(
-                                switchTheme: SwitchThemeData(
-                                  thumbColor:
-                                      WidgetStateProperty.resolveWith((states) {
-                                    if (states.contains(WidgetState.selected)) {
-                                      return AppColors.accent;
-                                    }
-                                    return AppColors.textMuted;
-                                  }),
-                                  trackColor:
-                                      WidgetStateProperty.resolveWith((states) {
-                                    if (states.contains(WidgetState.selected)) {
-                                      return AppColors.accent
-                                          .withValues(alpha: 0.4);
-                                    }
-                                    return AppColors.elevated;
-                                  }),
-                                ),
-                              ),
-                              child: Switch.adaptive(
-                                value: true,
-                                onChanged: (_) {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) =>
-                                          const CustomerExperienceShell(
-                                        sourceLabel: 'Shopkeeper',
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
                     ProfileOptionTile(
                       icon: Icons.edit_rounded,
                       title: 'Edit Shop Profile',
@@ -266,6 +246,11 @@ class _ShopProfileBodyState extends State<ShopProfileBody> {
                         if (!mounted) return;
                         await _load();
                       },
+                    ),
+                    ProfileOptionTile(
+                      icon: Icons.workspace_premium_rounded,
+                      title: 'Manage Subscription Plans',
+                      onTap: () => _openCurrentPlanDetails(context),
                     ),
                     ProfileOptionTile(
                       icon: Icons.settings_rounded,
@@ -339,6 +324,10 @@ class _ShopProfileBodyState extends State<ShopProfileBody> {
       ? (planSnapshot['trialDisplayName'] ?? 'Free Trial')
       : (planSnapshot['displayName'] ?? planSnapshot['name'] ?? 'Plan');
     final status = (sub['status'] ?? 'inactive').toString();
+    final endDate = _parseSubscriptionEndDate(sub['endDate']);
+    final daysLeft = _calculateDaysLeft(endDate);
+    final isExpired = status.toLowerCase() == 'expired' || (daysLeft != null && daysLeft < 0);
+    final statusColor = _subscriptionStatusColor(status, isExpired);
     final Object? maxOffers = planSnapshot['maxOffers'];
     final Object? monthlyAiLimit = planSnapshot['monthlyAiLimit'];
     final int usedThisCycle = (sub['usedThisCycle'] as num?)?.toInt() ?? 0;
@@ -358,72 +347,201 @@ class _ShopProfileBodyState extends State<ShopProfileBody> {
           'AI banners: $usedThisCycle / $limit used${extraCredits > 0 ? ' (+$extraCredits extra)' : ''}';
     }
 
+    String validityLabel = 'No validity data';
+    if (endDate != null) {
+      if (isExpired) {
+        validityLabel = 'Expired on ${_formatSubscriptionDate(endDate)}';
+      } else if (daysLeft == null) {
+        validityLabel = 'Ends on ${_formatSubscriptionDate(endDate)}';
+      } else if (daysLeft == 0) {
+        validityLabel = 'Expires today';
+      } else {
+        validityLabel = '$daysLeft days left';
+      }
+    }
+
     return Container(
-      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: AppColors.elevated,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.borderSubtle),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            'Subscription',
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+          title: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  planName,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            '$planName • ${status.toUpperCase()}',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppColors.textSecondary,
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(999),
                 ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            offerLabel,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppColors.textSecondary,
+                child: Text(
+                  status.toUpperCase(),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: statusColor,
+                        fontWeight: FontWeight.w700,
+                      ),
                 ),
+              ),
+            ],
           ),
-          if (aiLabel != null) ...[
-            const SizedBox(height: 4),
+          subtitle: Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Text(
+              validityLabel,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: isExpired ? AppColors.error : AppColors.textSecondary,
+                  ),
+            ),
+          ),
+          children: [
+            Divider(color: AppColors.borderSubtle, height: 1),
+            const SizedBox(height: 8),
             Text(
-              aiLabel,
+              'Subscription Details',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              offerLabel,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: AppColors.textSecondary,
                   ),
             ),
-          ],
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton.icon(
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const AiCreditPacksScreen(),
-                  ),
-                );
-              },
-              icon: const Icon(
-                Icons.auto_awesome_rounded,
-                size: 18,
+            if (aiLabel != null)
+              Text(
+                aiLabel,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
               ),
-              label: const Text('AI Banner Packs'),
-              style: TextButton.styleFrom(
-                padding: EdgeInsets.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                minimumSize: Size.zero,
-                foregroundColor: AppColors.primary,
+            if (!isExpired && endDate != null && daysLeft != null && daysLeft > 0)
+              Text(
+                'Ends on ${_formatSubscriptionDate(endDate)}',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
               ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: () => _openCurrentPlanDetails(context),
+                  icon: const Icon(Icons.workspace_premium_rounded, size: 18),
+                  label: const Text('Manage Plan'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const AiCreditPacksScreen(),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.auto_awesome_rounded, size: 18),
+                  label: const Text('AI Packs'),
+                ),
+              ],
             ),
-          ),
-        ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Color _subscriptionStatusColor(String status, bool isExpired) {
+    if (isExpired) return AppColors.error;
+    switch (status.toLowerCase()) {
+      case 'active':
+        return AppColors.accent;
+      case 'pending':
+        return AppColors.warning;
+      default:
+        return AppColors.textSecondary;
+    }
+  }
+
+  DateTime? _parseSubscriptionEndDate(dynamic value) {
+    if (value == null) return null;
+    if (value is DateTime) return value;
+    return DateTime.tryParse(value.toString());
+  }
+
+  int? _calculateDaysLeft(DateTime? endDate) {
+    if (endDate == null) return null;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final endDay = DateTime(endDate.year, endDate.month, endDate.day);
+    return endDay.difference(today).inDays;
+  }
+
+  String _formatSubscriptionDate(DateTime date) {
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    final day = date.day.toString().padLeft(2, '0');
+    final month = months[date.month - 1];
+    return '$day $month ${date.year}';
+  }
+
+  void _openSubscriptionPlansScreen(BuildContext context) {
+    final category = (_profile?.category.isNotEmpty ?? false)
+        ? _profile!.category
+        : 'all';
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => SubscriptionPlansScreen(shopCategory: category),
+      ),
+    );
+  }
+
+  Future<void> _openCurrentPlanDetails(BuildContext context) async {
+    final sub = widget.subscription;
+    if (sub == null) {
+      _openSubscriptionPlansScreen(context);
+      return;
+    }
+    final category = (_profile?.category.isNotEmpty ?? false)
+        ? _profile!.category
+        : 'all';
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => CurrentPlanDetailsPage(
+          subscription: sub,
+          offerCount: widget.offerCount ?? 0,
+          shopCategory: category,
+        ),
       ),
     );
   }
