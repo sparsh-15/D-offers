@@ -6,6 +6,8 @@ const {
   checkSubscriptionStatus,
   checkOfferLimit,
   checkAiCreditLimit,
+  checkCampaignFeatureAccess,
+  checkCampaignMessageQuota,
 } = require('../middleware/subscriptionCheck');
 const shopkeeperProfileController = require('../controllers/shopkeeperProfileController');
 const offerController = require('../controllers/offerController');
@@ -59,14 +61,27 @@ router.delete('/offers/:id', requireActiveSubscription, offerController.remove);
 router.post(
   '/campaigns/estimate-audience',
   requireActiveSubscription,
+  checkCampaignFeatureAccess,
   campaignController.estimateAudienceHandler,
 );
-router.post('/campaigns', requireActiveSubscription, campaignController.createCampaign);
+router.post(
+  '/campaigns',
+  requireActiveSubscription,
+  checkCampaignFeatureAccess,
+  checkCampaignMessageQuota,
+  campaignController.createCampaign,
+);
 router.get('/campaigns', requireActiveSubscription, campaignController.listCampaigns);
 router.get('/campaigns/templates', requireActiveSubscription, campaignController.getCampaignTemplates);
 router.get('/campaigns/:id', requireActiveSubscription, campaignController.getCampaign);
-router.put('/campaigns/:id', requireActiveSubscription, campaignController.updateCampaign);
-router.post('/campaigns/:id/pay', requireActiveSubscription, campaignController.payCampaign);
+router.put(
+  '/campaigns/:id',
+  requireActiveSubscription,
+  checkCampaignFeatureAccess,
+  checkCampaignMessageQuota,
+  campaignController.updateCampaign,
+);
+router.post('/campaigns/:id/pay', requireActiveSubscription, checkCampaignMessageQuota, campaignController.payCampaign);
 router.post('/campaigns/:id/cancel', requireActiveSubscription, campaignController.cancelCampaign);
 router.delete('/campaigns/:id', requireActiveSubscription, campaignController.deleteCampaign);
 

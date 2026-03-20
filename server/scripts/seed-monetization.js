@@ -8,6 +8,33 @@ const { prisma } = require('../src/db/prisma');
 
 const PLANS = [
   {
+    name: 'free_starter_all',
+    displayName: 'Free Starter',
+    description: 'Permanent starter layer for onboarding and post-trial usage.',
+    category: 'all',
+    monthlyPrice: 0,
+    durationDays: 30,
+    maxOffers: 1,
+    maxPhotosPerOffer: 3,
+    monthlyAiLimit: 1,
+    rankingTier: 'normal',
+    homepageRotation: false,
+    aiOptimizationSuggestions: false,
+    aiCreditTier: 'silver',
+    tier: 'free',
+    analyticsEnabled: false,
+    prioritySupport: false,
+    features: [
+      '1 active offer',
+      '1 AI banner per month',
+      '20 inbox campaign messages per rolling 30 days',
+      'No WhatsApp campaigns',
+      'Basic analytics',
+    ],
+    sortOrder: 0,
+    isActive: true,
+  },
+  {
     name: 'silver_all',
     displayName: 'Silver',
     description: 'For small shops getting started. Limited AI banners.',

@@ -10,6 +10,8 @@
     "seed:admin": "node scripts/create-super-admin.js",
     "create:superadmin": "node scripts/create-super-admin.js",
     "seed:plans": "node scripts/seed-subscription-plans.js",
+    "seed:monetization": "node scripts/seed-monetization.js",
+    "seed:category-pricing-draft": "node scripts/seed-category-pricing-draft.js",
     "seed:campaign-pricing": "node scripts/seed-campaign-pricing.js",
     "seed:campaign-templates": "node scripts/seed-campaign-templates.js",
     "prisma:generate": "prisma generate",

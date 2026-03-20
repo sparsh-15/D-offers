@@ -8,6 +8,14 @@ const {
 const subscriptionPlanRepository = require('../repositories/subscriptionPlanRepository');
 const { resolvePgId } = require('../repositories/idResolver');
 
+const ALLOWED_PLAN_TIERS = new Set(['free', 'trial', 'silver', 'gold', 'platinum']);
+
+function normalizeTierInput(tier) {
+  if (tier === undefined || tier === null) return undefined;
+  const normalized = String(tier).trim().toLowerCase();
+  return normalized || undefined;
+}
+
 async function getCategories(req, res, next) {
   try {
     res.json({ success: true, data: getAllCategories() });
@@ -24,6 +32,10 @@ async function createPlan(req, res, next) {
     }
     if (!isValidCategory(category)) {
       return res.status(400).json({ success: false, message: 'Invalid category' });
+    }
+    const normalizedTier = normalizeTierInput(tier);
+    if (normalizedTier !== undefined && !ALLOWED_PLAN_TIERS.has(normalizedTier)) {
+      return res.status(400).json({ success: false, message: 'Invalid tier. Allowed values: free, trial, silver, gold, platinum' });
     }
     const existing = await prisma.subscriptionPlan.findFirst({ where: { name } });
     if (existing) {
@@ -48,7 +60,7 @@ async function createPlan(req, res, next) {
       homepageRotation: !!homepageRotation,
       aiOptimizationSuggestions: !!aiOptimizationSuggestions,
       aiCreditTier: aiCreditTier || 'silver',
-      tier: tier ?? undefined,
+      tier: normalizedTier,
     });
     await prisma.subscriptionPlanPriceHistory.create({
       data: {
@@ -103,6 +115,10 @@ async function updatePlan(req, res, next) {
     if (category !== undefined && !isValidCategory(category)) {
       return res.status(400).json({ success: false, message: 'Invalid category' });
     }
+    const normalizedTier = normalizeTierInput(tier);
+    if (normalizedTier !== undefined && !ALLOWED_PLAN_TIERS.has(normalizedTier)) {
+      return res.status(400).json({ success: false, message: 'Invalid tier. Allowed values: free, trial, silver, gold, platinum' });
+    }
     const priceChanged = monthlyPrice !== undefined && Number(monthlyPrice) !== Number(plan.monthlyPrice);
     const updated = await subscriptionPlanRepository.updatePlan(planId, {
       ...(displayName !== undefined ? { displayName } : {}),
@@ -122,7 +138,7 @@ async function updatePlan(req, res, next) {
       ...(homepageRotation !== undefined ? { homepageRotation } : {}),
       ...(aiOptimizationSuggestions !== undefined ? { aiOptimizationSuggestions } : {}),
       ...(aiCreditTier !== undefined ? { aiCreditTier } : {}),
-      ...(tier !== undefined ? { tier } : {}),
+      ...(tier !== undefined ? { tier: normalizedTier } : {}),
     });
     if (priceChanged) {
       await prisma.subscriptionPlanPriceHistory.create({
@@ -169,7 +185,15 @@ async function getRecommendedPlans(req, res, next) {
     if (!category) return res.status(400).json({ success: false, message: 'Category is required' });
     if (!isValidCategory(category)) return res.status(400).json({ success: false, message: 'Invalid category' });
     const plans = await prisma.subscriptionPlan.findMany({
-      where: { isActive: true, OR: [{ category }, { category: ALL_CATEGORIES }] },
+      where: {
+        isActive: true,
+        OR: [{ category }, { category: ALL_CATEGORIES }],
+        NOT: [
+          { name: 'free_starter_all' },
+          { tier: 'free' },
+          { tier: 'trial' },
+        ],
+      },
       orderBy: [{ sortOrder: 'asc' }, { monthlyPrice: 'asc' }],
     });
     res.json({ success: true, data: plans });

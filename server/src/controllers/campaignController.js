@@ -18,7 +18,7 @@ function toNumber(value) {
   return Number.isFinite(num) ? num : null;
 }
 
-const SUPPORTED_LIVE_CHANNELS = new Set(['app_inbox']);
+const SUPPORTED_LIVE_CHANNELS = new Set(['app_inbox', 'whatsapp']);
 const ANNOUNCED_CHANNELS = new Set(['app_inbox', 'whatsapp', 'email', 'push_notification']);
 
 function getUnsupportedChannels(channels) {
@@ -36,7 +36,8 @@ function hasUnknownChannels(channels) {
   });
 }
 
-function serializeCampaign(campaign, analytics = null) {
+function serializeCampaign(campaign, analytics = null, options = {}) {
+  const analyticsLocked = options.analyticsLocked === true;
   return {
     id: campaign.id,
     shopkeeperId: campaign.shopkeeperId,
@@ -76,8 +77,8 @@ function serializeCampaign(campaign, analytics = null) {
     channelAvailability: {
       app_inbox: { enabled: true },
       whatsapp: {
-        enabled: false,
-        reason: 'Coming soon: provider not integrated yet',
+        enabled: true,
+        reason: 'Delivery provider integration pending; events are queued for rollout.',
       },
       email: {
         enabled: false,
@@ -97,6 +98,9 @@ function serializeCampaign(campaign, analytics = null) {
         }
       : null,
     analytics,
+    featureLocks: {
+      analyticsLocked,
+    },
   };
 }
 
@@ -309,8 +313,12 @@ async function getCampaign(req, res, next) {
     if (String(campaign.shopkeeperId) !== String(shopkeeperId)) {
       return res.status(403).json({ success: false, message: 'Insufficient permissions' });
     }
-    const analytics = await getCampaignAnalytics(campaign.id);
-    res.status(200).json({ success: true, campaign: serializeCampaign(campaign, analytics) });
+    const analyticsEnabled = req.subscription?.planSnapshot?.analyticsEnabled === true;
+    const analytics = analyticsEnabled ? await getCampaignAnalytics(campaign.id) : null;
+    res.status(200).json({
+      success: true,
+      campaign: serializeCampaign(campaign, analytics, { analyticsLocked: !analyticsEnabled }),
+    });
   } catch (error) {
     next(error);
   }

@@ -10,7 +10,7 @@ function ci(value) {
 }
 
 function normalizeChannels(channels) {
-  const allowed = new Set(['app_inbox']);
+  const allowed = new Set(['app_inbox', 'whatsapp']);
   if (!Array.isArray(channels)) return [];
   return Array.from(
     new Set(
