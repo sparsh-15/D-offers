@@ -9,14 +9,25 @@ Archive:
 
 -login center align logo 
 -in registration page also center align logo and
--in registration page remove I am a X
+-in registration page remove "I am a" in top X
 -in shopkeeper registration page attatch the document upload button to the document upload text field
 -in shopkeeper registration page add a button to view the uploaded document
--in shopkeeper add rating mechanism-sale close rating in dashboard add coins earned, total rating, sales closed
--in create shopkeeper  ui of date validity contrast of ai image
--new campaing target estimated give side by side
--campaign do not do draft option  directly review page
--in shopkeeper show loan option also working capital loan
+-in create shopkeeper  ui of date validity is insconsistent 
+-new campaing target and  estimated give side by side so that it looks better
+-campaign do not do draft option  directly review page at that time only so that it reduces unnecessary steps
+-in shopkeeper show loan tabs also  as  capital loan
 -loan attatchment 
--try to reduce the text
--sales agent account details -how many hours you can work 
+-try to reduce the textlike for add new offer there is subtitle text so much same in all fields so try to reduce it and make it more user friendly
+-sales agent account details -how many hours you can work add this field
+-also contrast of ai image
+-in shopkeeper add rating mechanism-sale close rating in dashboard add coins earned, total rating, sales closed
+
+-Upgrade Nudges:
+
+Show performance-based prompts:
+
+☐ Example: “Your campaign reached 120 users. Upgrade to continue.”
+☐ Place nudges at:
+☐ Campaign send attempt
+☐ Analytics screen
+☐ Banner creation limit hit

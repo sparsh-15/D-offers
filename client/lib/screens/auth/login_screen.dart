@@ -48,7 +48,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 // ── Logo ──────────────────────────────────────────────────────
                 Align(
-                  alignment: Alignment.centerLeft,
+                  alignment: Alignment.center,
                   child: SizedBox(
                     width: 96,
                     height: 96,

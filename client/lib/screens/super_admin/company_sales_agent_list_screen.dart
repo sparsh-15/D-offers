@@ -209,6 +209,7 @@ class _CompanySalesAgentListScreenState
     final name = agent['name'] as String? ?? 'N/A';
     final email = agent['email'] as String? ?? 'N/A';
     final phone = agent['phone'] as String? ?? 'N/A';
+    final workingHours = agent['workingHours'] as String?;
     final isActive = agent['isActive'] as bool? ?? false;
     final onboardingCount = agent['onboardingCount'] as int? ?? 0;
     final totalDiscounts = agent['totalDiscounts'] as num? ?? 0;
@@ -336,6 +337,23 @@ class _CompanySalesAgentListScreenState
               ),
             ],
           ),
+          if (workingHours != null && workingHours.trim().isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(Icons.schedule_rounded, size: 16, color: AppColors.textSecondary),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'Hours: ${workingHours.trim()}',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );

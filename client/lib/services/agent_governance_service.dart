@@ -240,6 +240,7 @@ class AgentGovernanceService {
     String? region,
     String? territory,
     String? pincode,
+    String? workingHours,
     int? maxCouponDiscountPercent,
   }) async {
     final token = AuthStore.token;
@@ -254,6 +255,8 @@ class AgentGovernanceService {
       if (region != null) 'region': region,
       if (territory != null) 'territory': territory,
       if (pincode != null) 'pincode': pincode,
+      if (workingHours != null && workingHours.trim().isNotEmpty)
+        'workingHours': workingHours.trim(),
       if (maxCouponDiscountPercent != null)
         'maxCouponDiscountPercent': maxCouponDiscountPercent,
     };

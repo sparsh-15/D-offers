@@ -109,7 +109,7 @@ async function getSSAList(req, res, next) {
     const [users, total] = await Promise.all([
       prisma.user.findMany({
         where,
-        select: { id: true, name: true, phone: true, pincode: true, city: true, maxCouponDiscountPercent: true, isActive: true, createdAt: true },
+        select: { id: true, name: true, phone: true, pincode: true, city: true, workingHours: true, maxCouponDiscountPercent: true, isActive: true, createdAt: true },
         orderBy: { createdAt: 'desc' },
         skip,
         take: parseInt(limit, 10),
@@ -388,7 +388,7 @@ async function createSSA(req, res, next) {
 
 async function createCompanySalesAgent(req, res, next) {
   try {
-    const { name, email, phone, password, region, territory, pincode, maxCouponDiscountPercent } = req.body;
+    const { name, email, phone, password, region, territory, pincode, maxCouponDiscountPercent, workingHours } = req.body;
     if (!name || !email || !phone || !password) {
       return res.status(400).json({ success: false, message: 'Name, email, phone, and password are required' });
     }
@@ -410,6 +410,7 @@ async function createCompanySalesAgent(req, res, next) {
       region,
       territory,
       pincode,
+      workingHours,
       maxCouponDiscountPercent: normalizedMax,
       isActive: true,
     });

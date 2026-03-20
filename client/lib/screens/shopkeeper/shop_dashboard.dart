@@ -16,6 +16,7 @@ import 'onboarding_flow.dart';
 import 'subscription_plans_screen.dart';
 import 'campaigns_tab.dart';
 import 'create_campaign_screen.dart';
+import '../customer/customer_loans_tab.dart';
 
 class ShopDashboard extends StatefulWidget {
   const ShopDashboard({super.key});
@@ -49,6 +50,7 @@ class _ShopDashboardState extends State<ShopDashboard> {
           _refreshCampaigns = callback;
         },
       ),
+      const CustomerLoansTab(),
       const ShopProfileTab(),
     ];
   }
@@ -62,14 +64,14 @@ class _ShopDashboardState extends State<ShopDashboard> {
       setState(() {
         _hasActiveSubscription = isActive;
         if (!_hasActiveSubscription) {
-          _selectedIndex = 3;
+          _selectedIndex = 4;
         }
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _hasActiveSubscription = false;
-        _selectedIndex = 3;
+        _selectedIndex = 4;
       });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -104,8 +106,8 @@ class _ShopDashboardState extends State<ShopDashboard> {
         bottomNavigationBar: BottomNavigationBar(
           currentIndex: _selectedIndex,
           onTap: (index) {
-            // If no active subscription, only allow Profile tab (index 3)
-            if (!_hasActiveSubscription && index != 3) {
+            // If no active subscription, allow only loans and shop tabs.
+            if (!_hasActiveSubscription && index != 3 && index != 4) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('Please subscribe to access this feature'),
@@ -137,6 +139,10 @@ class _ShopDashboardState extends State<ShopDashboard> {
                 color: !_hasActiveSubscription ? AppColors.grey : null,
               ),
               label: 'Campaigns',
+            ),
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.account_balance_rounded),
+              label: 'Capital Loan',
             ),
             const BottomNavigationBarItem(
               icon: Icon(Icons.store_rounded),

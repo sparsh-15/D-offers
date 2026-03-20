@@ -764,6 +764,7 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
                   decoration: const InputDecoration(
                     labelText: 'Description',
                     border: OutlineInputBorder(),
+                    hintText: 'Short offer details',
                   ),
                   maxLines: 3,
                 ),
@@ -854,7 +855,10 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
                       child: ListTile(
                         title: const Text('Valid From'),
                         subtitle: Text(
-                            _validFrom?.toString().split(' ')[0] ?? 'Not set'),
+                          _validFrom == null
+                              ? 'Not set'
+                              : _formatDate(_validFrom!.toIso8601String()),
+                        ),
                         trailing: const Icon(Icons.calendar_today),
                         onTap: () async {
                           final date = await showDatePicker(
@@ -880,7 +884,10 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
                       child: ListTile(
                         title: const Text('Valid To'),
                         subtitle: Text(
-                            _validTo?.toString().split(' ')[0] ?? 'Not set'),
+                          _validTo == null
+                              ? 'Not set'
+                              : _formatDate(_validTo!.toIso8601String()),
+                        ),
                         trailing: const Icon(Icons.calendar_today),
                         onTap: () async {
                           final date = await showDatePicker(
@@ -908,9 +915,9 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
                 TextFormField(
                   controller: _termsController,
                   decoration: const InputDecoration(
-                    labelText: 'Terms & Conditions',
+                    labelText: 'Terms',
                     border: OutlineInputBorder(),
-                    hintText: 'Enter any terms or conditions for this offer',
+                    hintText: 'Optional terms for this offer',
                   ),
                   maxLines: 4,
                 ),
@@ -941,8 +948,7 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
                                 if (_titleController.text.trim().isEmpty) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
-                                      content: Text(
-                                          'Add a title before generating an AI banner.'),
+                                      content: Text('Add title first to generate AI banner.'),
                                       duration: Duration(seconds: 2),
                                     ),
                                   );
@@ -953,8 +959,7 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
                                     .isEmpty) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
-                                      content: Text(
-                                          'Add a discount value before generating an AI banner.'),
+                                      content: Text('Add discount value first.'),
                                       duration: Duration(seconds: 2),
                                     ),
                                   );

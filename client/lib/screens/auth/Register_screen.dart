@@ -1,6 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_design_tokens.dart';
@@ -11,6 +14,7 @@ import '../../widgets/custom_button.dart';
 import '../../widgets/custom_text_field.dart';
 import '../../widgets/pincode_location_section.dart';
 import '../../services/auth_service.dart';
+import '../../services/upload_service.dart';
 import 'otp_screen.dart';
 import '../../core/utils/theme_helper.dart';
 import 'terms_screen.dart';
@@ -40,19 +44,158 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _panController = TextEditingController();
   final _occupationController = TextEditingController();
   final _aboutMeController = TextEditingController();
+  final _workingHoursController = TextEditingController();
+  final ImagePicker _picker = ImagePicker();
 
   bool _isLoading = false;
   bool _isLoadingPincode = false;
+  bool _uploadingShopRegistrationDoc = false;
+  bool _uploadingGstDoc = false;
+  bool _uploadingElectricityDoc = false;
+  bool _uploadingAadhaarDoc = false;
+  bool _uploadingPanDoc = false;
   List<Map<String, dynamic>> _availableAreas = [];
   String? _selectedArea;
   bool _acceptedTerms = true;
   String? _selectedGender;
   DateTime? _selectedDob;
+  String? _shopRegistrationDocumentUrl;
+  String? _gstDocumentUrl;
+  String? _electricityBillDocumentUrl;
+  String? _aadhaarDocumentUrl;
+  String? _panDocumentUrl;
 
   @override
   void initState() {
     super.initState();
     _pincodeController.addListener(_onPincodeChanged);
+  }
+
+  String _formatDate(DateTime date) {
+    final day = date.day.toString().padLeft(2, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    final year = date.year.toString().padLeft(4, '0');
+    return '$day/$month/$year';
+  }
+
+  Future<void> _pickAndUploadDocument(String kind) async {
+    final picked = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 88,
+      maxWidth: 2200,
+      maxHeight: 2200,
+    );
+    if (picked == null || !mounted) return;
+
+    setState(() {
+      switch (kind) {
+        case 'shopRegistration':
+          _uploadingShopRegistrationDoc = true;
+          break;
+        case 'gst':
+          _uploadingGstDoc = true;
+          break;
+        case 'electricity':
+          _uploadingElectricityDoc = true;
+          break;
+        case 'aadhaar':
+          _uploadingAadhaarDoc = true;
+          break;
+        case 'pan':
+          _uploadingPanDoc = true;
+          break;
+      }
+    });
+
+    try {
+      final url = await UploadService.instance.uploadImage(File(picked.path));
+      if (!mounted) return;
+      setState(() {
+        switch (kind) {
+          case 'shopRegistration':
+            _shopRegistrationDocumentUrl = url;
+            _uploadingShopRegistrationDoc = false;
+            break;
+          case 'gst':
+            _gstDocumentUrl = url;
+            _uploadingGstDoc = false;
+            break;
+          case 'electricity':
+            _electricityBillDocumentUrl = url;
+            _uploadingElectricityDoc = false;
+            break;
+          case 'aadhaar':
+            _aadhaarDocumentUrl = url;
+            _uploadingAadhaarDoc = false;
+            break;
+          case 'pan':
+            _panDocumentUrl = url;
+            _uploadingPanDoc = false;
+            break;
+        }
+      });
+      DialogHelper.showSuccessSnackBar(context, 'Document uploaded successfully.');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _uploadingShopRegistrationDoc = false;
+        _uploadingGstDoc = false;
+        _uploadingElectricityDoc = false;
+        _uploadingAadhaarDoc = false;
+        _uploadingPanDoc = false;
+      });
+      DialogHelper.showErrorSnackBar(context, e.toString());
+    }
+  }
+
+  void _openDocumentPreview(String? url, String title) {
+    if (url == null || url.isEmpty) {
+      DialogHelper.showErrorSnackBar(context, 'No uploaded document found.');
+      return;
+    }
+    showDialog<void>(
+      context: context,
+      builder: (ctx) {
+        return Dialog(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.of(ctx).pop(),
+                      icon: const Icon(Icons.close_rounded),
+                    ),
+                  ],
+                ),
+              ),
+              AspectRatio(
+                aspectRatio: 1,
+                child: Image.network(
+                  url,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Text('Unable to preview this document.'),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -72,6 +215,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _panController.dispose();
     _occupationController.dispose();
     _aboutMeController.dispose();
+    _workingHoursController.dispose();
     super.dispose();
   }
 
@@ -243,12 +387,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
+                            Column(
                               crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
                                 Container(
-                                  width: 52,
-                                  height: 52,
+                                  width: 60,
+                                  height: 60,
                                   decoration: BoxDecoration(
                                     color: AppColors.cardBackground,
                                     borderRadius: BorderRadius.circular(AppTokens.radiusMD),
@@ -265,54 +409,33 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     ),
                                   ),
                                 ),
-                                const SizedBox(width: AppTokens.spaceMD),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        AppStrings.appName,
-                                        style: theme.textTheme.labelMedium?.copyWith(
-                                          color: AppColors.accent,
-                                          fontWeight: FontWeight.w700,
-                                          letterSpacing: 0.3,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        _title(),
-                                        style: theme.textTheme.headlineSmall?.copyWith(
-                                          fontWeight: FontWeight.w500,
-                                          color: AppColors.textPrimary,
-                                          height: 1.0,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        _subtitle(),
-                                        style: theme.textTheme.bodySmall?.copyWith(
-                                          color: AppColors.textSecondary,
-                                          height: 1.25,
-                                        ),
-                                      ),
-                                    ],
+                                const SizedBox(height: AppTokens.spaceSM),
+                                Text(
+                                  AppStrings.appName,
+                                  textAlign: TextAlign.center,
+                                  style: theme.textTheme.labelMedium?.copyWith(
+                                    color: AppColors.accent,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.3,
                                   ),
                                 ),
-                                const SizedBox(width: AppTokens.spaceSM),
-                                Container(
-                                  width: 40,
-                                  height: 40,
-                                  decoration: BoxDecoration(
-                                    color: AppColors.accent.withValues(alpha: 0.12),
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: AppColors.accent.withValues(alpha: 0.18),
-                                    ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  _title(),
+                                  textAlign: TextAlign.center,
+                                  style: theme.textTheme.headlineSmall?.copyWith(
+                                    fontWeight: FontWeight.w500,
+                                    color: AppColors.textPrimary,
+                                    height: 1.0,
                                   ),
-                                  child: Icon(
-                                    _roleIcon(),
-                                    color: AppColors.accent,
-                                    size: AppTokens.iconMD,
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  _subtitle(),
+                                  textAlign: TextAlign.center,
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: AppColors.textSecondary,
+                                    height: 1.25,
                                   ),
                                 ),
                               ],
@@ -478,7 +601,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   child: Text(
                                     _selectedDob == null
                                         ? 'Tap to select DOB'
-                                        : '${_selectedDob!.day}/${_selectedDob!.month}/${_selectedDob!.year}',
+                                        : _formatDate(_selectedDob!),
                                     style: theme.textTheme.bodyMedium?.copyWith(
                                       color: _selectedDob == null
                                           ? AppColors.textMuted
@@ -521,6 +644,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 prefixIcon: Iconsax.document_text,
                                 validator: (_) => null,
                               ),
+                              const SizedBox(height: AppTokens.spaceXS),
+                              _DocumentUploadRow(
+                                isUploading: _uploadingShopRegistrationDoc,
+                                hasUploadedFile:
+                                    (_shopRegistrationDocumentUrl ?? '').isNotEmpty,
+                                onUpload: () => _pickAndUploadDocument('shopRegistration'),
+                                onView: () => _openDocumentPreview(
+                                  _shopRegistrationDocumentUrl,
+                                  'Shop Registration Document',
+                                ),
+                              ),
                               const SizedBox(height: AppTokens.spaceMD),
                               CustomTextField(
                                 controller: _gstController,
@@ -531,6 +665,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     TextCapitalization.characters,
                                 validator: (_) => null,
                               ),
+                              const SizedBox(height: AppTokens.spaceXS),
+                              _DocumentUploadRow(
+                                isUploading: _uploadingGstDoc,
+                                hasUploadedFile: (_gstDocumentUrl ?? '').isNotEmpty,
+                                onUpload: () => _pickAndUploadDocument('gst'),
+                                onView: () => _openDocumentPreview(
+                                  _gstDocumentUrl,
+                                  'GST Document',
+                                ),
+                              ),
                               const SizedBox(height: AppTokens.spaceMD),
                               CustomTextField(
                                 controller: _electricityBillController,
@@ -538,6 +682,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 hint: 'Enter consumer number',
                                 prefixIcon: Iconsax.flash_1,
                                 validator: (_) => null,
+                              ),
+                              const SizedBox(height: AppTokens.spaceXS),
+                              _DocumentUploadRow(
+                                isUploading: _uploadingElectricityDoc,
+                                hasUploadedFile:
+                                    (_electricityBillDocumentUrl ?? '').isNotEmpty,
+                                onUpload: () => _pickAndUploadDocument('electricity'),
+                                onView: () => _openDocumentPreview(
+                                  _electricityBillDocumentUrl,
+                                  'Electricity Bill Document',
+                                ),
                               ),
                               const SizedBox(height: AppTokens.spaceMD),
                               CustomTextField(
@@ -561,6 +716,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   return null;
                                 },
                               ),
+                              const SizedBox(height: AppTokens.spaceXS),
+                              _DocumentUploadRow(
+                                isUploading: _uploadingAadhaarDoc,
+                                hasUploadedFile: (_aadhaarDocumentUrl ?? '').isNotEmpty,
+                                onUpload: () => _pickAndUploadDocument('aadhaar'),
+                                onView: () => _openDocumentPreview(
+                                  _aadhaarDocumentUrl,
+                                  'Aadhaar Document',
+                                ),
+                              ),
                               const SizedBox(height: AppTokens.spaceMD),
                               CustomTextField(
                                 controller: _panController,
@@ -582,6 +747,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   return null;
                                 },
                               ),
+                              const SizedBox(height: AppTokens.spaceXS),
+                              _DocumentUploadRow(
+                                isUploading: _uploadingPanDoc,
+                                hasUploadedFile: (_panDocumentUrl ?? '').isNotEmpty,
+                                onUpload: () => _pickAndUploadDocument('pan'),
+                                onView: () => _openDocumentPreview(
+                                  _panDocumentUrl,
+                                  'PAN Document',
+                                ),
+                              ),
                               const SizedBox(height: AppTokens.spaceLG),
                               const _FormSectionTitle(
                                 title: 'Referral details',
@@ -601,6 +776,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   color: AppColors.textSecondary,
                                 ),
+                              ),
+                            ],
+                            if (widget.role == UserRole.companySalesAgent) ...[
+                              const SizedBox(height: AppTokens.spaceLG),
+                              const _FormSectionTitle(
+                                title: 'Availability details',
+                                subtitle: 'Share your preferred hours you can work.',
+                              ),
+                              const SizedBox(height: AppTokens.spaceMD),
+                              CustomTextField(
+                                controller: _workingHoursController,
+                                label: 'Hours you can work',
+                                hint: 'e.g. Monday-Saturday, 10 AM to 7 PM',
+                                prefixIcon: Icons.schedule_rounded,
+                                validator: (_) => null,
                               ),
                             ],
                             const SizedBox(height: AppTokens.spaceLG),
@@ -746,6 +936,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
         panNumber: widget.role == UserRole.shopkeeper
           ? _panController.text.trim().toUpperCase()
           : null,
+        shopRegistrationDocumentUrl: widget.role == UserRole.shopkeeper
+          ? _shopRegistrationDocumentUrl
+          : null,
+        gstDocumentUrl: widget.role == UserRole.shopkeeper
+          ? _gstDocumentUrl
+          : null,
+        electricityBillDocumentUrl: widget.role == UserRole.shopkeeper
+          ? _electricityBillDocumentUrl
+          : null,
+        aadhaarDocumentUrl: widget.role == UserRole.shopkeeper
+          ? _aadhaarDocumentUrl
+          : null,
+        panDocumentUrl: widget.role == UserRole.shopkeeper
+          ? _panDocumentUrl
+          : null,
+        workingHours: widget.role == UserRole.companySalesAgent
+          ? (_workingHoursController.text.trim().isEmpty
+            ? null
+            : _workingHoursController.text.trim())
+          : null,
       );
       if (!mounted) return;
       DialogHelper.showSuccessSnackBar(context, 'OTP sent for signup');
@@ -800,6 +1010,45 @@ class _FormSectionTitle extends StatelessWidget {
             color: AppColors.textSecondary,
             height: 1.45,
           ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DocumentUploadRow extends StatelessWidget {
+  final bool isUploading;
+  final bool hasUploadedFile;
+  final VoidCallback onUpload;
+  final VoidCallback onView;
+
+  const _DocumentUploadRow({
+    required this.isUploading,
+    required this.hasUploadedFile,
+    required this.onUpload,
+    required this.onView,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        OutlinedButton.icon(
+          onPressed: isUploading ? null : onUpload,
+          icon: isUploading
+              ? const SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.upload_file_rounded),
+          label: Text(isUploading ? 'Uploading...' : 'Upload Document'),
+        ),
+        const SizedBox(width: AppTokens.spaceSM),
+        TextButton.icon(
+          onPressed: hasUploadedFile ? onView : null,
+          icon: const Icon(Icons.visibility_rounded),
+          label: const Text('View Uploaded'),
         ),
       ],
     );

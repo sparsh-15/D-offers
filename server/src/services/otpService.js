@@ -154,6 +154,18 @@ async function sendOtp(phone, role, signupData = {}) {
   const aadhaarNumber = normalizeOptionalString(signupData.aadhaarNumber)
     .replace(/\s+/g, '');
   const panNumber = normalizeOptionalString(signupData.panNumber).toUpperCase();
+  const shopRegistrationDocumentUrl = normalizeOptionalString(
+    signupData.shopRegistrationDocumentUrl,
+  );
+  const gstDocumentUrl = normalizeOptionalString(signupData.gstDocumentUrl);
+  const electricityBillDocumentUrl = normalizeOptionalString(
+    signupData.electricityBillDocumentUrl,
+  );
+  const aadhaarDocumentUrl = normalizeOptionalString(
+    signupData.aadhaarDocumentUrl,
+  );
+  const panDocumentUrl = normalizeOptionalString(signupData.panDocumentUrl);
+  const workingHours = normalizeOptionalString(signupData.workingHours);
 
   if (!name || !pincode) {
     const err = new Error('Name and pincode are required for signup');
@@ -247,6 +259,24 @@ async function sendOtp(phone, role, signupData = {}) {
   }
   if (panNumber) {
     update.panNumber = panNumber;
+  }
+  if (shopRegistrationDocumentUrl) {
+    update.shopRegistrationDocumentUrl = shopRegistrationDocumentUrl;
+  }
+  if (gstDocumentUrl) {
+    update.gstDocumentUrl = gstDocumentUrl;
+  }
+  if (electricityBillDocumentUrl) {
+    update.electricityBillDocumentUrl = electricityBillDocumentUrl;
+  }
+  if (aadhaarDocumentUrl) {
+    update.aadhaarDocumentUrl = aadhaarDocumentUrl;
+  }
+  if (panDocumentUrl) {
+    update.panDocumentUrl = panDocumentUrl;
+  }
+  if (workingHours) {
+    update.workingHours = workingHours;
   }
 
   if (signupCouponCode && role === 'shopkeeper') {

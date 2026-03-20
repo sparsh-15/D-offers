@@ -433,7 +433,7 @@ class _CreateCampaignScreenState extends State<CreateCampaignScreen> {
     });
   }
 
-  Future<void> _createCampaign() async {
+  Future<void> _createCampaign({required bool submitForPayment}) async {
     for (var step = 0; step <= 3; step += 1) {
       if (!_validateStep(step)) {
         setState(() => _currentStep = step);
@@ -444,6 +444,12 @@ class _CreateCampaignScreenState extends State<CreateCampaignScreen> {
     setState(() => _submitting = true);
     try {
       final campaign = await CampaignService.instance.createCampaign(_campaignPayload());
+      if (submitForPayment) {
+        await CampaignService.instance.payCampaign(
+          campaign.id,
+          paymentMethod: 'upi',
+        );
+      }
       if (!mounted) return;
       Navigator.of(context).pop(campaign);
     } catch (error) {
@@ -474,7 +480,7 @@ class _CreateCampaignScreenState extends State<CreateCampaignScreen> {
         onStepTapped: (step) => setState(() => _currentStep = step),
         onStepContinue: () {
           if (_currentStep == 4) {
-            _createCampaign();
+            _createCampaign(submitForPayment: true);
             return;
           }
           if (_validateStep(_currentStep)) {
@@ -495,9 +501,22 @@ class _CreateCampaignScreenState extends State<CreateCampaignScreen> {
             child: Row(
               children: [
                 FilledButton(
-                  onPressed: (_submitting || _estimating) ? null : details.onStepContinue,
-                  child: Text(isLast ? 'Create Draft' : 'Continue'),
+                  onPressed: (_submitting || _estimating)
+                      ? null
+                      : (isLast
+                          ? () => _createCampaign(submitForPayment: true)
+                          : details.onStepContinue),
+                  child: Text(isLast ? 'Pay & Launch' : 'Continue'),
                 ),
+                if (isLast) ...[
+                  const SizedBox(width: 12),
+                  OutlinedButton(
+                    onPressed: (_submitting || _estimating)
+                        ? null
+                        : () => _createCampaign(submitForPayment: false),
+                    child: const Text('Save Draft'),
+                  ),
+                ],
                 const SizedBox(width: 12),
                 TextButton(
                   onPressed: (_submitting || _estimating) ? null : details.onStepCancel,
@@ -777,19 +796,28 @@ class _CreateCampaignScreenState extends State<CreateCampaignScreen> {
                   );
                 }),
                 const SizedBox(height: 12),
-                TextFormField(
-                  controller: _targetAudienceSizeController,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Audience Size To Target'),
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _estimatedAudienceSizeController,
-                  readOnly: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Estimated Audience',
-                    helperText: 'Target / Estimated format example: 2 / 100',
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _targetAudienceSizeController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Target Audience',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _estimatedAudienceSizeController,
+                        readOnly: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Estimated Audience',
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 if (_estimate != null) ...[
                   const SizedBox(height: 16),

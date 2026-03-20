@@ -59,6 +59,12 @@ class AuthService {
     String? electricityConsumerNumber,
     String? aadhaarNumber,
     String? panNumber,
+    String? shopRegistrationDocumentUrl,
+    String? gstDocumentUrl,
+    String? electricityBillDocumentUrl,
+    String? aadhaarDocumentUrl,
+    String? panDocumentUrl,
+    String? workingHours,
   }) async {
     final uri = Uri.parse('${ApiConfig.authUrl}/signup');
     final body = <String, dynamic>{
@@ -102,6 +108,26 @@ class AuthService {
     }
     if (panNumber != null && panNumber.trim().isNotEmpty) {
       body['panNumber'] = panNumber.trim().toUpperCase();
+    }
+    if (shopRegistrationDocumentUrl != null &&
+        shopRegistrationDocumentUrl.trim().isNotEmpty) {
+      body['shopRegistrationDocumentUrl'] = shopRegistrationDocumentUrl.trim();
+    }
+    if (gstDocumentUrl != null && gstDocumentUrl.trim().isNotEmpty) {
+      body['gstDocumentUrl'] = gstDocumentUrl.trim();
+    }
+    if (electricityBillDocumentUrl != null &&
+        electricityBillDocumentUrl.trim().isNotEmpty) {
+      body['electricityBillDocumentUrl'] = electricityBillDocumentUrl.trim();
+    }
+    if (aadhaarDocumentUrl != null && aadhaarDocumentUrl.trim().isNotEmpty) {
+      body['aadhaarDocumentUrl'] = aadhaarDocumentUrl.trim();
+    }
+    if (panDocumentUrl != null && panDocumentUrl.trim().isNotEmpty) {
+      body['panDocumentUrl'] = panDocumentUrl.trim();
+    }
+    if (workingHours != null && workingHours.trim().isNotEmpty) {
+      body['workingHours'] = workingHours.trim();
     }
     final resp = await _client.post(
       uri,

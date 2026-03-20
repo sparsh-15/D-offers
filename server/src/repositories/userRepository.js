@@ -22,6 +22,12 @@ function toUserShape(user) {
     electricityConsumerNumber: user.electricityConsumerNumber ?? null,
     aadhaarNumber: user.aadhaarNumber ?? null,
     panNumber: user.panNumber ?? null,
+    shopRegistrationDocumentUrl: user.shopRegistrationDocumentUrl ?? null,
+    gstDocumentUrl: user.gstDocumentUrl ?? null,
+    electricityBillDocumentUrl: user.electricityBillDocumentUrl ?? null,
+    aadhaarDocumentUrl: user.aadhaarDocumentUrl ?? null,
+    panDocumentUrl: user.panDocumentUrl ?? null,
+    workingHours: user.workingHours ?? null,
     maxCouponDiscountPercent: user.maxCouponDiscountPercent,
     approvalStatus: user.approvalStatus,
     permissions: user.permissions || [],
@@ -87,6 +93,12 @@ async function create(data) {
       electricityConsumerNumber: data.electricityConsumerNumber || null,
       aadhaarNumber: data.aadhaarNumber || null,
       panNumber: data.panNumber || null,
+      shopRegistrationDocumentUrl: data.shopRegistrationDocumentUrl || null,
+      gstDocumentUrl: data.gstDocumentUrl || null,
+      electricityBillDocumentUrl: data.electricityBillDocumentUrl || null,
+      aadhaarDocumentUrl: data.aadhaarDocumentUrl || null,
+      panDocumentUrl: data.panDocumentUrl || null,
+      workingHours: data.workingHours || null,
       maxCouponDiscountPercent:
         data.maxCouponDiscountPercent !== undefined
           ? data.maxCouponDiscountPercent

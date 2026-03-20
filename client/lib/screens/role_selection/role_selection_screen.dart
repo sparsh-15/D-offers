@@ -41,7 +41,7 @@ class RoleSelectionScreen extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Image.asset(
                   'assets/Dofferlogo.png',
@@ -56,23 +56,18 @@ class RoleSelectionScreen extends StatelessWidget {
                 const SizedBox(height: 12),
                 Text(
                   'Join ${AppStrings.appName}',
+                  textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.displayMedium,
                 ),
                 const SizedBox(height: 6),
                 Text(
                   'Select how you would like to use the app.',
+                  textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                         color: AppColors.textSecondary,
                       ),
                 ),
                 const SizedBox(height: AppTokens.spaceLG),
-                Text(
-                  'I am a…',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                ),
-                const SizedBox(height: 8),
                 Expanded(
                   child: ListView.separated(
                     itemCount: signupRoles.length,
