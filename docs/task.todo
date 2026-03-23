@@ -8,12 +8,12 @@ Archive:
     
 
 -login center align logo 
--in registration page also center align logo and
--in registration page remove "I am a" in top X
--in shopkeeper registration page attatch the document upload button to the document upload text field
--in shopkeeper registration page add a button to view the uploaded document
--in create shopkeeper  ui of date validity is insconsistent 
--new campaing target and  estimated give side by side so that it looks better
+✔ in registration page also center align logo and @done(26-03-22 18:28)
+✔ -in registration page remove "I am a" in top X @done(26-03-22 18:28)
+✔ -in shopkeeper registration page attatch the document upload button to the document upload text field @done(26-03-23 10:42)
+✔ -in shopkeeper registration page add a button to view the uploaded document @done(26-03-23 10:42)
+✔ -in create shopkeeper  ui of date validity is insconsistent @done(26-03-23 10:44)
+✔ -new campaing target and  estimated give side by side so that it looks better @done(26-03-23 10:45)
 -campaign do not do draft option  directly review page at that time only so that it reduces unnecessary steps
 -in shopkeeper show loan tabs also  as  capital loan
 -loan attatchment 

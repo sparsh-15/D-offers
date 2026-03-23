@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_design_tokens.dart';
@@ -17,7 +18,6 @@ import '../../services/auth_service.dart';
 import '../../services/upload_service.dart';
 import 'otp_screen.dart';
 import '../../core/utils/theme_helper.dart';
-import 'terms_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   final UserRole role;
@@ -45,7 +45,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _occupationController = TextEditingController();
   final _aboutMeController = TextEditingController();
   final _workingHoursController = TextEditingController();
-  final ImagePicker _picker = ImagePicker();
 
   bool _isLoading = false;
   bool _isLoadingPincode = false;
@@ -79,14 +78,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Future<void> _pickAndUploadDocument(String kind) async {
-    final picked = await _picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 88,
-      maxWidth: 2200,
-      maxHeight: 2200,
-    );
-    if (picked == null || !mounted) return;
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.any,
+        withData: true,
+        withReadStream: true,
+      );
+      if (result == null || !mounted) return;
+      
+      final file = File(result.files.single.path ?? '');
+      if (!file.existsSync()) {
+        if (!mounted) return;
+        DialogHelper.showErrorSnackBar(context, 'File not found');
+        return;
+      }
+      
+      await _uploadDocument(file, kind);
+    } catch (e) {
+      if (!mounted) return;
+      DialogHelper.showErrorSnackBar(context, 'Failed to upload file: ${e.toString()}');
+    }
+  }
 
+  Future<void> _uploadDocument(File file, String kind) async {
     setState(() {
       switch (kind) {
         case 'shopRegistration':
@@ -108,7 +122,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     });
 
     try {
-      final url = await UploadService.instance.uploadImage(File(picked.path));
+      final url = await UploadService.instance.uploadDocument(file);
       if (!mounted) return;
       setState(() {
         switch (kind) {
@@ -144,7 +158,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
         _uploadingAadhaarDoc = false;
         _uploadingPanDoc = false;
       });
-      DialogHelper.showErrorSnackBar(context, e.toString());
+      final errorMsg = e.toString().replaceFirst('Exception: ', '');
+      final displayMsg = errorMsg.contains('Session expired') || errorMsg.contains('Not authenticated')
+          ? 'Session expired. Please login again to upload documents.'
+          : errorMsg;
+      DialogHelper.showErrorSnackBar(context, displayMsg);
     }
   }
 
@@ -153,6 +171,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
       DialogHelper.showErrorSnackBar(context, 'No uploaded document found.');
       return;
     }
+    
+    // Check if it's a PDF
+    final isPdf = url.toLowerCase().endsWith('.pdf');
+    
     showDialog<void>(
       context: context,
       builder: (ctx) {
@@ -177,19 +199,51 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ],
                 ),
               ),
-              AspectRatio(
-                aspectRatio: 1,
-                child: Image.network(
-                  url,
-                  fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(16),
-                      child: Text('Unable to preview this document.'),
+              if (isPdf)
+                Container(
+                  padding: const EdgeInsets.all(32),
+                  child: Column(
+                    children: [
+                      Icon(Icons.picture_as_pdf_rounded, size: 64, color: AppColors.accent),
+                      const SizedBox(height: 16),
+                      Text(
+                        'PDF Document',
+                        style: Theme.of(context).textTheme.titleSmall,
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Tap the link below to view the PDF',
+                        style: Theme.of(context).textTheme.bodySmall,
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      TextButton(
+                        onPressed: () {
+                          // In a real app, you'd use url_launcher here
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('PDF URL: $url')),
+                          );
+                        },
+                        child: const Text('Open PDF'),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                AspectRatio(
+                  aspectRatio: 1,
+                  child: Image.network(
+                    url,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Text('Unable to preview this document.'),
+                      ),
                     ),
                   ),
                 ),
-              ),
               const SizedBox(height: 8),
             ],
           ),
@@ -633,22 +687,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               const _FormSectionTitle(
                                 title: 'Business and KYC details',
                                 subtitle:
-                                    'Aadhaar and PAN are mandatory. Shop registration, GST, and electricity account details are optional.',
+                                    'Aadhaar and PAN required. Others optional.',
                               ),
                               const SizedBox(height: AppTokens.spaceMD),
-                              CustomTextField(
+                              _InputWithUpload(
+                                label: 'Shop registration (optional)',
+                                hint: 'Registration number',
                                 controller: _shopRegistrationController,
-                                label:
-                                    'Shop registration certificate number (optional)',
-                                hint: 'Enter registration number',
                                 prefixIcon: Iconsax.document_text,
-                                validator: (_) => null,
-                              ),
-                              const SizedBox(height: AppTokens.spaceXS),
-                              _DocumentUploadRow(
                                 isUploading: _uploadingShopRegistrationDoc,
-                                hasUploadedFile:
-                                    (_shopRegistrationDocumentUrl ?? '').isNotEmpty,
+                                hasUploadedFile: (_shopRegistrationDocumentUrl ?? '').isNotEmpty,
                                 onUpload: () => _pickAndUploadDocument('shopRegistration'),
                                 onView: () => _openDocumentPreview(
                                   _shopRegistrationDocumentUrl,
@@ -656,17 +704,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 ),
                               ),
                               const SizedBox(height: AppTokens.spaceMD),
-                              CustomTextField(
-                                controller: _gstController,
+                              _InputWithUpload(
                                 label: 'GST number (optional)',
-                                hint: 'Enter GST number',
+                                hint: 'GST number',
+                                controller: _gstController,
                                 prefixIcon: Iconsax.receipt_2,
-                                textCapitalization:
-                                    TextCapitalization.characters,
-                                validator: (_) => null,
-                              ),
-                              const SizedBox(height: AppTokens.spaceXS),
-                              _DocumentUploadRow(
+                                textCapitalization: TextCapitalization.characters,
                                 isUploading: _uploadingGstDoc,
                                 hasUploadedFile: (_gstDocumentUrl ?? '').isNotEmpty,
                                 onUpload: () => _pickAndUploadDocument('gst'),
@@ -676,18 +719,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 ),
                               ),
                               const SizedBox(height: AppTokens.spaceMD),
-                              CustomTextField(
+                              _InputWithUpload(
+                                label: 'Electricity bill (optional)',
+                                hint: 'Consumer number',
                                 controller: _electricityBillController,
-                                label: 'Electricity bill account number (optional)',
-                                hint: 'Enter consumer number',
                                 prefixIcon: Iconsax.flash_1,
-                                validator: (_) => null,
-                              ),
-                              const SizedBox(height: AppTokens.spaceXS),
-                              _DocumentUploadRow(
                                 isUploading: _uploadingElectricityDoc,
-                                hasUploadedFile:
-                                    (_electricityBillDocumentUrl ?? '').isNotEmpty,
+                                hasUploadedFile: (_electricityBillDocumentUrl ?? '').isNotEmpty,
                                 onUpload: () => _pickAndUploadDocument('electricity'),
                                 onView: () => _openDocumentPreview(
                                   _electricityBillDocumentUrl,
@@ -695,29 +733,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 ),
                               ),
                               const SizedBox(height: AppTokens.spaceMD),
-                              CustomTextField(
-                                controller: _aadhaarController,
+                              _InputWithUpload(
                                 label: 'Aadhaar number',
-                                hint: '12-digit Aadhaar number',
+                                hint: '12-digit',
+                                controller: _aadhaarController,
                                 prefixIcon: Iconsax.card,
                                 keyboardType: TextInputType.number,
                                 maxLength: 12,
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.digitsOnly,
-                                ],
+                                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                                 validator: (value) {
                                   final aadhaar = (value ?? '').trim();
-                                  if (aadhaar.isEmpty) {
-                                    return 'Please enter Aadhaar number';
-                                  }
+                                  if (aadhaar.isEmpty) return 'Aadhaar required';
                                   if (!RegExp(r'^\d{12}$').hasMatch(aadhaar)) {
-                                    return 'Aadhaar must be 12 digits';
+                                    return 'Must be 12 digits';
                                   }
                                   return null;
                                 },
-                              ),
-                              const SizedBox(height: AppTokens.spaceXS),
-                              _DocumentUploadRow(
                                 isUploading: _uploadingAadhaarDoc,
                                 hasUploadedFile: (_aadhaarDocumentUrl ?? '').isNotEmpty,
                                 onUpload: () => _pickAndUploadDocument('aadhaar'),
@@ -727,28 +758,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 ),
                               ),
                               const SizedBox(height: AppTokens.spaceMD),
-                              CustomTextField(
-                                controller: _panController,
+                              _InputWithUpload(
                                 label: 'PAN number',
-                                hint: 'Enter PAN number',
+                                hint: 'PAN',
+                                controller: _panController,
                                 prefixIcon: Iconsax.card_pos,
-                                textCapitalization:
-                                    TextCapitalization.characters,
+                                textCapitalization: TextCapitalization.characters,
                                 maxLength: 10,
                                 validator: (value) {
                                   final pan = (value ?? '').trim().toUpperCase();
-                                  if (pan.isEmpty) {
-                                    return 'Please enter PAN number';
-                                  }
+                                  if (pan.isEmpty) return 'PAN required';
                                   if (!RegExp(r'^[A-Z]{5}[0-9]{4}[A-Z]{1}$')
                                       .hasMatch(pan)) {
-                                    return 'Enter a valid PAN (e.g. ABCDE1234F)';
+                                    return 'Invalid PAN';
                                   }
                                   return null;
                                 },
-                              ),
-                              const SizedBox(height: AppTokens.spaceXS),
-                              _DocumentUploadRow(
                                 isUploading: _uploadingPanDoc,
                                 hasUploadedFile: (_panDocumentUrl ?? '').isNotEmpty,
                                 onUpload: () => _pickAndUploadDocument('pan'),
@@ -971,12 +996,144 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      DialogHelper.showErrorSnackBar(context, e.toString());
+      final errorMsg = e.toString().replaceFirst('Exception: ', '');
+      final displayMsg = errorMsg.contains('Session expired') || errorMsg.contains('Not authenticated')
+          ? 'Session expired. Please login again.'
+          : errorMsg;
+      DialogHelper.showErrorSnackBar(context, displayMsg);
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
       }
     }
+  }
+}
+
+class _InputWithUpload extends StatelessWidget {
+  final String label;
+  final String hint;
+  final TextEditingController controller;
+  final IconData prefixIcon;
+  final String? Function(String?)? validator;
+  final bool isUploading;
+  final bool hasUploadedFile;
+  final VoidCallback onUpload;
+  final VoidCallback onView;
+  final TextInputType keyboardType;
+  final TextCapitalization textCapitalization;
+  final int? maxLength;
+  final List<TextInputFormatter>? inputFormatters;
+
+  const _InputWithUpload({
+    required this.label,
+    required this.hint,
+    required this.controller,
+    required this.prefixIcon,
+    this.validator,
+    required this.isUploading,
+    required this.hasUploadedFile,
+    required this.onUpload,
+    required this.onView,
+    this.keyboardType = TextInputType.text,
+    this.textCapitalization = TextCapitalization.none,
+    this.maxLength,
+    this.inputFormatters,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: CustomTextField(
+                controller: controller,
+                label: label,
+                hint: hint,
+                prefixIcon: prefixIcon,
+                validator: validator,
+                keyboardType: keyboardType,
+                textCapitalization: textCapitalization,
+                maxLength: maxLength,
+                inputFormatters: inputFormatters,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: IconButton(
+                onPressed: isUploading ? null : onUpload,
+                icon: isUploading
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            AppColors.accent,
+                          ),
+                        ),
+                      )
+                    : const Icon(Icons.attach_file_rounded, size: 20),
+                color: AppColors.accent,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                visualDensity: VisualDensity.compact,
+              ),
+            ),
+          ],
+        ),
+        if (hasUploadedFile)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Row(
+              spacing: 8,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.success.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: AppColors.success.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.check_circle_rounded,
+                        size: 14,
+                        color: AppColors.success,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Uploaded',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: AppColors.success,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  onPressed: onView,
+                  icon: const Icon(Icons.visibility_rounded, size: 16),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                  visualDensity: VisualDensity.compact,
+                  tooltip: 'View document',
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
   }
 }
 
@@ -998,7 +1155,7 @@ class _FormSectionTitle extends StatelessWidget {
       children: [
         Text(
           title,
-          style: theme.textTheme.titleMedium?.copyWith(
+          style: theme.textTheme.headlineSmall?.copyWith(
             fontWeight: FontWeight.w700,
             color: AppColors.textPrimary,
           ),
@@ -1006,9 +1163,9 @@ class _FormSectionTitle extends StatelessWidget {
         const SizedBox(height: AppTokens.spaceXS),
         Text(
           subtitle,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: AppColors.textSecondary,
-            height: 1.45,
+          style: theme.textTheme.labelSmall?.copyWith(
+            color: AppColors.textMuted,
+            height: 1.4,
           ),
         ),
       ],
@@ -1016,41 +1173,3 @@ class _FormSectionTitle extends StatelessWidget {
   }
 }
 
-class _DocumentUploadRow extends StatelessWidget {
-  final bool isUploading;
-  final bool hasUploadedFile;
-  final VoidCallback onUpload;
-  final VoidCallback onView;
-
-  const _DocumentUploadRow({
-    required this.isUploading,
-    required this.hasUploadedFile,
-    required this.onUpload,
-    required this.onView,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        OutlinedButton.icon(
-          onPressed: isUploading ? null : onUpload,
-          icon: isUploading
-              ? const SizedBox(
-                  width: 14,
-                  height: 14,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Icon(Icons.upload_file_rounded),
-          label: Text(isUploading ? 'Uploading...' : 'Upload Document'),
-        ),
-        const SizedBox(width: AppTokens.spaceSM),
-        TextButton.icon(
-          onPressed: hasUploadedFile ? onView : null,
-          icon: const Icon(Icons.visibility_rounded),
-          label: const Text('View Uploaded'),
-        ),
-      ],
-    );
-  }
-}

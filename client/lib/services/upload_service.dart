@@ -107,4 +107,58 @@ class UploadService {
   Future<List<String>> uploadShopImages(List<File> imageFiles) {
     return _uploadMultipleImages(imageFiles, '/upload/shop-images');
   }
+
+  MediaType _getMediaTypeForDocument(File file) {
+    final extension = file.path.toLowerCase().split('.').last;
+    switch (extension) {
+      case 'pdf':
+        return MediaType.parse('application/pdf');
+      case 'jpg':
+      case 'jpeg':
+        return MediaType.parse('image/jpeg');
+      case 'png':
+        return MediaType.parse('image/png');
+      case 'gif':
+        return MediaType.parse('image/gif');
+      case 'webp':
+        return MediaType.parse('image/webp');
+      default:
+        return MediaType.parse('application/octet-stream');
+    }
+  }
+
+  Future<String> uploadDocument(File file) async {
+    // Validate file size (max 10MB)
+    final fileSize = await file.length();
+    if (fileSize > 10 * 1024 * 1024) {
+      throw Exception('File size must be less than 10MB');
+    }
+
+    final uri = Uri.parse('${ApiConfig.baseUrl}/upload/document');
+    final request = http.MultipartRequest('POST', uri);
+
+    final token = AuthStore.token;
+    if (token != null && token.isNotEmpty) {
+      request.headers['Authorization'] = 'Bearer $token';
+    }
+
+    request.files.add(
+      await http.MultipartFile.fromPath(
+        'document',
+        file.path,
+        contentType: _getMediaTypeForDocument(file),
+      ),
+    );
+
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      final data = jsonDecode(response.body);
+      return data['url'] as String;
+    } else {
+      final errorData = jsonDecode(response.body);
+      throw Exception(errorData['message'] ?? 'Failed to upload document');
+    }
+  }
 }

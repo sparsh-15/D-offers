@@ -496,31 +496,64 @@ class _CreateCampaignScreenState extends State<CreateCampaignScreen> {
         },
         controlsBuilder: (context, details) {
           final isLast = _currentStep == 4;
-          return Padding(
-            padding: const EdgeInsets.only(top: 16),
-            child: Row(
-              children: [
-                FilledButton(
-                  onPressed: (_submitting || _estimating)
-                      ? null
-                      : (isLast
-                          ? () => _createCampaign(submitForPayment: true)
-                          : details.onStepContinue),
-                  child: Text(isLast ? 'Pay & Launch' : 'Continue'),
-                ),
-                if (isLast) ...[
-                  const SizedBox(width: 12),
+          if (isLast) {
+            return Padding(
+              padding: const EdgeInsets.only(top: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  FilledButton(
+                    onPressed: (_submitting || _estimating)
+                        ? null
+                        : () => _createCampaign(submitForPayment: true),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.accent,
+                      foregroundColor: AppColors.background,
+                    ),
+                    child: const Text('Pay & Launch'),
+                  ),
+                  const SizedBox(height: 12),
                   OutlinedButton(
                     onPressed: (_submitting || _estimating)
                         ? null
                         : () => _createCampaign(submitForPayment: false),
                     child: const Text('Save Draft'),
                   ),
+                  const SizedBox(height: 12),
+                  OutlinedButton(
+                    onPressed: (_submitting || _estimating) ? null : details.onStepCancel,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.textSecondary,
+                      side: const BorderSide(color: AppColors.borderMid),
+                    ),
+                    child: const Text('Back'),
+                  ),
                 ],
+              ),
+            );
+          }
+          return Padding(
+            padding: const EdgeInsets.only(top: 16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: FilledButton(
+                    onPressed: (_submitting || _estimating)
+                        ? null
+                        : details.onStepContinue,
+                    child: const Text('Continue'),
+                  ),
+                ),
                 const SizedBox(width: 12),
-                TextButton(
-                  onPressed: (_submitting || _estimating) ? null : details.onStepCancel,
-                  child: Text(_currentStep == 0 ? 'Close' : 'Back'),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: (_submitting || _estimating) ? null : details.onStepCancel,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.textSecondary,
+                      side: const BorderSide(color: AppColors.borderMid),
+                    ),
+                    child: Text(_currentStep == 0 ? 'Close' : 'Back'),
+                  ),
                 ),
               ],
             ),
@@ -550,8 +583,14 @@ class _CreateCampaignScreenState extends State<CreateCampaignScreen> {
                   Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
-                      'Select one banner from this offer',
-                      style: Theme.of(context).textTheme.titleSmall,
+                      _selectedBannerUrl != null && _selectedBannerUrl!.isNotEmpty
+                          ? 'Banner selected ✓'
+                          : 'Select one banner from this offer',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            color: _selectedBannerUrl != null && _selectedBannerUrl!.isNotEmpty
+                                ? AppColors.success
+                                : Theme.of(context).textTheme.titleSmall?.color,
+                          ),
                     ),
                   ),
                 const SizedBox(height: 8),
@@ -849,9 +888,24 @@ class _CreateCampaignScreenState extends State<CreateCampaignScreen> {
                 ),
                 const SizedBox(height: 12),
                 if (_scheduledAt != null)
-                  Text(
-                    'Scheduled for: ${_scheduledAt!.toLocal()}',
-                    style: Theme.of(context).textTheme.titleSmall,
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Schedule',
+                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        _scheduledAt!.toLocal().toString(),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: AppColors.textPrimary,
+                              fontWeight: FontWeight.w500,
+                            ),
+                      ),
+                    ],
                   ),
                 if (_selectedBannerUrl != null && _selectedBannerUrl!.isNotEmpty) ...[
                   const SizedBox(height: 16),

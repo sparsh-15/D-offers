@@ -19,7 +19,7 @@ const storage = multer.diskStorage({
   },
 });
 
-// File filter to accept only images
+// File filter to accept images and PDF documents
 const fileFilter = (req, file, cb) => {
   console.log('[UPLOAD] File received:', {
     originalname: file.originalname,
@@ -27,20 +27,21 @@ const fileFilter = (req, file, cb) => {
     fieldname: file.fieldname
   });
 
-  // Check if mimetype starts with 'image/'
+  // Check supported mime types
   const isImageMimetype = file.mimetype && file.mimetype.startsWith('image/');
+  const isPdfMimetype = file.mimetype === 'application/pdf';
   
   // Check file extension
-  const allowedExtensions = /\.(jpeg|jpg|png|gif|webp)$/i;
+  const allowedExtensions = /\.(jpeg|jpg|png|gif|webp|pdf)$/i;
   const hasValidExtension = allowedExtensions.test(file.originalname.toLowerCase());
 
-  // Accept if either mimetype is image/* OR has valid extension
-  if (isImageMimetype || hasValidExtension) {
+  // Accept if mime type is supported OR extension is supported
+  if (isImageMimetype || isPdfMimetype || hasValidExtension) {
     console.log('[UPLOAD] File accepted');
     return cb(null, true);
   } else {
     console.log('[UPLOAD] File rejected - Invalid type');
-    cb(new Error(`Only image files are allowed. Received: ${file.mimetype}`));
+    cb(new Error(`Only image or PDF files are allowed. Received: ${file.mimetype}`));
   }
 };
 

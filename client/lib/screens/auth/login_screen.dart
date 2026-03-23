@@ -68,25 +68,31 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 // ── Headline ──────────────────────────────────────────────────
                 
-                Text.rich(
-                  TextSpan(
-                    style: theme.textTheme.displayMedium,
-                    children: [
-                      const TextSpan(text: 'Welcome to '),
-                      TextSpan(
-                        text: AppStrings.appName,
-                        style: theme.textTheme.displayMedium?.copyWith(
-                          color: AppColors.accent,
+                Center(
+                  child: Text.rich(
+                    TextSpan(
+                      style: theme.textTheme.displayMedium,
+                      children: [
+                        const TextSpan(text: 'Welcome to '),
+                        TextSpan(
+                          text: 'MyOffers',
+                          style: theme.textTheme.displayMedium?.copyWith(
+                            color: AppColors.accent,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
+                    textAlign: TextAlign.center,
                   ),
                 ),
                 const SizedBox(height: AppTokens.spaceSM),
-                Text(
-                  AppStrings.loginToContinue,
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    color: AppColors.textSecondary,
+                Center(
+                  child: Text(
+                    'Login to continue',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ),
 

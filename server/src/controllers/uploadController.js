@@ -140,10 +140,35 @@ async function deleteImage(req, res, next) {
   }
 }
 
+async function uploadDocument(req, res, next) {
+  try {
+    if (!req.file) {
+      const err = new Error('No document uploaded');
+      err.statusCode = 400;
+      return next(err);
+    }
+
+    const result = await cloudinary.uploader.upload(req.file.path, {
+      folder: 'd-offers/kyc-documents',
+      resource_type: 'auto',
+    });
+
+    res.status(200).json({
+      success: true,
+      url: result.secure_url,
+      publicId: result.public_id,
+    });
+  } catch (err) {
+    console.error('Document upload error:', err);
+    next(err);
+  }
+}
+
 module.exports = {
   uploadImage,
   uploadMultipleImages,
   uploadShopLogo,
   uploadShopImages,
+  uploadDocument,
   deleteImage,
 };

@@ -6,6 +6,9 @@ const uploadController = require('../controllers/uploadController');
 
 const router = express.Router();
 
+// Public route for pre-login registration document uploads
+router.post('/document', upload.single('document'), uploadController.uploadDocument);
+
 // Protect all upload routes - only authenticated shopkeepers and admins
 router.use(authMiddleware);
 router.use(requireRole(['shopkeeper', 'super_admin', 'subadmin']));
