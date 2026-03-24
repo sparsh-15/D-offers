@@ -65,6 +65,13 @@ router.delete('/plans/:planId', subscriptionPlanController.deletePlan);
 
 // ============ AI Credit Packs (Admin) ============
 
+router.get('/ai-credit-packs/template', aiCreditPackController.downloadAiPackTemplate);
+router.get('/ai-credit-packs/export', aiCreditPackController.exportAiPacks);
+router.post(
+  '/ai-credit-packs/import',
+  planBulkUpload.single('file'),
+  aiCreditPackController.importAiPacks
+);
 router.get('/ai-credit-packs', aiCreditPackController.getAllPacks);
 router.get('/ai-credit-packs/:packId', aiCreditPackController.getPackById);
 router.post('/ai-credit-packs', aiCreditPackController.createPack);

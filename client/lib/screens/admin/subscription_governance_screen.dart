@@ -78,1118 +78,1065 @@ class PlansManagementTab extends StatefulWidget {
 }
 
 class _PlansManagementTabState extends State<PlansManagementTab> {
-  List<Map<String, dynamic>> _plans = [];
-  List<Map<String, dynamic>> _categories = [];
-  bool _loading = true;
-  bool _bulkBusy = false;
-  String? _error;
-  /// null or 'all' = show all; else filter by this category value
-  String? _filterCategory;
+      List<Map<String, dynamic>> _plans = [];
+      List<Map<String, dynamic>> _categories = [];
+      bool _loading = true;
+      bool _bulkBusy = false;
+      String? _error;
+      /// null or 'all' = show all; else filter by this category value
+      String? _filterCategory;
 
-  @override
-  void initState() {
-    super.initState();
-    _loadData();
-  }
+      @override
+      void initState() {
+        super.initState();
+        _loadData();
+      }
 
-  Future<void> _loadData() async {
-    setState(() => _loading = true);
-    try {
-      // Load categories and plans in parallel
-      await Future.wait([
-        _loadCategories(),
-        _loadPlans(),
-      ]);
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _error = e.toString();
-        _loading = false;
-      });
-      DialogHelper.showErrorSnackBar(context, e.toString());
-    }
-  }
+      Future<void> _loadData() async {
+        setState(() => _loading = true);
+        try {
+          // Load categories and plans in parallel
+          await Future.wait([
+            _loadCategories(),
+            _loadPlans(),
+          ]);
+        } catch (e) {
+          if (!mounted) return;
+          setState(() {
+            _error = e.toString();
+            _loading = false;
+          });
+          DialogHelper.showErrorSnackBar(context, e.toString());
+        }
+      }
 
-  Future<void> _loadCategories() async {
-    try {
-      final categories = await SubscriptionService.instance.getCategories();
+      Future<void> _loadCategories() async {
+        try {
+          final categories = await SubscriptionService.instance.getCategories();
 
-      if (!mounted) return;
-      setState(() {
-        _categories = categories;
-      });
-    } catch (e) {
-      print('Error loading categories: $e');
-      // Fallback to empty list
-      if (!mounted) return;
-      setState(() {
-        _categories = [];
-      });
-    }
-  }
+          if (!mounted) return;
+          setState(() {
+            _categories = categories;
+          });
+        } catch (e) {
+          print('Error loading categories: $e');
+          // Fallback to empty list
+          if (!mounted) return;
+          setState(() {
+            _categories = [];
+          });
+        }
+      }
 
-  Future<void> _loadPlans() async {
-    try {
-      final plans = await SubscriptionService.instance.getAllPlans();
+      Future<void> _loadPlans() async {
+        try {
+          final plans = await SubscriptionService.instance.getAllPlans();
 
-      if (!mounted) return;
-      setState(() {
-        _plans = plans;
-        _error = null;
-        _loading = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _error = e.toString();
-        _loading = false;
-      });
-      DialogHelper.showErrorSnackBar(context, e.toString());
-    }
-  }
+          if (!mounted) return;
+          setState(() {
+            _plans = plans;
+            _error = null;
+            _loading = false;
+          });
+        } catch (e) {
+          if (!mounted) return;
+          setState(() {
+            _error = e.toString();
+            _loading = false;
+          });
+          DialogHelper.showErrorSnackBar(context, e.toString());
+        }
+      }
 
-  @override
-  Widget build(BuildContext context) {
-    final filteredPlans = _filterCategory == null ||
-            _filterCategory == 'all' ||
-            _filterCategory!.isEmpty
-        ? _plans
-        : _plans.where((p) => (p['category'] ?? '') == _filterCategory).toList();
+      @override
+      Widget build(BuildContext context) {
+        final filteredPlans = _filterCategory == null ||
+                _filterCategory == 'all' ||
+                _filterCategory!.isEmpty
+            ? _plans
+            : _plans.where((p) => (p['category'] ?? '') == _filterCategory).toList();
 
-    // Display order: higher price first
-    num toNum(dynamic v) {
-      if (v == null) return 0;
-      if (v is num) return v;
-      if (v is String) return num.tryParse(v) ?? 0;
-      return 0;
-    }
-    filteredPlans.sort((a, b) {
-      final priceA = toNum(a['monthlyPrice'] ?? a['price']);
-      final priceB = toNum(b['monthlyPrice'] ?? b['price']);
-      return priceB.compareTo(priceA);
-    });
+        // Display order: higher price first
+        num toNum(dynamic v) {
+          if (v == null) return 0;
+          if (v is num) return v;
+          if (v is String) return num.tryParse(v) ?? 0;
+          return 0;
+        }
+        filteredPlans.sort((a, b) {
+          final priceA = toNum(a['monthlyPrice'] ?? a['price']);
+          final priceB = toNum(b['monthlyPrice'] ?? b['price']);
+          return priceB.compareTo(priceA);
+        });
 
-    return Column(
-      children: [
-        // Always-visible header with Add Plan button
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    '${filteredPlans.length} Plans',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-              ),
-              Flexible(
-                fit: FlexFit.loose,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    PopupMenuButton<String>(
-                      enabled: !_bulkBusy,
-                      tooltip: 'Bulk management tools',
-                      onSelected: _handleBulkAction,
-                      surfaceTintColor: Colors.transparent,
-                      constraints: const BoxConstraints(minWidth: 260),
-                      itemBuilder: (context) => [
-                        PopupMenuItem(
-                          enabled: false,
-                          height: 30,
-                          child: Text(
-                            'Template',
-                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              color: AppColors.textMuted,
-                              fontWeight: FontWeight.w700,
+        return Column(
+          children: [
+            // Always-visible header with Add Plan button
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '${filteredPlans.length} Plans',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                  ),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: Wrap(
+                      spacing: 10,
+                      runSpacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        PopupMenuButton<String>(
+                          enabled: !_bulkBusy,
+                          tooltip: 'Bulk management tools',
+                          onSelected: _handleBulkAction,
+                          surfaceTintColor: Colors.transparent,
+                          constraints: const BoxConstraints(minWidth: 260),
+                          itemBuilder: (context) => [
+                            PopupMenuItem(
+                              enabled: false,
+                              height: 30,
+                              child: Text(
+                                'Template',
+                                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                      color: AppColors.textMuted,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                              ),
+                            ),
+                            PopupMenuItem(
+                              value: 'template_csv',
+                              height: 46,
+                              child: Row(
+                                children: [
+                                  Icon(Icons.description_outlined, size: 18, color: AppColors.primary),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text('Download Template', style: Theme.of(context).textTheme.bodyMedium),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.grey100,
+                                      borderRadius: BorderRadius.circular(999),
+                                    ),
+                                    child: Text('CSV', style: Theme.of(context).textTheme.labelSmall),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            PopupMenuItem(
+                              value: 'template_xlsx',
+                              height: 46,
+                              child: Row(
+                                children: [
+                                  Icon(Icons.table_chart_outlined, size: 18, color: AppColors.primary),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text('Download Template', style: Theme.of(context).textTheme.bodyMedium),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.grey100,
+                                      borderRadius: BorderRadius.circular(999),
+                                    ),
+                                    child: Text('XLSX', style: Theme.of(context).textTheme.labelSmall),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const PopupMenuDivider(height: 8),
+                            PopupMenuItem(
+                              enabled: false,
+                              height: 30,
+                              child: Text(
+                                'Export',
+                                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                      color: AppColors.textMuted,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                              ),
+                            ),
+                            PopupMenuItem(
+                              value: 'export_csv',
+                              height: 46,
+                              child: Row(
+                                children: [
+                                  Icon(Icons.file_download_outlined, size: 18, color: AppColors.primary),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text('Export Plans', style: Theme.of(context).textTheme.bodyMedium),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.grey100,
+                                      borderRadius: BorderRadius.circular(999),
+                                    ),
+                                    child: Text('CSV', style: Theme.of(context).textTheme.labelSmall),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            PopupMenuItem(
+                              value: 'export_xlsx',
+                              height: 46,
+                              child: Row(
+                                children: [
+                                  Icon(Icons.download_rounded, size: 18, color: AppColors.primary),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text('Export Plans', style: Theme.of(context).textTheme.bodyMedium),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.grey100,
+                                      borderRadius: BorderRadius.circular(999),
+                                    ),
+                                    child: Text('XLSX', style: Theme.of(context).textTheme.labelSmall),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const PopupMenuDivider(height: 8),
+                            PopupMenuItem(
+                              enabled: false,
+                              height: 30,
+                              child: Text(
+                                'Import',
+                                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                      color: AppColors.textMuted,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                              ),
+                            ),
+                            PopupMenuItem(
+                              value: 'import',
+                              height: 46,
+                              child: Row(
+                                children: [
+                                  Icon(Icons.file_upload_outlined, size: 18, color: AppColors.primary),
+                                  const SizedBox(width: 10),
+                                  Text('Bulk Upload Plans', style: Theme.of(context).textTheme.bodyMedium),
+                                ],
+                              ),
+                            ),
+                          ],
+                          child: Container(
+                            height: 42,
+                            padding: const EdgeInsets.symmetric(horizontal: 14),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  AppColors.primary,
+                                  AppColors.primary.withValues(alpha: 0.82),
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _bulkBusy
+                                    ? const SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2.2,
+                                          valueColor: AlwaysStoppedAnimation(Colors.white),
+                                        ),
+                                      )
+                                    : const Icon(Icons.tune_rounded, size: 18, color: Colors.white),
+                                const SizedBox(width: 8),
+                                const Text(
+                                  'Bulk Tools',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                const Icon(Icons.keyboard_arrow_down_rounded, size: 20, color: Colors.white),
+                              ],
                             ),
                           ),
                         ),
-                        PopupMenuItem(
-                          value: 'template_csv',
-                          height: 46,
-                          child: Row(
-                            children: [
-                              Icon(Icons.description_outlined, size: 18, color: AppColors.primary),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text('Download Template', style: Theme.of(context).textTheme.bodyMedium),
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: AppColors.grey100,
-                                  borderRadius: BorderRadius.circular(999),
+                        const SizedBox(width: 10),
+                        IntrinsicWidth(
+                          child: SizedBox(
+                            height: 42,
+                            child: ElevatedButton.icon(
+                              onPressed: () => _showPlanDialog(),
+                              icon: const Icon(Icons.add_rounded, size: 18),
+                              label: const Text('Add Plan'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.accent,
+                                foregroundColor: AppColors.black,
+                                elevation: 0,
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
                                 ),
-                                child: Text('CSV', style: Theme.of(context).textTheme.labelSmall),
                               ),
-                            ],
-                          ),
-                        ),
-                        PopupMenuItem(
-                          value: 'template_xlsx',
-                          height: 46,
-                          child: Row(
-                            children: [
-                              Icon(Icons.table_chart_outlined, size: 18, color: AppColors.primary),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text('Download Template', style: Theme.of(context).textTheme.bodyMedium),
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: AppColors.grey100,
-                                  borderRadius: BorderRadius.circular(999),
-                                ),
-                                child: Text('XLSX', style: Theme.of(context).textTheme.labelSmall),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const PopupMenuDivider(height: 8),
-                        PopupMenuItem(
-                          enabled: false,
-                          height: 30,
-                          child: Text(
-                            'Export',
-                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              color: AppColors.textMuted,
-                              fontWeight: FontWeight.w700,
                             ),
-                          ),
-                        ),
-                        PopupMenuItem(
-                          value: 'export_csv',
-                          height: 46,
-                          child: Row(
-                            children: [
-                              Icon(Icons.file_download_outlined, size: 18, color: AppColors.primary),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text('Export Plans', style: Theme.of(context).textTheme.bodyMedium),
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: AppColors.grey100,
-                                  borderRadius: BorderRadius.circular(999),
-                                ),
-                                child: Text('CSV', style: Theme.of(context).textTheme.labelSmall),
-                              ),
-                            ],
-                          ),
-                        ),
-                        PopupMenuItem(
-                          value: 'export_xlsx',
-                          height: 46,
-                          child: Row(
-                            children: [
-                              Icon(Icons.download_rounded, size: 18, color: AppColors.primary),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text('Export Plans', style: Theme.of(context).textTheme.bodyMedium),
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: AppColors.grey100,
-                                  borderRadius: BorderRadius.circular(999),
-                                ),
-                                child: Text('XLSX', style: Theme.of(context).textTheme.labelSmall),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const PopupMenuDivider(height: 8),
-                        PopupMenuItem(
-                          enabled: false,
-                          height: 30,
-                          child: Text(
-                            'Import',
-                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              color: AppColors.textMuted,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                        PopupMenuItem(
-                          value: 'import',
-                          height: 46,
-                          child: Row(
-                            children: [
-                              Icon(Icons.file_upload_outlined, size: 18, color: AppColors.primary),
-                              const SizedBox(width: 10),
-                              Text('Bulk Upload Plans', style: Theme.of(context).textTheme.bodyMedium),
-                            ],
                           ),
                         ),
                       ],
-                      child: Container(
-                        height: 42,
-                        padding: const EdgeInsets.symmetric(horizontal: 14),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              AppColors.primary,
-                              AppColors.primary.withValues(alpha: 0.82),
-                            ],
-                          ),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            _bulkBusy
-                                ? const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2.2,
-                                      valueColor: AlwaysStoppedAnimation(Colors.white),
-                                    ),
-                                  )
-                                : const Icon(Icons.tune_rounded, size: 18, color: Colors.white),
-                            const SizedBox(width: 8),
-                            const Text(
-                              'Bulk Tools',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            const Icon(Icons.keyboard_arrow_down_rounded, size: 20, color: Colors.white),
-                          ],
-                        ),
-                      ),
                     ),
-                    const SizedBox(width: 10),
-                    SizedBox(
-                      height: 42,
-                      child: ElevatedButton.icon(
-                        onPressed: () => _showPlanDialog(),
-                        icon: const Icon(Icons.add_rounded, size: 18),
-                        label: const Text('Add Plan'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.accent,
-                          foregroundColor: AppColors.black,
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-          child: Row(
-            children: [
-              Text(
-                'Category: ',
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  value: (_filterCategory == null ||
-                          _filterCategory == 'all' ||
-                          (_filterCategory?.isEmpty ?? true) ||
-                          !_categories.any((c) => c['value'] == _filterCategory))
-                      ? 'all'
-                      : _filterCategory!,
-                  decoration: const InputDecoration(
-                    isDense: true,
-                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    border: OutlineInputBorder(),
                   ),
-                  items: [
-                    const DropdownMenuItem(value: 'all', child: Text('All categories')),
-                    ..._categories.map<DropdownMenuItem<String>>((cat) {
-                      final value = cat['value'] as String? ?? '';
-                      final label = cat['label'] as String? ?? value;
-                      return DropdownMenuItem(
-                        value: value,
-                        child: Text(label),
-                      );
-                    }),
-                  ],
-                  onChanged: (value) {
-                    setState(() {
-                      _filterCategory = (value == 'all' || value == null) ? null : value;
-                    });
-                  },
-                ),
+                ],
               ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 8),
-        Expanded(
-          child: _loading
-              ? const Center(child: CircularProgressIndicator())
-              : (_error != null && _error!.isNotEmpty)
-                  ? Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.error_outline_rounded,
-                              size: 48, color: AppColors.error),
-                          const SizedBox(height: 12),
-                          Text(_error!,
-                              textAlign: TextAlign.center,
-                              style: Theme.of(context).textTheme.bodyMedium),
-                          const SizedBox(height: 16),
-                          ElevatedButton.icon(
-                            onPressed: _loadData,
-                            icon: const Icon(Icons.refresh_rounded),
-                            label: const Text('Try again'),
-                          ),
-                        ],
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+              child: Row(
+                children: [
+                  Text(
+                    'Category: ',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      value: (_filterCategory == null ||
+                              _filterCategory == 'all' ||
+                              (_filterCategory?.isEmpty ?? true) ||
+                              !_categories.any((c) => c['value'] == _filterCategory))
+                          ? 'all'
+                          : _filterCategory!,
+                      decoration: const InputDecoration(
+                        isDense: true,
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        border: OutlineInputBorder(),
                       ),
-                    )
-                  : filteredPlans.isEmpty
+                      items: [
+                        const DropdownMenuItem(value: 'all', child: Text('All categories')),
+                        ..._categories.map<DropdownMenuItem<String>>((cat) {
+                          final value = cat['value'] as String? ?? '';
+                          final label = cat['label'] as String? ?? value;
+                          return DropdownMenuItem(
+                            value: value,
+                            child: Text(label),
+                          );
+                        }),
+                      ],
+                      onChanged: (value) {
+                        setState(() {
+                          _filterCategory = (value == 'all' || value == null) ? null : value;
+                        });
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : (_error != null && _error!.isNotEmpty)
                       ? Center(
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.inbox_rounded,
-                                  size: 48,
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurface
-                                      .withValues(alpha: 0.4)),
+                              Icon(Icons.error_outline_rounded,
+                                  size: 48, color: AppColors.error),
                               const SizedBox(height: 12),
-                              Text(
-                                'No plans yet. Tap "Add Plan" above to create one.',
-                                textAlign: TextAlign.center,
-                                style: Theme.of(context).textTheme.bodyMedium,
+                              Text(_error!,
+                                  textAlign: TextAlign.center,
+                                  style: Theme.of(context).textTheme.bodyMedium),
+                              const SizedBox(height: 16),
+                              ElevatedButton.icon(
+                                onPressed: _loadData,
+                                icon: const Icon(Icons.refresh_rounded),
+                                label: const Text('Try again'),
                               ),
                             ],
                           ),
                         )
-                      : ListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          itemCount: filteredPlans.length,
-                          itemBuilder: (context, index) {
-                            final plan = filteredPlans[index];
-                            return FadeInUp(
-                              delay: Duration(milliseconds: 100 * index),
-                              child: _buildPlanCard(plan),
-                            );
-                          },
-                        ),
-        ),
-        ],
-      );
-  }
-
-  Widget _buildPlanCard(Map<String, dynamic> plan) {
-    final isActive = plan['isActive'] as bool? ?? true;
-    final categoryValue = plan['category'] as String? ?? '';
-    final categoryLabel = _categories.firstWhere(
-      (cat) => cat['value'] == categoryValue,
-      orElse: () => {'label': categoryValue},
-    )['label'];
-
-    // Use correct API field names
-    final displayName = plan['displayName'] ?? plan['name'] ?? 'Unnamed Plan';
-    final monthlyPrice = plan['monthlyPrice'] ?? plan['price'] ?? 0;
-    final maxOffers = plan['maxOffers'] ?? plan['offerLimit'] ?? 0;
-    final monthlyAiLimit = plan['monthlyAiLimit'];
-    final tierLabel = plan['tier'] ?? plan['rankingTier'] ?? '';
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              displayName,
-                              style: Theme.of(context).textTheme.titleLarge,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color:
-                                  isActive ? AppColors.green : AppColors.grey,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              isActive ? 'Active' : 'Inactive',
-                              style: const TextStyle(
-                                color: AppColors.white,
-                                fontSize: 12,
+                      : filteredPlans.isEmpty
+                          ? Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.inbox_rounded,
+                                      size: 48,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurface
+                                          .withValues(alpha: 0.4)),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    'No plans yet. Tap "Add Plan" above to create one.',
+                                    textAlign: TextAlign.center,
+                                    style: Theme.of(context).textTheme.bodyMedium,
+                                  ),
+                                ],
                               ),
+                            )
+                          : ListView.builder(
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              itemCount: filteredPlans.length,
+                              itemBuilder: (context, index) {
+                                final plan = filteredPlans[index];
+                                return FadeInUp(
+                                  delay: Duration(milliseconds: 100 * index),
+                                  child: _buildPlanCard(plan),
+                                );
+                              },
                             ),
+            ),
+          ],
+        );
+      }
+
+      Widget _buildPlanCard(Map<String, dynamic> plan) {
+        final isActive = plan['isActive'] as bool? ?? true;
+        final categoryValue = plan['category'] as String? ?? '';
+        final categoryLabel = _categories.firstWhere(
+          (cat) => cat['value'] == categoryValue,
+          orElse: () => {'label': categoryValue},
+        )['label'];
+
+        // Use correct API field names
+        final displayName = plan['displayName'] ?? plan['name'] ?? 'Unnamed Plan';
+        final monthlyPrice = plan['monthlyPrice'] ?? plan['price'] ?? 0;
+        final maxOffers = plan['maxOffers'] ?? plan['offerLimit'] ?? 0;
+        final monthlyAiLimit = plan['monthlyAiLimit'];
+        final tierLabel = plan['tier'] ?? plan['rankingTier'] ?? '';
+
+        return Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  displayName,
+                                  style: Theme.of(context).textTheme.titleLarge,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color:
+                                      isActive ? AppColors.green : AppColors.grey,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  isActive ? 'Active' : 'Inactive',
+                                  style: const TextStyle(
+                                    color: AppColors.white,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Category: $categoryLabel',
+                            style: Theme.of(context).textTheme.bodyMedium,
                           ),
                         ],
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Category: $categoryLabel',
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                    ],
-                  ),
+                    ),
+                    PopupMenuButton<String>(
+                      onSelected: (value) {
+                        if (value == 'edit') {
+                          _showPlanDialog(plan: plan);
+                        } else if (value == 'toggle') {
+                          _togglePlanStatus(plan);
+                        } else if (value == 'delete') {
+                          _deletePlan(plan);
+                        }
+                      },
+                      itemBuilder: (context) => [
+                        const PopupMenuItem(
+                          value: 'edit',
+                          child: Row(
+                            children: [
+                              Icon(Icons.edit_rounded, size: 20),
+                              SizedBox(width: 12),
+                              Text('Edit'),
+                            ],
+                          ),
+                        ),
+                        PopupMenuItem(
+                          value: 'toggle',
+                          child: Row(
+                            children: [
+                              Icon(
+                                isActive
+                                    ? Icons.visibility_off_rounded
+                                    : Icons.visibility_rounded,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 12),
+                              Text(isActive ? 'Deactivate' : 'Activate'),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuItem(
+                          value: 'delete',
+                          child: Row(
+                            children: [
+                              Icon(Icons.delete_rounded,
+                                  size: 20, color: AppColors.error),
+                              SizedBox(width: 12),
+                              Text('Delete',
+                                  style: TextStyle(color: AppColors.error)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-                PopupMenuButton<String>(
-                  onSelected: (value) {
-                    if (value == 'edit') {
-                      _showPlanDialog(plan: plan);
-                    } else if (value == 'toggle') {
-                      _togglePlanStatus(plan);
-                    } else if (value == 'delete') {
-                      _deletePlan(plan);
-                    }
-                  },
-                  itemBuilder: (context) => [
-                    const PopupMenuItem(
-                      value: 'edit',
-                      child: Row(
-                        children: [
-                          Icon(Icons.edit_rounded, size: 20),
-                          SizedBox(width: 12),
-                          Text('Edit'),
-                        ],
+                const Divider(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildPlanDetail(
+                        'Price',
+                        'G₹$monthlyPrice',
+                        Icons.currency_rupee_rounded,
                       ),
                     ),
-                    PopupMenuItem(
-                      value: 'toggle',
-                      child: Row(
-                        children: [
-                          Icon(
-                            isActive
-                                ? Icons.visibility_off_rounded
-                                : Icons.visibility_rounded,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 12),
-                          Text(isActive ? 'Deactivate' : 'Activate'),
-                        ],
-                      ),
-                    ),
-                    const PopupMenuItem(
-                      value: 'delete',
-                      child: Row(
-                        children: [
-                          Icon(Icons.delete_rounded,
-                              size: 20, color: AppColors.error),
-                          SizedBox(width: 12),
-                          Text('Delete',
-                              style: TextStyle(color: AppColors.error)),
-                        ],
+                    Expanded(
+                      child: _buildPlanDetail(
+                        'Offers',
+                        maxOffers == -1 ? 'Unlimited' : '$maxOffers',
+                        Icons.local_offer_rounded,
                       ),
                     ),
                   ],
                 ),
-              ],
-            ),
-            const Divider(height: 24),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildPlanDetail(
-                    'Price',
-                    '₹$monthlyPrice',
-                    Icons.currency_rupee_rounded,
-                  ),
-                ),
-                Expanded(
-                  child: _buildPlanDetail(
-                    'Offers',
-                    maxOffers == -1 ? 'Unlimited' : '$maxOffers',
-                    Icons.local_offer_rounded,
-                  ),
-                ),
-              ],
-            ),
-            if (tierLabel.toString().isNotEmpty || monthlyAiLimit != null) ...[
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  if (tierLabel.toString().isNotEmpty)
-                    Expanded(
-                      child: _buildPlanDetail(
-                        'Tier',
-                        tierLabel.toString(),
-                        Icons.star_rounded,
-                      ),
-                    ),
-                  if (monthlyAiLimit != null)
-                    Expanded(
-                      child: _buildPlanDetail(
-                        'AI/mo',
-                        monthlyAiLimit == -1 ? 'Unlimited' : '$monthlyAiLimit',
-                        Icons.auto_awesome_rounded,
-                      ),
-                    ),
-                ],
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _handleBulkAction(String action) async {
-    if (_bulkBusy) return;
-
-    if (action == 'import') {
-      await _bulkImportPlans();
-      return;
-    }
-
-    final isTemplate = action.startsWith('template_');
-    final format = action.endsWith('xlsx') ? 'xlsx' : 'csv';
-
-    setState(() => _bulkBusy = true);
-    try {
-      final filePayload = isTemplate
-          ? await SubscriptionService.instance.downloadPlanTemplate(format: format)
-          : await SubscriptionService.instance.exportPlans(
-              format: format,
-              category: _filterCategory,
-            );
-
-      final bytes = Uint8List.fromList(List<int>.from(filePayload['bytes'] as List<int>));
-      final fileName = filePayload['fileName'] as String;
-      final mimeType = filePayload['contentType'] as String?;
-
-      final xFile = XFile.fromData(
-        bytes,
-        name: fileName,
-        mimeType: mimeType,
-      );
-
-      await Share.shareXFiles(
-        [xFile],
-        text: isTemplate
-            ? 'Subscription plan template ($format)'
-            : 'Subscription plans export ($format)',
-        subject: fileName,
-      );
-
-      if (!mounted) return;
-      DialogHelper.showSuccessSnackBar(
-        context,
-        isTemplate
-            ? 'Template prepared. Choose where to save from share options.'
-            : 'Export prepared. Choose where to save from share options.',
-      );
-    } catch (e) {
-      if (!mounted) return;
-      DialogHelper.showErrorSnackBar(context, 'Bulk action failed: $e');
-    } finally {
-      if (mounted) setState(() => _bulkBusy = false);
-    }
-  }
-
-  Future<void> _bulkImportPlans() async {
-    setState(() => _bulkBusy = true);
-    try {
-      final result = await FilePicker.platform.pickFiles(
-        allowMultiple: false,
-        type: FileType.custom,
-        allowedExtensions: const ['csv', 'xlsx'],
-        withData: true,
-      );
-
-      if (result == null || result.files.isEmpty) {
-        if (mounted) setState(() => _bulkBusy = false);
-        return;
-      }
-
-      final selectedFile = result.files.first;
-      final format = selectedFile.name.toLowerCase().endsWith('.xlsx') ? 'xlsx' : 'csv';
-      final importResult = await SubscriptionService.instance.importPlansBulk(
-        file: selectedFile,
-        format: format,
-      );
-
-      if (!mounted) return;
-      final created = importResult['created'] ?? 0;
-      final updated = importResult['updated'] ?? 0;
-      final totalRows = importResult['totalRows'] ?? (created + updated);
-
-      DialogHelper.showSuccessSnackBar(
-        context,
-        'Import complete: $totalRows rows, $created created, $updated updated',
-      );
-      await _loadPlans();
-    } catch (e) {
-      if (!mounted) return;
-      DialogHelper.showErrorSnackBar(
-        context,
-        'Bulk import failed: $e',
-      );
-    } finally {
-      if (mounted) setState(() => _bulkBusy = false);
-    }
-  }
-
-  Widget _buildPlanDetail(String label, String value, IconData icon) {
-    return Column(
-      children: [
-        Icon(icon, color: AppColors.primary, size: 20),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-          ),
-        ),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            color: AppColors.grey600,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Future<void> _showPlanDialog({Map<String, dynamic>? plan}) async {
-    final isEdit = plan != null;
-    final mutedStyle = TextStyle(color: AppColors.textMuted, fontSize: 10);
-    final sectionStyle = TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textMuted);
-
-    // Use correct API field names
-    final displayNameController = TextEditingController(
-      text: plan?['displayName'] ?? plan?['name'] ?? '',
-    );
-    final priceController = TextEditingController(
-      text: (plan?['monthlyPrice'] ?? plan?['price'] ?? '').toString(),
-    );
-    final offerLimitController = TextEditingController(
-      text: (plan?['maxOffers'] ?? plan?['offerLimit'] ?? 10).toString(),
-    );
-    final maxPhotosController = TextEditingController(
-      text: (plan?['maxPhotosPerOffer'] ?? 5).toString(),
-    );
-    final monthlyAiLimitController = TextEditingController(
-      text: (plan?['monthlyAiLimit'] ?? 0).toString(),
-    );
-    final descriptionController = TextEditingController(
-      text: plan?['description'] ?? '',
-    );
-
-    String? selectedCategory = plan?['category'];
-    // Tier is mandatory: default to silver when creating or when plan has no tier
-    String selectedTier = (plan?['tier']?.toString().trim().isNotEmpty == true)
-        ? (plan!['tier'] as String)
-        : 'silver';
-    String selectedRankingTier = selectedTier == 'trial'
-      ? 'normal'
-      : selectedTier == 'silver'
-        ? 'normal'
-        : selectedTier == 'gold'
-            ? 'top3'
-            : selectedTier == 'platinum'
-                ? 'priority'
-                : (plan?['rankingTier'] ?? 'normal');
-    String selectedAiCreditTier = plan?['aiCreditTier'] ?? selectedTier;
-    bool homepageRotation = plan?['homepageRotation'] == true;
-    bool aiOptimizationSuggestions = plan?['aiOptimizationSuggestions'] == true;
-    bool analyticsEnabled = plan?['analyticsEnabled'] == true;
-    bool prioritySupport = plan?['prioritySupport'] == true;
-
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: Text(
-            isEdit ? 'Edit Plan' : 'Create Plan',
-            style: const TextStyle(color: Colors.white),
-          ),
-          content: SingleChildScrollView(
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                maxWidth: (MediaQuery.sizeOf(context).width * 0.9).clamp(280.0, 500.0),
-              ),
-              child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                if (tierLabel.toString().isNotEmpty || monthlyAiLimit != null) ...[
+                  const SizedBox(height: 12),
+                  Row(
                     children: [
-                      // ─── Manual / input-based fields (above) ───
-                      Text('Basic info', style: sectionStyle),
-                      const SizedBox(height: 6),
-                      TextField(
-                        controller: displayNameController,
-                        decoration: InputDecoration(
-                          labelText: 'Display Name *',
-                          hintText: 'e.g., Silver Plan - Retail',
-                          helperText: 'Name shown on plan cards',
-                          helperStyle: mutedStyle,
-                          helperMaxLines: 2,
-                          isDense: true,
+                      if (tierLabel.toString().isNotEmpty)
+                        Expanded(
+                          child: _buildPlanDetail(
+                            'Tier',
+                            tierLabel.toString(),
+                            Icons.star_rounded,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 10),
-                      DropdownButtonFormField<String>(
-                        value: selectedCategory,
-                        decoration: InputDecoration(
-                          labelText: 'Business Category *',
-                          hintText: 'Shop type or All',
-                          helperText: 'Retail, restaurant, or All',
-                          helperStyle: mutedStyle,
-                          helperMaxLines: 1,
-                          isDense: true,
+                      if (monthlyAiLimit != null)
+                        Expanded(
+                          child: _buildPlanDetail(
+                            'AI/mo',
+                            monthlyAiLimit == -1 ? 'Unlimited' : '$monthlyAiLimit',
+                            Icons.auto_awesome_rounded,
+                          ),
                         ),
-                        isExpanded: true,
-                        menuMaxHeight: 280,
-                        items: [
-                          const DropdownMenuItem(value: 'all', child: Text('All categories')),
-                          ..._categories.map((category) {
-                            return DropdownMenuItem<String>(
-                              value: category['value'],
-                              child: Text(category['label'] ?? category['value'], overflow: TextOverflow.ellipsis),
-                            );
-                          }),
-                        ],
-                        onChanged: (value) => setDialogState(() => selectedCategory = value),
-                        validator: (value) => (value == null || value.isEmpty) ? 'Select category' : null,
-                      ),
-                      const SizedBox(height: 14),
-                      Text('Pricing', style: sectionStyle),
-                      const SizedBox(height: 6),
-                      TextField(
-                        controller: priceController,
-                        decoration: InputDecoration(
-                          labelText: 'Monthly Price (₹) *',
-                          hintText: 'e.g., 999',
-                          helperText: 'Amount per month',
-                          helperStyle: mutedStyle,
-                          helperMaxLines: 1,
-                          isDense: true,
-                        ),
-                        keyboardType: TextInputType.number,
-                      ),
-                      const SizedBox(height: 14),
-                      Text('Offer & media limits', style: sectionStyle),
-                      const SizedBox(height: 6),
-                      TextField(
-                        controller: offerLimitController,
-                        decoration: InputDecoration(
-                          labelText: 'Max Offers *',
-                          hintText: '10 or -1 unlimited',
-                          helperText: 'Max offers per shop',
-                          helperStyle: mutedStyle,
-                          helperMaxLines: 1,
-                          isDense: true,
-                        ),
-                        keyboardType: TextInputType.number,
-                      ),
-                      const SizedBox(height: 8),
-                      TextField(
-                        controller: maxPhotosController,
-                        decoration: InputDecoration(
-                          labelText: 'Max Photos Per Offer',
-                          hintText: 'e.g., 5',
-                          helperText: 'Photos per offer',
-                          helperStyle: mutedStyle,
-                          helperMaxLines: 1,
-                          isDense: true,
-                        ),
-                        keyboardType: TextInputType.number,
-                      ),
-                      const SizedBox(height: 14),
-                      Text('AI Banner Limit', style: sectionStyle),
-                      const SizedBox(height: 6),
-                      TextField(
-                        controller: monthlyAiLimitController,
-                        decoration: InputDecoration(
-                          labelText: 'Monthly AI Banner Limit',
-                          hintText: '2 or -1 unlimited',
-                          helperText: 'AI banners per month',
-                          helperStyle: mutedStyle,
-                          helperMaxLines: 1,
-                          isDense: true,
-                        ),
-                        keyboardType: TextInputType.number,
-                      ),
-                      const SizedBox(height: 18),
-                      // ─── Pack price tier (drives ranking + AI tier in DB) ───
-                      Text('Pack price tier', style: sectionStyle),
-                      const SizedBox(height: 6),
-                      DropdownButtonFormField<String>(
-                        value: selectedTier,
-                        decoration: InputDecoration(
-                          labelText: 'Tier *',
-                          hintText: 'Trial / Silver / Gold / Platinum',
-                          helperText: 'Sets ranking & AI tier',
-                          helperStyle: mutedStyle,
-                          helperMaxLines: 1,
-                          isDense: true,
-                        ),
-                        isExpanded: true,
-                        menuMaxHeight: 220,
-                        items: const [
-                          DropdownMenuItem(value: 'trial', child: Text('Trial')),
-                          DropdownMenuItem(value: 'silver', child: Text('Silver')),
-                          DropdownMenuItem(value: 'gold', child: Text('Gold')),
-                          DropdownMenuItem(value: 'platinum', child: Text('Platinum')),
-                        ],
-                        onChanged: (v) {
-                          if (v == null) return;
-                          setDialogState(() {
-                            selectedTier = v;
-                            if (v == 'trial') { selectedRankingTier = 'normal'; selectedAiCreditTier = 'silver'; }
-                            else if (v == 'silver') { selectedRankingTier = 'normal'; selectedAiCreditTier = 'silver'; }
-                            else if (v == 'gold') { selectedRankingTier = 'top3'; selectedAiCreditTier = 'gold'; }
-                            else { selectedRankingTier = 'priority'; selectedAiCreditTier = 'platinum'; }
-                          });
-                        },
-                        validator: (v) => (v == null || v.isEmpty) ? 'Select tier' : null,
-                      ),
-                      const SizedBox(height: 6),
-                      CheckboxListTile(
-                        title: const Text('Homepage Rotation', style: TextStyle(fontSize: 14)),
-                        subtitle: Text('Platinum feature', style: mutedStyle),
-                        value: homepageRotation,
-                        onChanged: (v) => setDialogState(() => homepageRotation = v ?? false),
-                        controlAffinity: ListTileControlAffinity.leading,
-                        contentPadding: EdgeInsets.zero,
-                        dense: true,
-                      ),
-                      CheckboxListTile(
-                        title: const Text('AI Optimization Suggestions', style: TextStyle(fontSize: 14)),
-                        subtitle: Text('AI tips', style: mutedStyle),
-                        value: aiOptimizationSuggestions,
-                        onChanged: (v) => setDialogState(() => aiOptimizationSuggestions = v ?? false),
-                        controlAffinity: ListTileControlAffinity.leading,
-                        contentPadding: EdgeInsets.zero,
-                        dense: true,
-                      ),
-                      CheckboxListTile(
-                        title: const Text('Analytics Enabled', style: TextStyle(fontSize: 14)),
-                        subtitle: Text('Advanced analytics', style: mutedStyle),
-                        value: analyticsEnabled,
-                        onChanged: (v) => setDialogState(() => analyticsEnabled = v ?? false),
-                        controlAffinity: ListTileControlAffinity.leading,
-                        contentPadding: EdgeInsets.zero,
-                        dense: true,
-                      ),
-                      CheckboxListTile(
-                        title: const Text('Priority Support', style: TextStyle(fontSize: 14)),
-                        subtitle: Text('Priority channel', style: mutedStyle),
-                        value: prioritySupport,
-                        onChanged: (v) => setDialogState(() => prioritySupport = v ?? false),
-                        controlAffinity: ListTileControlAffinity.leading,
-                        contentPadding: EdgeInsets.zero,
-                        dense: true,
-                      ),
-                      const SizedBox(height: 8),
-                      TextField(
-                        controller: descriptionController,
-                        decoration: InputDecoration(
-                          labelText: 'Description',
-                          hintText: 'Brief description for shopkeepers',
-                          helperText: 'Optional',
-                          helperStyle: mutedStyle,
-                          helperMaxLines: 1,
-                          isDense: true,
-                        ),
-                        maxLines: 2,
-                      ),
                     ],
                   ),
-                ),
+                ],
+              ],
+            ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                if (selectedCategory == null || selectedCategory!.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Please select a category'),
-                      backgroundColor: AppColors.red,
-                    ),
-                  );
-                  return;
-                }
-                if (selectedTier.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Please select a pack price tier'),
-                      backgroundColor: AppColors.red,
-                    ),
-                  );
-                  return;
-                }
-                Navigator.pop(context, true);
-              },
-              child: Text(isEdit ? 'Update' : 'Create'),
-            ),
-          ],
-        ),
-      ),
-    );
-
-    if (result == true) {
-      try {
-        if (isEdit) {
-          // Update existing plan
-          final planId = plan['_id'] ?? plan['id'];
-          await SubscriptionService.instance.updatePlan(
-            planId: planId,
-            displayName: displayNameController.text.trim(),
-            description: descriptionController.text.trim().isEmpty
-                ? null
-                : descriptionController.text.trim(),
-            monthlyPrice: double.tryParse(priceController.text.trim()),
-            category: selectedCategory,
-            maxOffers: int.tryParse(offerLimitController.text.trim()),
-            maxPhotosPerOffer: int.tryParse(maxPhotosController.text.trim()),
-            monthlyAiLimit: int.tryParse(monthlyAiLimitController.text.trim()),
-            rankingTier: selectedRankingTier,
-            homepageRotation: homepageRotation,
-            aiOptimizationSuggestions: aiOptimizationSuggestions,
-            aiCreditTier: selectedAiCreditTier,
-            tier: selectedTier,
-            analyticsEnabled: analyticsEnabled,
-            prioritySupport: prioritySupport,
-          );
-
-          if (!mounted) return;
-          DialogHelper.showSuccessSnackBar(
-            context,
-            'Plan updated successfully',
-          );
-        } else {
-          // Create new plan - auto-generate name from display name and category
-          final displayName = displayNameController.text.trim();
-          final category = selectedCategory!;
-
-          // Generate plan ID: lowercase, replace spaces with underscores, add category
-          final generatedName =
-              '${displayName.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '_')}_$category'
-                  .replaceAll(RegExp(r'_+'),
-                      '_') // Replace multiple underscores with single
-                  .replaceAll(RegExp(r'^_|_$'),
-                      ''); // Remove leading/trailing underscores
-
-          await SubscriptionService.instance.createPlan(
-            name: generatedName,
-            displayName: displayName,
-            category: category,
-            monthlyPrice: double.parse(priceController.text.trim()),
-            description: descriptionController.text.trim().isEmpty
-                ? null
-                : descriptionController.text.trim(),
-            maxOffers: int.parse(offerLimitController.text.trim()),
-            maxPhotosPerOffer: int.tryParse(maxPhotosController.text.trim()) ?? 5,
-            monthlyAiLimit: int.tryParse(monthlyAiLimitController.text.trim()) ?? 0,
-            rankingTier: selectedRankingTier,
-            homepageRotation: homepageRotation,
-            aiOptimizationSuggestions: aiOptimizationSuggestions,
-            aiCreditTier: selectedAiCreditTier,
-            tier: selectedTier,
-            analyticsEnabled: analyticsEnabled,
-            prioritySupport: prioritySupport,
-          );
-
-          if (!mounted) return;
-          DialogHelper.showSuccessSnackBar(
-            context,
-            'Plan created successfully',
-          );
-        }
-
-        _loadPlans();
-      } catch (e) {
-        if (!mounted) return;
-        DialogHelper.showErrorSnackBar(
-          context,
-          'Failed to ${isEdit ? 'update' : 'create'} plan: $e',
         );
       }
+
+      Future<void> _handleBulkAction(String action) async {
+        if (_bulkBusy) return;
+
+        if (action == 'import') {
+          await _bulkImportPlans();
+          return;
+        }
+
+        final isTemplate = action.startsWith('template_');
+        final format = action.endsWith('xlsx') ? 'xlsx' : 'csv';
+
+        setState(() => _bulkBusy = true);
+        try {
+          final filePayload = isTemplate
+              ? await SubscriptionService.instance.downloadPlanTemplate(format: format)
+              : await SubscriptionService.instance.exportPlans(
+                  format: format,
+                  category: _filterCategory,
+                );
+
+          final bytes = Uint8List.fromList(List<int>.from(filePayload['bytes'] as List<int>));
+          final fileName = filePayload['fileName'] as String;
+          final mimeType = filePayload['contentType'] as String?;
+
+          final xFile = XFile.fromData(
+            bytes,
+            name: fileName,
+            mimeType: mimeType,
+          );
+
+          await Share.shareXFiles(
+            [xFile],
+            text: isTemplate
+                ? 'Subscription plan template ($format)'
+                : 'Subscription plans export ($format)',
+            subject: fileName,
+          );
+
+          if (!mounted) return;
+          DialogHelper.showSuccessSnackBar(
+            context,
+            isTemplate
+                ? 'Template prepared. Choose where to save from share options.'
+                : 'Export prepared. Choose where to save from share options.',
+          );
+        } catch (e) {
+          if (!mounted) return;
+          DialogHelper.showErrorSnackBar(context, 'Bulk action failed: $e');
+        } finally {
+          if (mounted) setState(() => _bulkBusy = false);
+        }
+      }
+
+      Future<void> _bulkImportPlans() async {
+        setState(() => _bulkBusy = true);
+        try {
+          final result = await FilePicker.platform.pickFiles(
+            allowMultiple: false,
+            type: FileType.custom,
+            allowedExtensions: const ['csv', 'xlsx'],
+            withData: true,
+          );
+
+          if (result == null || result.files.isEmpty) {
+            if (mounted) setState(() => _bulkBusy = false);
+            return;
+          }
+
+          final selectedFile = result.files.first;
+          final format = selectedFile.name.toLowerCase().endsWith('.xlsx') ? 'xlsx' : 'csv';
+          final importResult = await SubscriptionService.instance.importPlansBulk(
+            file: selectedFile,
+            format: format,
+          );
+
+          if (!mounted) return;
+          final created = importResult['created'] ?? 0;
+          final updated = importResult['updated'] ?? 0;
+          final totalRows = importResult['totalRows'] ?? (created + updated);
+
+          DialogHelper.showSuccessSnackBar(
+            context,
+            'Import complete: $totalRows rows, $created created, $updated updated',
+          );
+          await _loadPlans();
+        } catch (e) {
+          if (!mounted) return;
+          DialogHelper.showErrorSnackBar(
+            context,
+            'Bulk import failed: $e',
+          );
+        } finally {
+          if (mounted) setState(() => _bulkBusy = false);
+        }
+      }
+
+      Widget _buildPlanDetail(String label, String value, IconData icon) {
+        return Column(
+          children: [
+            Icon(icon, color: AppColors.primary, size: 20),
+            const SizedBox(height: 4),
+            Text(
+              value,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                color: AppColors.grey600,
+              ),
+            ),
+          ],
+        );
+      }
+
+      Future<void> _showPlanDialog({Map<String, dynamic>? plan}) async {
+        final isEdit = plan != null;
+        final mutedStyle = TextStyle(color: AppColors.textMuted, fontSize: 10);
+        final sectionStyle = TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textMuted);
+
+        // Use correct API field names
+        final displayNameController = TextEditingController(
+          text: plan != null ? plan['displayName'] ?? plan['name'] ?? '' : '',
+        );
+        final descriptionController = TextEditingController(
+          text: plan != null ? plan['description'] ?? '' : '',
+        );
+        final priceController = TextEditingController(
+          text: plan != null ? (plan['monthlyPrice'] ?? plan['price'] ?? '').toString() : '',
+        );
+        final offerLimitController = TextEditingController(
+          text: plan != null ? (plan['maxOffers'] ?? plan['offerLimit'] ?? '').toString() : '',
+        );
+        final maxPhotosController = TextEditingController(
+          text: plan != null ? (plan['maxPhotosPerOffer'] ?? '').toString() : '',
+        );
+        final monthlyAiLimitController = TextEditingController(
+          text: plan != null ? (plan['monthlyAiLimit'] ?? '').toString() : '',
+        );
+
+        final tierOptions = ['silver', 'gold', 'platinum'];
+        final rankingTierOptions = ['normal', 'top3', 'priority'];
+        final aiCreditTierOptions = ['silver', 'gold', 'platinum'];
+
+        String? selectedCategory = plan != null ? plan['category'] : null;
+        String? selectedTier = plan != null ? plan['tier'] : null;
+        String? selectedRankingTier = plan != null ? plan['rankingTier'] : 'normal';
+        String? selectedAiCreditTier = plan != null ? plan['aiCreditTier'] : 'silver';
+
+        bool analyticsEnabled = plan != null ? plan['analyticsEnabled'] ?? false : false;
+        bool prioritySupport = plan != null ? plan['prioritySupport'] ?? false : false;
+        bool homepageRotation = plan != null ? plan['homepageRotation'] ?? false : false;
+        bool aiOptimizationSuggestions = plan != null ? plan['aiOptimizationSuggestions'] ?? false : false;
+
+        final result = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text(isEdit ? 'Edit Plan' : 'Create Plan'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: displayNameController,
+                    decoration: InputDecoration(
+                      labelText: 'Display Name *',
+                      helperText: 'What users will see for this plan',
+                      helperStyle: mutedStyle,
+                      isDense: true,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: descriptionController,
+                    decoration: InputDecoration(
+                      labelText: 'Description',
+                      helperText: 'Shown under the plan name',
+                      helperStyle: mutedStyle,
+                      isDense: true,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<String>(
+                    value: selectedCategory,
+                    decoration: InputDecoration(
+                      labelText: 'Shop Category *',
+                      helperText: 'Which shops can see this plan',
+                      helperStyle: mutedStyle,
+                      isDense: true,
+                    ),
+                    items: _categories.map<DropdownMenuItem<String>>((cat) {
+                      final value = cat['value'] as String? ?? '';
+                      final label = cat['label'] as String? ?? value;
+                      return DropdownMenuItem(value: value, child: Text(label));
+                    }).toList(),
+                    onChanged: (value) => selectedCategory = value,
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: priceController,
+                    decoration: InputDecoration(
+                      labelText: 'Price (per month) ₹ *',
+                      helperText: 'Monthly subscription price',
+                      helperStyle: mutedStyle,
+                      isDense: true,
+                    ),
+                    keyboardType: TextInputType.number,
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: offerLimitController,
+                    decoration: InputDecoration(
+                      labelText: 'Max Offers (-1 for unlimited)',
+                      helperText: 'Maximum number of offers for this plan',
+                      helperStyle: mutedStyle,
+                      isDense: true,
+                    ),
+                    keyboardType: TextInputType.number,
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: maxPhotosController,
+                    decoration: InputDecoration(
+                      labelText: 'Max Photos Per Offer',
+                      helperText: 'Maximum number of photos per offer',
+                      helperStyle: mutedStyle,
+                      isDense: true,
+                    ),
+                    keyboardType: TextInputType.number,
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: monthlyAiLimitController,
+                    decoration: InputDecoration(
+                      labelText: 'Monthly AI Limit (-1 for unlimited)',
+                      helperText: 'AI credits allowed per month',
+                      helperStyle: mutedStyle,
+                      isDense: true,
+                    ),
+                    keyboardType: TextInputType.number,
+                  ),
+                  const SizedBox(height: 12),
+                  Text('Tier settings', style: sectionStyle),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<String>(
+                    value: selectedTier,
+                    decoration: InputDecoration(
+                      labelText: 'Tier',
+                      helperText: 'Paid tier identifier (silver/gold/platinum)',
+                      helperStyle: mutedStyle,
+                      isDense: true,
+                    ),
+                    items: tierOptions.map((tier) {
+                      return DropdownMenuItem(value: tier, child: Text(tier));
+                    }).toList(),
+                    onChanged: (value) => selectedTier = value,
+                  ),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<String>(
+                    value: selectedRankingTier,
+                    decoration: InputDecoration(
+                      labelText: 'Ranking Tier',
+                      helperText: 'How prominently to surface the plan',
+                      helperStyle: mutedStyle,
+                      isDense: true,
+                    ),
+                    items: rankingTierOptions.map((tier) {
+                      return DropdownMenuItem(value: tier, child: Text(tier));
+                    }).toList(),
+                    onChanged: (value) => selectedRankingTier = value,
+                  ),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<String>(
+                    value: selectedAiCreditTier,
+                    decoration: InputDecoration(
+                      labelText: 'AI Credit Tier',
+                      helperText: 'AI credit tier to assign for this plan',
+                      helperStyle: mutedStyle,
+                      isDense: true,
+                    ),
+                    items: aiCreditTierOptions.map((tier) {
+                      return DropdownMenuItem(value: tier, child: Text(tier));
+                    }).toList(),
+                    onChanged: (value) => selectedAiCreditTier = value,
+                  ),
+                  const SizedBox(height: 12),
+                  Text('Feature flags', style: sectionStyle),
+                  const SizedBox(height: 4),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Analytics Enabled'),
+                    value: analyticsEnabled,
+                    onChanged: (value) => analyticsEnabled = value,
+                  ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Priority Support'),
+                    value: prioritySupport,
+                    onChanged: (value) => prioritySupport = value,
+                  ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Homepage Rotation'),
+                    value: homepageRotation,
+                    onChanged: (value) => homepageRotation = value,
+                  ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('AI Optimization Suggestions'),
+                    value: aiOptimizationSuggestions,
+                    onChanged: (value) => aiOptimizationSuggestions = value,
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  if (displayNameController.text.trim().isEmpty ||
+                      selectedCategory == null ||
+                      selectedCategory!.isEmpty ||
+                      priceController.text.trim().isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                      content: Text('Display name, category, and price are required'),
+                      backgroundColor: AppColors.red,
+                    ));
+                    return;
+                  }
+                  Navigator.pop(context, true);
+                },
+                child: Text(isEdit ? 'Update' : 'Create'),
+              ),
+            ],
+          ),
+        );
+
+        if (result == true) {
+          try {
+            if (isEdit) {
+              // Update existing plan
+              final planId = plan['_id'] ?? plan['id'];
+              await SubscriptionService.instance.updatePlan(
+                planId: planId,
+                displayName: displayNameController.text.trim(),
+                description: descriptionController.text.trim().isEmpty
+                    ? null
+                    : descriptionController.text.trim(),
+                monthlyPrice: double.tryParse(priceController.text.trim()),
+                category: selectedCategory,
+                maxOffers: int.tryParse(offerLimitController.text.trim()),
+                maxPhotosPerOffer: int.tryParse(maxPhotosController.text.trim()),
+                monthlyAiLimit: int.tryParse(monthlyAiLimitController.text.trim()),
+                rankingTier: selectedRankingTier ?? 'normal',
+                homepageRotation: homepageRotation,
+                aiOptimizationSuggestions: aiOptimizationSuggestions,
+                aiCreditTier: selectedAiCreditTier ?? 'silver',
+                tier: selectedTier,
+                analyticsEnabled: analyticsEnabled,
+                prioritySupport: prioritySupport,
+              );
+
+              if (!mounted) return;
+              DialogHelper.showSuccessSnackBar(
+                context,
+                'Plan updated successfully',
+              );
+            } else {
+              // Create new plan - auto-generate name from display name and category
+              final displayName = displayNameController.text.trim();
+              final category = selectedCategory!;
+
+              // Generate plan ID: lowercase, replace spaces with underscores, add category
+              final generatedName =
+                  '${displayName.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '_')}_$category'
+                      .replaceAll(RegExp(r'_+'),
+                          '_') // Replace multiple underscores with single
+                      .replaceAll(RegExp(r'^_|_$'),
+                          ''); // Remove leading/trailing underscores
+
+              await SubscriptionService.instance.createPlan(
+                name: generatedName,
+                displayName: displayName,
+                category: category,
+                monthlyPrice: double.parse(priceController.text.trim()),
+                description: descriptionController.text.trim().isEmpty
+                    ? null
+                    : descriptionController.text.trim(),
+                maxOffers: int.parse(offerLimitController.text.trim()),
+                maxPhotosPerOffer: int.tryParse(maxPhotosController.text.trim()) ?? 5,
+                monthlyAiLimit: int.tryParse(monthlyAiLimitController.text.trim()) ?? 0,
+                rankingTier: selectedRankingTier ?? 'normal',
+                homepageRotation: homepageRotation,
+                aiOptimizationSuggestions: aiOptimizationSuggestions,
+                aiCreditTier: selectedAiCreditTier ?? 'silver',
+                tier: selectedTier,
+                analyticsEnabled: analyticsEnabled,
+                prioritySupport: prioritySupport,
+              );
+
+              if (!mounted) return;
+              DialogHelper.showSuccessSnackBar(
+                context,
+                'Plan created successfully',
+              );
+            }
+
+            _loadPlans();
+          } catch (e) {
+            if (!mounted) return;
+            DialogHelper.showErrorSnackBar(
+              context,
+              'Failed to ${isEdit ? 'update' : 'create'} plan: $e',
+            );
+          }
+        }
+      }
+
+      Future<void> _togglePlanStatus(Map<String, dynamic> plan) async {
+        try {
+          final planId = plan['_id'] ?? plan['id'];
+          final currentStatus = plan['isActive'] as bool? ?? true;
+
+          await SubscriptionService.instance.updatePlan(
+            planId: planId,
+            isActive: !currentStatus,
+          );
+
+          if (!mounted) return;
+          DialogHelper.showSuccessSnackBar(
+            context,
+            'Plan ${!currentStatus ? 'activated' : 'deactivated'} successfully',
+          );
+          _loadPlans();
+        } catch (e) {
+          if (!mounted) return;
+          DialogHelper.showErrorSnackBar(
+            context,
+            'Failed to toggle plan status: $e',
+          );
+        }
+      }
+
+      Future<void> _deletePlan(Map<String, dynamic> plan) async {
+        final displayName = plan['displayName'] ?? plan['name'] ?? 'this plan';
+        final confirm = await DialogHelper.showConfirmDialog(
+          context: context,
+          title: 'Delete Plan',
+          message: 'Are you sure you want to delete "$displayName"?',
+          confirmText: 'Delete',
+          isDestructive: true,
+        );
+
+        if (!confirm) return;
+
+        try {
+          final planId = plan['_id'] ?? plan['id'];
+          await SubscriptionService.instance.deletePlan(planId);
+
+          if (!mounted) return;
+          DialogHelper.showSuccessSnackBar(context, 'Plan deleted successfully');
+          _loadPlans();
+        } catch (e) {
+          if (!mounted) return;
+          DialogHelper.showErrorSnackBar(
+            context,
+            'Failed to delete plan: $e',
+          );
+        }
+      }
     }
-  }
-
-  Future<void> _togglePlanStatus(Map<String, dynamic> plan) async {
-    try {
-      final planId = plan['_id'] ?? plan['id'];
-      final currentStatus = plan['isActive'] as bool? ?? true;
-
-      await SubscriptionService.instance.updatePlan(
-        planId: planId,
-        isActive: !currentStatus,
-      );
-
-      if (!mounted) return;
-      DialogHelper.showSuccessSnackBar(
-        context,
-        'Plan ${!currentStatus ? 'activated' : 'deactivated'} successfully',
-      );
-      _loadPlans();
-    } catch (e) {
-      if (!mounted) return;
-      DialogHelper.showErrorSnackBar(
-        context,
-        'Failed to toggle plan status: $e',
-      );
-    }
-  }
-
-  Future<void> _deletePlan(Map<String, dynamic> plan) async {
-    final displayName = plan['displayName'] ?? plan['name'] ?? 'this plan';
-    final confirm = await DialogHelper.showConfirmDialog(
-      context: context,
-      title: 'Delete Plan',
-      message: 'Are you sure you want to delete "$displayName"?',
-      confirmText: 'Delete',
-      isDestructive: true,
-    );
-
-    if (!confirm) return;
-
-    try {
-      final planId = plan['_id'] ?? plan['id'];
-      await SubscriptionService.instance.deletePlan(planId);
-
-      if (!mounted) return;
-      DialogHelper.showSuccessSnackBar(context, 'Plan deleted successfully');
-      _loadPlans();
-    } catch (e) {
-      if (!mounted) return;
-      DialogHelper.showErrorSnackBar(
-        context,
-        'Failed to delete plan: $e',
-      );
-    }
-  }
-}
 
 // ============ Subscriptions Management Tab ============
 class SubscriptionsManagementTab extends StatefulWidget {
@@ -1322,16 +1269,16 @@ class _SubscriptionsManagementTabState
                             const SizedBox(height: 8),
                             Text(
                               '$activeCount',
-                            style: const TextStyle(
-                              color: AppColors.textPrimary,
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
+                              style: const TextStyle(
+                                color: AppColors.textPrimary,
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
-                          ),
-                          const Text(
-                            'Active',
-                            style: TextStyle(color: AppColors.textSecondary),
-                          ),
+                            const Text(
+                              'Active',
+                              style: TextStyle(color: AppColors.textSecondary),
+                            ),
                         ],
                       ),
                     ),
@@ -1648,6 +1595,7 @@ class _AiCreditPacksTabState extends State<AiCreditPacksTab> {
   bool _loading = true;
   String? _error;
   String? _filterCategory;
+  bool _bulkBusy = false;
 
   @override
   void initState() {
@@ -1707,7 +1655,7 @@ class _AiCreditPacksTabState extends State<AiCreditPacksTab> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Always-visible header with Add Pack button
+        // Header with Bulk Tools and Add Pack buttons
         Padding(
           padding: const EdgeInsets.all(16.0),
           child: Row(
@@ -1718,16 +1666,226 @@ class _AiCreditPacksTabState extends State<AiCreditPacksTab> {
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
               ),
-              Flexible(
-                fit: FlexFit.loose,
-                child: ElevatedButton.icon(
-                  onPressed: () => _showPackDialog(),
-                  icon: const Icon(Icons.add_rounded),
-                  label: const Text('Add Pack'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.accent,
-                    foregroundColor: AppColors.black,
-                  ),
+              Align(
+                alignment: Alignment.centerRight,
+                child: Wrap(
+                  spacing: 10,
+                  runSpacing: 8,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    PopupMenuButton<String>(
+                      tooltip: 'Bulk management tools',
+                      enabled: !_bulkBusy,
+                      onSelected: _handleBulkAction,
+                      constraints: const BoxConstraints(minWidth: 260),
+                      child: Container(
+                        height: 42,
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [AppColors.primary, AppColors.primary.withValues(alpha: 0.82)],
+                          ),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _bulkBusy
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.2,
+                                      valueColor: AlwaysStoppedAnimation(Colors.white),
+                                    ),
+                                  )
+                                : const Icon(Icons.tune_rounded, size: 18, color: Colors.white),
+                            const SizedBox(width: 8),
+                            const Text(
+                              'Bulk Tools',
+                              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                            ),
+                            const SizedBox(width: 6),
+                            const Icon(Icons.keyboard_arrow_down_rounded, size: 20, color: Colors.white),
+                          ],
+                        ),
+                      ),
+                      itemBuilder: (context) => [
+                        const PopupMenuItem(
+                          enabled: false,
+                          child: Text(
+                            'Template',
+                            style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textMuted, fontSize: 12),
+                          ),
+                        ),
+                        PopupMenuItem(
+                          value: 'template_csv',
+                          height: 46,
+                          child: Row(
+                            children: [
+                              Icon(Icons.description_outlined, size: 18, color: AppColors.textMuted),
+                              const SizedBox(width: 12),
+                              const Expanded(child: Text('Download CSV')),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: AppColors.grey100,
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                child: const Text(
+                                  'CSV',
+                                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.textMuted),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        PopupMenuItem(
+                          value: 'template_xlsx',
+                          height: 46,
+                          child: Row(
+                            children: [
+                              Icon(Icons.table_chart_outlined, size: 18, color: AppColors.textMuted),
+                              const SizedBox(width: 12),
+                              const Expanded(child: Text('Download XLSX')),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: AppColors.grey100,
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                child: const Text(
+                                  'XLSX',
+                                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.textMuted),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuDivider(height: 8),
+                        const PopupMenuItem(
+                          enabled: false,
+                          child: Text(
+                            'Export',
+                            style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textMuted, fontSize: 12),
+                          ),
+                        ),
+                        PopupMenuItem(
+                          value: 'export_csv',
+                          height: 46,
+                          child: Row(
+                            children: [
+                              Icon(Icons.file_download_outlined, size: 18, color: AppColors.textMuted),
+                              const SizedBox(width: 12),
+                              const Expanded(child: Text('Export as CSV')),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: AppColors.grey100,
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                child: const Text(
+                                  'CSV',
+                                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.textMuted),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        PopupMenuItem(
+                          value: 'export_xlsx',
+                          height: 46,
+                          child: Row(
+                            children: [
+                              Icon(Icons.file_download_outlined, size: 18, color: AppColors.textMuted),
+                              const SizedBox(width: 12),
+                              const Expanded(child: Text('Export as XLSX')),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: AppColors.grey100,
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                child: const Text(
+                                  'XLSX',
+                                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.textMuted),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuDivider(height: 8),
+                        const PopupMenuItem(
+                          enabled: false,
+                          child: Text(
+                            'Import',
+                            style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textMuted, fontSize: 12),
+                          ),
+                        ),
+                        PopupMenuItem(
+                          value: 'import_csv',
+                          height: 46,
+                          child: Row(
+                            children: [
+                              Icon(Icons.file_upload_outlined, size: 18, color: AppColors.textMuted),
+                              const SizedBox(width: 12),
+                              const Expanded(child: Text('Bulk Upload Packs')),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: AppColors.grey100,
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                child: const Text(
+                                  'CSV',
+                                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.textMuted),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        PopupMenuItem(
+                          value: 'import_xlsx',
+                          height: 46,
+                          child: Row(
+                            children: [
+                              Icon(Icons.file_upload_outlined, size: 18, color: AppColors.textMuted),
+                              const SizedBox(width: 12),
+                              const Expanded(child: Text('Bulk Upload Packs')),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: AppColors.grey100,
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                child: const Text(
+                                  'XLSX',
+                                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.textMuted),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    IntrinsicWidth(
+                      child: SizedBox(
+                        height: 42,
+                        child: ElevatedButton.icon(
+                          onPressed: () => _showPackDialog(),
+                          icon: const Icon(Icons.add_rounded, size: 18),
+                          label: const Text('Add Pack'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.accent,
+                            foregroundColor: AppColors.black,
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -2135,6 +2293,105 @@ class _AiCreditPacksTabState extends State<AiCreditPacksTab> {
     } catch (e) {
       if (!mounted) return;
       DialogHelper.showErrorSnackBar(context, 'Failed: $e');
+    }
+  }
+
+  Future<void> _handleBulkAction(String action) async {
+    if (_bulkBusy) return;
+
+    if (action == 'import' || action == 'import_csv' || action == 'import_xlsx') {
+      final preferredFormat = action.endsWith('xlsx')
+          ? 'xlsx'
+          : action.endsWith('csv')
+              ? 'csv'
+              : null;
+      await _bulkImportAiPacks(preferredFormat: preferredFormat);
+      return;
+    }
+
+    final isTemplate = action.startsWith('template_');
+    final format = action.endsWith('xlsx') ? 'xlsx' : 'csv';
+
+    setState(() => _bulkBusy = true);
+    try {
+      final filePayload = isTemplate
+          ? await SubscriptionService.instance.downloadAiPackTemplate(format: format)
+          : await SubscriptionService.instance.exportAiPacks(format: format);
+
+      final bytes = Uint8List.fromList(List<int>.from(filePayload['bytes'] as List<int>));
+      final fileName = filePayload['fileName'] as String;
+      final mimeType = filePayload['contentType'] as String?;
+
+      final xFile = XFile.fromData(
+        bytes,
+        name: fileName,
+        mimeType: mimeType,
+      );
+
+      await Share.shareXFiles(
+        [xFile],
+        text: isTemplate
+            ? 'AI credit pack template ($format)'
+            : 'AI credit packs export ($format)',
+        subject: fileName,
+      );
+
+      if (!mounted) return;
+      DialogHelper.showSuccessSnackBar(
+        context,
+        isTemplate
+            ? 'Template prepared. Choose where to save from share options.'
+            : 'Export prepared. Choose where to save from share options.',
+      );
+    } catch (e) {
+      if (!mounted) return;
+      DialogHelper.showErrorSnackBar(context, 'Bulk action failed: $e');
+    } finally {
+      if (mounted) setState(() => _bulkBusy = false);
+    }
+  }
+
+  Future<void> _bulkImportAiPacks({String? preferredFormat}) async {
+    setState(() => _bulkBusy = true);
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        allowMultiple: false,
+        type: FileType.custom,
+        allowedExtensions: preferredFormat == 'xlsx'
+            ? const ['xlsx']
+            : preferredFormat == 'csv'
+                ? const ['csv']
+                : const ['csv', 'xlsx'],
+        withData: true,
+      );
+
+      if (result == null || result.files.isEmpty) {
+        if (mounted) setState(() => _bulkBusy = false);
+        return;
+      }
+
+      final selectedFile = result.files.first;
+      final format = selectedFile.name.toLowerCase().endsWith('.xlsx') ? 'xlsx' : 'csv';
+      final importResult = await SubscriptionService.instance.importAiPacksBulk(
+        file: selectedFile,
+        format: format,
+      );
+
+      if (!mounted) return;
+      final created = importResult['created'] ?? 0;
+      final updated = importResult['updated'] ?? 0;
+      final totalRows = importResult['totalRows'] ?? (created + updated);
+
+      DialogHelper.showSuccessSnackBar(
+        context,
+        'Import complete: $totalRows rows, $created created, $updated updated',
+      );
+      await _loadPacks();
+    } catch (e) {
+      if (!mounted) return;
+      DialogHelper.showErrorSnackBar(context, 'Bulk import failed: $e');
+    } finally {
+      if (mounted) setState(() => _bulkBusy = false);
     }
   }
 }

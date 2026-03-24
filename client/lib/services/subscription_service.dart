@@ -361,6 +361,112 @@ class SubscriptionService {
     }
   }
 
+  // ============ AI Credit Packs Bulk Management ============
+
+  Future<Map<String, dynamic>> downloadAiPackTemplate({String format = 'csv'}) async {
+    try {
+      final uri = Uri.parse(
+        '${ApiConfig.baseUrl}/subscription-governance/ai-credit-packs/template',
+      ).replace(queryParameters: {'format': format});
+
+      final response = await _client.get(uri, headers: _getAuthOnlyHeaders());
+
+      if (response.statusCode == 200) {
+        final fallbackName =
+            format.toLowerCase() == 'xlsx' ? 'ai_packs_template.xlsx' : 'ai_packs_template.csv';
+        return {
+          'bytes': response.bodyBytes,
+          'fileName': _extractFileNameFromHeaders(response.headers, fallbackName),
+          'contentType': response.headers['content-type'] ??
+              (format.toLowerCase() == 'xlsx'
+                  ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                  : 'text/csv'),
+        };
+      }
+
+      throw Exception('Failed to download AI pack template');
+    } catch (e) {
+      print('[SUBSCRIPTION] downloadAiPackTemplate error: $e');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> exportAiPacks({String format = 'csv'}) async {
+    try {
+      final uri = Uri.parse(
+        '${ApiConfig.baseUrl}/subscription-governance/ai-credit-packs/export',
+      ).replace(queryParameters: {'format': format});
+
+      final response = await _client.get(uri, headers: _getAuthOnlyHeaders());
+
+      if (response.statusCode == 200) {
+        final fallbackName =
+            format.toLowerCase() == 'xlsx' ? 'ai_packs_export.xlsx' : 'ai_packs_export.csv';
+        return {
+          'bytes': response.bodyBytes,
+          'fileName': _extractFileNameFromHeaders(response.headers, fallbackName),
+          'contentType': response.headers['content-type'] ??
+              (format.toLowerCase() == 'xlsx'
+                  ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                  : 'text/csv'),
+        };
+      }
+
+      throw Exception('Failed to export AI packs');
+    } catch (e) {
+      print('[SUBSCRIPTION] exportAiPacks error: $e');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> importAiPacksBulk({
+    required PlatformFile file,
+    String? format,
+  }) async {
+    try {
+      final query = <String, String>{};
+      if (format != null && format.isNotEmpty) query['format'] = format;
+      final uri = Uri.parse(
+        '${ApiConfig.baseUrl}/subscription-governance/ai-credit-packs/import',
+      ).replace(queryParameters: query.isEmpty ? null : query);
+
+      final request = http.MultipartRequest('POST', uri);
+      request.headers.addAll(_getAuthOnlyHeaders());
+
+      if (file.bytes != null) {
+        request.files.add(
+          http.MultipartFile.fromBytes(
+            'file',
+            file.bytes!,
+            filename: file.name,
+          ),
+        );
+      } else if (file.path != null && file.path!.isNotEmpty) {
+        request.files.add(await http.MultipartFile.fromPath('file', file.path!));
+      } else {
+        throw Exception('Selected file is invalid');
+      }
+
+      final streamed = await request.send();
+      final response = await http.Response.fromStream(streamed);
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && data['success'] == true) {
+        return Map<String, dynamic>.from(data['data'] ?? {});
+      }
+
+      final message = data['message'] ?? 'Failed to import AI packs';
+      final details = data['data'];
+      if (details != null) {
+        throw Exception('$message | $details');
+      }
+      throw Exception(message);
+    } catch (e) {
+      print('[SUBSCRIPTION] importAiPacksBulk error: $e');
+      rethrow;
+    }
+  }
+
   Future<void> deletePlan(String planId) async {
     try {
       final uri = Uri.parse(

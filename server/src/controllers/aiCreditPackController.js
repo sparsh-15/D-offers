@@ -1,7 +1,8 @@
 const { prisma } = require('../db/prisma');
 const { resolvePgId } = require('../repositories/idResolver');
 const { logAdminAction } = require('../middleware/roleAuth');
-const { isValidCategory } = require('../config/businessCategories');
+const { isValidCategory, BUSINESS_CATEGORY_LIST } = require('../config/businessCategories');
+const aiPackBulkService = require('../services/aiPackBulkService');
 
 /** Generate unique SKU from displayName + category (e.g. starter_100_retail). */
 function generatePackSku(displayName, category) {
@@ -126,10 +127,174 @@ async function deletePack(req, res, next) {
   }
 }
 
+async function downloadAiPackTemplate(req, res, next) {
+  try {
+    const { format = 'csv' } = req.query;
+    const detectedFormat = String(format).toLowerCase();
+
+    const categories = BUSINESS_CATEGORY_LIST;
+    let buffer;
+
+    if (detectedFormat === 'xlsx') {
+      buffer = await aiPackBulkService.buildTemplateXlsx({ categories });
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', 'attachment; filename="ai_packs_template.xlsx"');
+    } else {
+      buffer = aiPackBulkService.buildTemplateCsv();
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename="ai_packs_template.csv"');
+    }
+
+    await logAdminAction(req.user.userId, req.user.role, 'ai_pack_template_downloaded', null, null, { format: detectedFormat }, req.ip);
+    res.send(buffer);
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function exportAiPacks(req, res, next) {
+  try {
+    const { format = 'csv' } = req.query;
+    const detectedFormat = String(format).toLowerCase();
+
+    const packs = await prisma.aiCreditPack.findMany({
+      orderBy: [{ priceSilver: 'desc' }, { sortOrder: 'asc' }, { credits: 'asc' }],
+    });
+
+    const exportRows = aiPackBulkService.packsToExportRows(packs);
+    let buffer;
+
+    if (detectedFormat === 'xlsx') {
+      buffer = await aiPackBulkService.buildExportXlsx(exportRows);
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', 'attachment; filename="ai_packs_export.xlsx"');
+    } else {
+      buffer = aiPackBulkService.buildExportCsv(exportRows);
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename="ai_packs_export.csv"');
+    }
+
+    await logAdminAction(req.user.userId, req.user.role, 'ai_packs_exported', null, null, { format: detectedFormat, count: packs.length }, req.ip);
+    res.send(buffer);
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function importAiPacks(req, res, next) {
+  try {
+    if (!req.file || !req.file.buffer) {
+      return res.status(400).json({ success: false, message: 'Upload file is required' });
+    }
+
+    const rawRows = await aiPackBulkService.parsePackFile({
+      fileBuffer: req.file.buffer,
+      fileName: req.file.originalname,
+      format: req.query.format,
+    });
+
+    if (!rawRows.length) {
+      return res.status(400).json({
+        success: false,
+        message: 'No data rows found in uploaded file',
+      });
+    }
+
+    const normalized = aiPackBulkService.normalizeImportRows(rawRows, {
+      isValidCategory,
+    });
+
+    if (normalized.errors.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed. Fix all rows before re-uploading.',
+        data: {
+          totalRows: rawRows.length,
+          failedRows: normalized.errors.length,
+          errors: normalized.errors,
+        },
+      });
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      let created = 0;
+      let updated = 0;
+
+      for (const item of normalized.rows) {
+        const payload = item.payload;
+        const existing = await tx.aiCreditPack.findUnique({ where: { sku: payload.sku } });
+
+        if (!existing) {
+          await tx.aiCreditPack.create({
+            data: {
+              sku: payload.sku,
+              displayName: payload.displayName,
+              category: payload.category,
+              credits: payload.credits,
+              priceSilver: payload.priceSilver,
+              priceGold: payload.priceGold,
+              pricePlatinum: payload.pricePlatinum,
+              sortOrder: payload.sortOrder,
+              isActive: payload.isActive,
+            },
+          });
+          created += 1;
+          continue;
+        }
+
+        await tx.aiCreditPack.update({
+          where: { id: existing.id },
+          data: {
+            displayName: payload.displayName,
+            category: payload.category,
+            credits: payload.credits,
+            priceSilver: payload.priceSilver,
+            priceGold: payload.priceGold,
+            pricePlatinum: payload.pricePlatinum,
+            sortOrder: payload.sortOrder,
+            isActive: payload.isActive,
+          },
+        });
+        updated += 1;
+      }
+
+      return {
+        totalRows: normalized.rows.length,
+        created,
+        updated,
+      };
+    });
+
+    await logAdminAction(
+      req.user.userId,
+      req.user.role,
+      'ai_packs_bulk_imported',
+      null,
+      null,
+      {
+        fileName: req.file.originalname,
+        ...result,
+      },
+      req.ip
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: 'AI credit packs imported successfully',
+      data: result,
+    });
+  } catch (err) {
+    return next(err);
+  }
+}
+
 module.exports = {
   getAllPacks,
   getPackById,
   createPack,
   updatePack,
   deletePack,
+  downloadAiPackTemplate,
+  exportAiPacks,
+  importAiPacks,
 };

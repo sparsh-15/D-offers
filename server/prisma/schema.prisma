@@ -109,6 +109,9 @@ enum AuditActionEnum {
   subscription_plan_template_downloaded
   subscription_plan_exported
   subscription_plan_bulk_imported
+  ai_pack_template_downloaded
+  ai_packs_exported
+  ai_packs_bulk_imported
   shop_approved
   shop_rejected
   coupon_activated
