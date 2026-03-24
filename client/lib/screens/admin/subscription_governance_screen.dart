@@ -1,6 +1,10 @@
 import 'dart:async';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:cross_file/cross_file.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/theme_helper.dart';
 import '../../core/utils/dialog_helper.dart';
@@ -77,6 +81,7 @@ class _PlansManagementTabState extends State<PlansManagementTab> {
   List<Map<String, dynamic>> _plans = [];
   List<Map<String, dynamic>> _categories = [];
   bool _loading = true;
+  bool _bulkBusy = false;
   String? _error;
   /// null or 'all' = show all; else filter by this category value
   String? _filterCategory;
@@ -179,14 +184,206 @@ class _PlansManagementTabState extends State<PlansManagementTab> {
               ),
               Flexible(
                 fit: FlexFit.loose,
-                child: ElevatedButton.icon(
-                  onPressed: () => _showPlanDialog(),
-                  icon: const Icon(Icons.add_rounded),
-                  label: const Text('Add Plan'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.accent,
-                    foregroundColor: AppColors.black,
-                  ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    PopupMenuButton<String>(
+                      enabled: !_bulkBusy,
+                      tooltip: 'Bulk management tools',
+                      onSelected: _handleBulkAction,
+                      surfaceTintColor: Colors.transparent,
+                      constraints: const BoxConstraints(minWidth: 260),
+                      itemBuilder: (context) => [
+                        PopupMenuItem(
+                          enabled: false,
+                          height: 30,
+                          child: Text(
+                            'Template',
+                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              color: AppColors.textMuted,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        PopupMenuItem(
+                          value: 'template_csv',
+                          height: 46,
+                          child: Row(
+                            children: [
+                              Icon(Icons.description_outlined, size: 18, color: AppColors.primary),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text('Download Template', style: Theme.of(context).textTheme.bodyMedium),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: AppColors.grey100,
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                child: Text('CSV', style: Theme.of(context).textTheme.labelSmall),
+                              ),
+                            ],
+                          ),
+                        ),
+                        PopupMenuItem(
+                          value: 'template_xlsx',
+                          height: 46,
+                          child: Row(
+                            children: [
+                              Icon(Icons.table_chart_outlined, size: 18, color: AppColors.primary),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text('Download Template', style: Theme.of(context).textTheme.bodyMedium),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: AppColors.grey100,
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                child: Text('XLSX', style: Theme.of(context).textTheme.labelSmall),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuDivider(height: 8),
+                        PopupMenuItem(
+                          enabled: false,
+                          height: 30,
+                          child: Text(
+                            'Export',
+                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              color: AppColors.textMuted,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        PopupMenuItem(
+                          value: 'export_csv',
+                          height: 46,
+                          child: Row(
+                            children: [
+                              Icon(Icons.file_download_outlined, size: 18, color: AppColors.primary),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text('Export Plans', style: Theme.of(context).textTheme.bodyMedium),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: AppColors.grey100,
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                child: Text('CSV', style: Theme.of(context).textTheme.labelSmall),
+                              ),
+                            ],
+                          ),
+                        ),
+                        PopupMenuItem(
+                          value: 'export_xlsx',
+                          height: 46,
+                          child: Row(
+                            children: [
+                              Icon(Icons.download_rounded, size: 18, color: AppColors.primary),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text('Export Plans', style: Theme.of(context).textTheme.bodyMedium),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: AppColors.grey100,
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                child: Text('XLSX', style: Theme.of(context).textTheme.labelSmall),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuDivider(height: 8),
+                        PopupMenuItem(
+                          enabled: false,
+                          height: 30,
+                          child: Text(
+                            'Import',
+                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              color: AppColors.textMuted,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        PopupMenuItem(
+                          value: 'import',
+                          height: 46,
+                          child: Row(
+                            children: [
+                              Icon(Icons.file_upload_outlined, size: 18, color: AppColors.primary),
+                              const SizedBox(width: 10),
+                              Text('Bulk Upload Plans', style: Theme.of(context).textTheme.bodyMedium),
+                            ],
+                          ),
+                        ),
+                      ],
+                      child: Container(
+                        height: 42,
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              AppColors.primary,
+                              AppColors.primary.withValues(alpha: 0.82),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _bulkBusy
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.2,
+                                      valueColor: AlwaysStoppedAnimation(Colors.white),
+                                    ),
+                                  )
+                                : const Icon(Icons.tune_rounded, size: 18, color: Colors.white),
+                            const SizedBox(width: 8),
+                            const Text(
+                              'Bulk Tools',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            const Icon(Icons.keyboard_arrow_down_rounded, size: 20, color: Colors.white),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    SizedBox(
+                      height: 42,
+                      child: ElevatedButton.icon(
+                        onPressed: () => _showPlanDialog(),
+                        icon: const Icon(Icons.add_rounded, size: 18),
+                        label: const Text('Add Plan'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.accent,
+                          foregroundColor: AppColors.black,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -457,6 +654,102 @@ class _PlansManagementTabState extends State<PlansManagementTab> {
         ),
       ),
     );
+  }
+
+  Future<void> _handleBulkAction(String action) async {
+    if (_bulkBusy) return;
+
+    if (action == 'import') {
+      await _bulkImportPlans();
+      return;
+    }
+
+    final isTemplate = action.startsWith('template_');
+    final format = action.endsWith('xlsx') ? 'xlsx' : 'csv';
+
+    setState(() => _bulkBusy = true);
+    try {
+      final filePayload = isTemplate
+          ? await SubscriptionService.instance.downloadPlanTemplate(format: format)
+          : await SubscriptionService.instance.exportPlans(
+              format: format,
+              category: _filterCategory,
+            );
+
+      final bytes = Uint8List.fromList(List<int>.from(filePayload['bytes'] as List<int>));
+      final fileName = filePayload['fileName'] as String;
+      final mimeType = filePayload['contentType'] as String?;
+
+      final xFile = XFile.fromData(
+        bytes,
+        name: fileName,
+        mimeType: mimeType,
+      );
+
+      await Share.shareXFiles(
+        [xFile],
+        text: isTemplate
+            ? 'Subscription plan template ($format)'
+            : 'Subscription plans export ($format)',
+        subject: fileName,
+      );
+
+      if (!mounted) return;
+      DialogHelper.showSuccessSnackBar(
+        context,
+        isTemplate
+            ? 'Template prepared. Choose where to save from share options.'
+            : 'Export prepared. Choose where to save from share options.',
+      );
+    } catch (e) {
+      if (!mounted) return;
+      DialogHelper.showErrorSnackBar(context, 'Bulk action failed: $e');
+    } finally {
+      if (mounted) setState(() => _bulkBusy = false);
+    }
+  }
+
+  Future<void> _bulkImportPlans() async {
+    setState(() => _bulkBusy = true);
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        allowMultiple: false,
+        type: FileType.custom,
+        allowedExtensions: const ['csv', 'xlsx'],
+        withData: true,
+      );
+
+      if (result == null || result.files.isEmpty) {
+        if (mounted) setState(() => _bulkBusy = false);
+        return;
+      }
+
+      final selectedFile = result.files.first;
+      final format = selectedFile.name.toLowerCase().endsWith('.xlsx') ? 'xlsx' : 'csv';
+      final importResult = await SubscriptionService.instance.importPlansBulk(
+        file: selectedFile,
+        format: format,
+      );
+
+      if (!mounted) return;
+      final created = importResult['created'] ?? 0;
+      final updated = importResult['updated'] ?? 0;
+      final totalRows = importResult['totalRows'] ?? (created + updated);
+
+      DialogHelper.showSuccessSnackBar(
+        context,
+        'Import complete: $totalRows rows, $created created, $updated updated',
+      );
+      await _loadPlans();
+    } catch (e) {
+      if (!mounted) return;
+      DialogHelper.showErrorSnackBar(
+        context,
+        'Bulk import failed: $e',
+      );
+    } finally {
+      if (mounted) setState(() => _bulkBusy = false);
+    }
   }
 
   Widget _buildPlanDetail(String label, String value, IconData icon) {

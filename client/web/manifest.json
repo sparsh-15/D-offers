@@ -3,7 +3,7 @@
     "short_name": "MyOffers",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0A0E21",
+    "background_color": "#FFFFFF",
     "theme_color": "#FFA726",
     "description": "MyOffers - Discover Amazing Deals Near You",
     "orientation": "portrait-primary",

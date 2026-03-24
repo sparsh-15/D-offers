@@ -14,14 +14,18 @@ Archive:
 ✔ -in shopkeeper registration page add a button to view the uploaded document @done(26-03-23 10:42)
 ✔ -in create shopkeeper  ui of date validity is insconsistent @done(26-03-23 10:44)
 ✔ -new campaing target and  estimated give side by side so that it looks better @done(26-03-23 10:45)
--campaign do not do draft option  directly review page at that time only so that it reduces unnecessary steps
--in shopkeeper show loan tabs also  as  capital loan
+✔ -campaign do not do draft option  directly review page at that time only so that it reduces unnecessary steps @done(26-03-23 11:12)
+✔ -in shopkeeper show loan tabs also  as  capital loan @done(26-03-23 11:12)
 -loan attatchment 
 -try to reduce the textlike for add new offer there is subtitle text so much same in all fields so try to reduce it and make it more user friendly
 -sales agent account details -how many hours you can work add this field
 -also contrast of ai image
 -in shopkeeper add rating mechanism-sale close rating in dashboard add coins earned, total rating, sales closed
 
+-account number in shopkeeper registration and ifsc and penny less verificatoin
+-4 digit otp
+-sales agent registration page add bank fields etc
+-bulk plan upload for admin and export plan for admin , download the templates of new plan form 
 -Upgrade Nudges:
 
 Show performance-based prompts:

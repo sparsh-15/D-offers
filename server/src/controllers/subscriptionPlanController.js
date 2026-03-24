@@ -7,6 +7,15 @@ const {
 } = require('../config/businessCategories');
 const subscriptionPlanRepository = require('../repositories/subscriptionPlanRepository');
 const { resolvePgId } = require('../repositories/idResolver');
+const {
+  plansToExportRows,
+  normalizeImportRows,
+  buildTemplateXlsx,
+  buildTemplateCsv,
+  buildExportXlsx,
+  buildExportCsv,
+  parsePlanFile,
+} = require('../services/subscriptionPlanBulkService');
 
 const ALLOWED_PLAN_TIERS = new Set(['free', 'trial', 'silver', 'gold', 'platinum']);
 
@@ -14,6 +23,25 @@ function normalizeTierInput(tier) {
   if (tier === undefined || tier === null) return undefined;
   const normalized = String(tier).trim().toLowerCase();
   return normalized || undefined;
+}
+
+function asBooleanQuery(value) {
+  if (value === undefined) return undefined;
+  const normalized = String(value).trim().toLowerCase();
+  if (normalized === 'true') return true;
+  if (normalized === 'false') return false;
+  return undefined;
+}
+
+function asDownloadFormat(value) {
+  const normalized = String(value || 'csv').trim().toLowerCase();
+  return normalized === 'xlsx' ? 'xlsx' : 'csv';
+}
+
+function sendAttachment(res, { buffer, fileName, contentType }) {
+  res.setHeader('Content-Type', contentType);
+  res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+  res.send(buffer);
 }
 
 async function getCategories(req, res, next) {
@@ -202,6 +230,210 @@ async function getRecommendedPlans(req, res, next) {
   }
 }
 
+async function downloadPlanTemplate(req, res, next) {
+  try {
+    const format = asDownloadFormat(req.query.format);
+    const categories = [ALL_CATEGORIES, ...getAllCategories().map((c) => c.value)];
+    const tiers = Array.from(ALLOWED_PLAN_TIERS.values()).filter((tier) => tier !== 'free');
+
+    if (format === 'xlsx') {
+      const workbookBuffer = await buildTemplateXlsx({ categories, tiers });
+      await logAdminAction(
+        req.user.userId,
+        req.user.role,
+        'subscription_plan_template_downloaded',
+        null,
+        null,
+        { format: 'xlsx' },
+        req.ip
+      );
+      return sendAttachment(res, {
+        buffer: Buffer.from(workbookBuffer),
+        fileName: 'subscription-plans-template.xlsx',
+        contentType:
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+    }
+
+    await logAdminAction(
+      req.user.userId,
+      req.user.role,
+      'subscription_plan_template_downloaded',
+      null,
+      null,
+      { format: 'csv' },
+      req.ip
+    );
+    return sendAttachment(res, {
+      buffer: buildTemplateCsv(),
+      fileName: 'subscription-plans-template.csv',
+      contentType: 'text/csv; charset=utf-8',
+    });
+  } catch (err) {
+    return next(err);
+  }
+}
+
+async function exportPlans(req, res, next) {
+  try {
+    const format = asDownloadFormat(req.query.format);
+    const where = {};
+    const isActiveQuery = asBooleanQuery(req.query.isActive);
+
+    if (isActiveQuery !== undefined) where.isActive = isActiveQuery;
+    if (req.query.category) where.category = String(req.query.category).trim().toLowerCase();
+
+    const plans = await prisma.subscriptionPlan.findMany({
+      where,
+      orderBy: [{ sortOrder: 'asc' }, { monthlyPrice: 'asc' }],
+    });
+
+    const exportRows = plansToExportRows(plans);
+    await logAdminAction(
+      req.user.userId,
+      req.user.role,
+      'subscription_plan_exported',
+      null,
+      null,
+      {
+        format,
+        count: exportRows.length,
+        filters: {
+          category: where.category || null,
+          isActive: where.isActive === undefined ? null : where.isActive,
+        },
+      },
+      req.ip
+    );
+
+    if (format === 'xlsx') {
+      const workbookBuffer = await buildExportXlsx(exportRows);
+      return sendAttachment(res, {
+        buffer: Buffer.from(workbookBuffer),
+        fileName: 'subscription-plans-export.xlsx',
+        contentType:
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+    }
+
+    return sendAttachment(res, {
+      buffer: buildExportCsv(exportRows),
+      fileName: 'subscription-plans-export.csv',
+      contentType: 'text/csv; charset=utf-8',
+    });
+  } catch (err) {
+    return next(err);
+  }
+}
+
+async function importPlans(req, res, next) {
+  try {
+    if (!req.file || !req.file.buffer) {
+      return res.status(400).json({ success: false, message: 'Upload file is required' });
+    }
+
+    const rawRows = await parsePlanFile({
+      fileBuffer: req.file.buffer,
+      fileName: req.file.originalname,
+      format: req.query.format,
+    });
+
+    if (!rawRows.length) {
+      return res.status(400).json({
+        success: false,
+        message: 'No data rows found in uploaded file',
+      });
+    }
+
+    const normalized = normalizeImportRows(rawRows, {
+      allowedTiers: ALLOWED_PLAN_TIERS,
+      isValidCategory,
+    });
+
+    if (normalized.errors.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed. Fix all rows before re-uploading.',
+        data: {
+          totalRows: rawRows.length,
+          failedRows: normalized.errors.length,
+          errors: normalized.errors,
+        },
+      });
+    }
+
+    const changedBy = await resolvePgId('users', req.user.userId);
+    const result = await prisma.$transaction(async (tx) => {
+      let created = 0;
+      let updated = 0;
+
+      for (const item of normalized.rows) {
+        const payload = item.payload;
+        const existing = await tx.subscriptionPlan.findFirst({ where: { name: payload.name } });
+
+        if (!existing) {
+          const createdPlan = await tx.subscriptionPlan.create({ data: payload });
+          await tx.subscriptionPlanPriceHistory.create({
+            data: {
+              planId: createdPlan.id,
+              price: payload.monthlyPrice,
+              changedBy,
+              reason: 'Bulk import initial price',
+            },
+          });
+          created += 1;
+          continue;
+        }
+
+        const priceChanged = Number(existing.monthlyPrice) !== Number(payload.monthlyPrice);
+        await tx.subscriptionPlan.update({
+          where: { id: existing.id },
+          data: payload,
+        });
+
+        if (priceChanged) {
+          await tx.subscriptionPlanPriceHistory.create({
+            data: {
+              planId: existing.id,
+              price: payload.monthlyPrice,
+              changedBy,
+              reason: 'Bulk import price update',
+            },
+          });
+        }
+        updated += 1;
+      }
+
+      return {
+        totalRows: normalized.rows.length,
+        created,
+        updated,
+      };
+    });
+
+    await logAdminAction(
+      req.user.userId,
+      req.user.role,
+      'subscription_plan_bulk_imported',
+      null,
+      null,
+      {
+        fileName: req.file.originalname,
+        ...result,
+      },
+      req.ip
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: 'Plans imported successfully',
+      data: result,
+    });
+  } catch (err) {
+    return next(err);
+  }
+}
+
 module.exports = {
   getCategories,
   createPlan,
@@ -210,4 +442,7 @@ module.exports = {
   updatePlan,
   deletePlan,
   getRecommendedPlans,
+  downloadPlanTemplate,
+  exportPlans,
+  importPlans,
 };

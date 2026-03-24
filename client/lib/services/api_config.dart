@@ -6,7 +6,7 @@ class ApiConfig {
   /// Toggle between environments
   /// Set to false for local development
   /// Set to true for production/deployed backend
-  static const bool useProduction = true;
+  static const bool useProduction = false;
 
   /// Your machine's IP on the local network. Used for physical device & iOS.
   /// - Physical Android/iOS on same Wi‑Fi: use this (e.g. 192.168.29.47).
@@ -16,7 +16,7 @@ class ApiConfig {
 
   static String get baseUrl {
     if (useProduction) {
-      return 'https://d-offers.onrender.com/api';
+      return 'https://d-offers-azrc.onrender.com/api';
     } else {
       if (kIsWeb) return 'http://localhost:3000/api';
       try {

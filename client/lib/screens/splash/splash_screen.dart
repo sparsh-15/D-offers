@@ -107,7 +107,7 @@ class _SplashScreenState extends State<SplashScreen>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: AppColors.background,
+      // backgroundColor: AppColors.background,
       body: SafeArea(
         child: FadeTransition(
           opacity: _fadeAnim,
@@ -123,7 +123,7 @@ class _SplashScreenState extends State<SplashScreen>
                     width: 96,
                     height: 96,
                     decoration: BoxDecoration(
-                      color: AppColors.cardBackground,
+                      // color: AppColors.cardBackground,
                       borderRadius: BorderRadius.circular(AppTokens.radiusXL),
                     ),
                     clipBehavior: Clip.antiAlias,

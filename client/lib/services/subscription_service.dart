@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:file_picker/file_picker.dart';
 import 'api_config.dart';
 import 'auth_store.dart';
 
@@ -28,6 +29,22 @@ class SubscriptionService {
       'Content-Type': 'application/json',
       if (token != null) 'Authorization': 'Bearer $token',
     };
+  }
+
+  Map<String, String> _getAuthOnlyHeaders() {
+    final token = _getAuthToken();
+    return {
+      if (token != null) 'Authorization': 'Bearer $token',
+    };
+  }
+
+  String _extractFileNameFromHeaders(Map<String, String> headers, String fallback) {
+    final contentDisposition = headers['content-disposition'];
+    if (contentDisposition == null || contentDisposition.isEmpty) return fallback;
+    final match = RegExp(r'filename="?([^";]+)"?', caseSensitive: false)
+        .firstMatch(contentDisposition);
+    if (match == null) return fallback;
+    return match.group(1) ?? fallback;
   }
 
   // ============ Categories ============
@@ -224,6 +241,122 @@ class SubscriptionService {
       throw Exception(errorData['message'] ?? 'Failed to update plan');
     } catch (e) {
       print('[SUBSCRIPTION] updatePlan error: $e');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> downloadPlanTemplate({String format = 'csv'}) async {
+    try {
+      final uri = Uri.parse(
+        '${ApiConfig.baseUrl}/subscription-governance/plans/template',
+      ).replace(queryParameters: {'format': format});
+
+      final response = await _client.get(uri, headers: _getAuthOnlyHeaders());
+
+      if (response.statusCode == 200) {
+        final fallbackName =
+            format.toLowerCase() == 'xlsx' ? 'subscription-plans-template.xlsx' : 'subscription-plans-template.csv';
+        return {
+          'bytes': response.bodyBytes,
+          'fileName': _extractFileNameFromHeaders(response.headers, fallbackName),
+          'contentType': response.headers['content-type'] ??
+              (format.toLowerCase() == 'xlsx'
+                  ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                  : 'text/csv'),
+        };
+      }
+
+      throw Exception('Failed to download template');
+    } catch (e) {
+      print('[SUBSCRIPTION] downloadPlanTemplate error: $e');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> exportPlans({
+    String format = 'csv',
+    String? category,
+    bool? isActive,
+  }) async {
+    try {
+      final query = <String, String>{'format': format};
+      if (category != null && category.trim().isNotEmpty) {
+        query['category'] = category.trim();
+      }
+      if (isActive != null) {
+        query['isActive'] = isActive.toString();
+      }
+
+      final uri = Uri.parse(
+        '${ApiConfig.baseUrl}/subscription-governance/plans/export',
+      ).replace(queryParameters: query);
+
+      final response = await _client.get(uri, headers: _getAuthOnlyHeaders());
+
+      if (response.statusCode == 200) {
+        final fallbackName =
+            format.toLowerCase() == 'xlsx' ? 'subscription-plans-export.xlsx' : 'subscription-plans-export.csv';
+        return {
+          'bytes': response.bodyBytes,
+          'fileName': _extractFileNameFromHeaders(response.headers, fallbackName),
+          'contentType': response.headers['content-type'] ??
+              (format.toLowerCase() == 'xlsx'
+                  ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                  : 'text/csv'),
+        };
+      }
+
+      throw Exception('Failed to export plans');
+    } catch (e) {
+      print('[SUBSCRIPTION] exportPlans error: $e');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> importPlansBulk({
+    required PlatformFile file,
+    String? format,
+  }) async {
+    try {
+      final query = <String, String>{};
+      if (format != null && format.isNotEmpty) query['format'] = format;
+      final uri = Uri.parse(
+        '${ApiConfig.baseUrl}/subscription-governance/plans/import',
+      ).replace(queryParameters: query.isEmpty ? null : query);
+
+      final request = http.MultipartRequest('POST', uri);
+      request.headers.addAll(_getAuthOnlyHeaders());
+
+      if (file.bytes != null) {
+        request.files.add(
+          http.MultipartFile.fromBytes(
+            'file',
+            file.bytes!,
+            filename: file.name,
+          ),
+        );
+      } else if (file.path != null && file.path!.isNotEmpty) {
+        request.files.add(await http.MultipartFile.fromPath('file', file.path!));
+      } else {
+        throw Exception('Selected file is invalid');
+      }
+
+      final streamed = await request.send();
+      final response = await http.Response.fromStream(streamed);
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && data['success'] == true) {
+        return Map<String, dynamic>.from(data['data'] ?? {});
+      }
+
+      final message = data['message'] ?? 'Failed to import plans';
+      final details = data['data'];
+      if (details != null) {
+        throw Exception('$message | $details');
+      }
+      throw Exception(message);
+    } catch (e) {
+      print('[SUBSCRIPTION] importPlansBulk error: $e');
       rethrow;
     }
   }
