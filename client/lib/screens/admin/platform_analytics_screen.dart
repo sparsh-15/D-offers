@@ -75,22 +75,29 @@ class _PlatformAnalyticsScreenState extends State<PlatformAnalyticsScreen> {
             final stats = snapshot.data ?? {};
             return RefreshIndicator(
               onRefresh: () async => _loadAnalytics(),
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildPeriodSelector(),
-                    const SizedBox(height: 20),
-                    _buildOverviewSection(stats),
-                    const SizedBox(height: 20),
-                    _buildUserAnalytics(stats),
-                    const SizedBox(height: 20),
-                    _buildShopkeeperAnalytics(stats),
-                    const SizedBox(height: 20),
-                    _buildOfferAnalytics(stats),
-                  ],
-                ),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final horizontalPadding = constraints.maxWidth < 360 ? 12.0 : 16.0;
+                  final sectionGap = constraints.maxWidth < 360 ? 16.0 : 20.0;
+
+                  return SingleChildScrollView(
+                    padding: EdgeInsets.all(horizontalPadding),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildPeriodSelector(),
+                        SizedBox(height: sectionGap),
+                        _buildOverviewSection(stats),
+                        SizedBox(height: sectionGap),
+                        _buildUserAnalytics(stats),
+                        SizedBox(height: sectionGap),
+                        _buildShopkeeperAnalytics(stats),
+                        SizedBox(height: sectionGap),
+                        _buildOfferAnalytics(stats),
+                      ],
+                    ),
+                  );
+                },
               ),
             );
           },
@@ -103,35 +110,67 @@ class _PlatformAnalyticsScreenState extends State<PlatformAnalyticsScreen> {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Time Period',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 12),
-            SegmentedButton<String>(
-              segments: const [
-                ButtonSegment(value: '7days', label: Text('7 Days')),
-                ButtonSegment(value: '30days', label: Text('30 Days')),
-                ButtonSegment(value: '90days', label: Text('90 Days')),
-                ButtonSegment(value: 'all', label: Text('All Time')),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isCompact = constraints.maxWidth < 430;
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Time Period',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                if (isCompact)
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      _buildPeriodChip('7days', '7 Days'),
+                      _buildPeriodChip('30days', '30 Days'),
+                      _buildPeriodChip('90days', '90 Days'),
+                      _buildPeriodChip('all', 'All Time'),
+                    ],
+                  )
+                else
+                  SegmentedButton<String>(
+                    segments: const [
+                      ButtonSegment(value: '7days', label: Text('7 Days')),
+                      ButtonSegment(value: '30days', label: Text('30 Days')),
+                      ButtonSegment(value: '90days', label: Text('90 Days')),
+                      ButtonSegment(value: 'all', label: Text('All Time')),
+                    ],
+                    selected: {_selectedPeriod},
+                    onSelectionChanged: (Set<String> newSelection) {
+                      setState(() {
+                        _selectedPeriod = newSelection.first;
+                        _loadAnalytics();
+                      });
+                    },
+                  ),
               ],
-              selected: {_selectedPeriod},
-              onSelectionChanged: (Set<String> newSelection) {
-                setState(() {
-                  _selectedPeriod = newSelection.first;
-                  _loadAnalytics();
-                });
-              },
-            ),
-          ],
+            );
+          },
         ),
       ),
+    );
+  }
+
+  Widget _buildPeriodChip(String value, String label) {
+    final isSelected = _selectedPeriod == value;
+    return ChoiceChip(
+      label: Text(label),
+      selected: isSelected,
+      onSelected: (selected) {
+        if (!selected) return;
+        setState(() {
+          _selectedPeriod = value;
+          _loadAnalytics();
+        });
+      },
     );
   }
 
@@ -152,50 +191,71 @@ class _PlatformAnalyticsScreenState extends State<PlatformAnalyticsScreen> {
           ),
         ),
         const SizedBox(height: 12),
-        GridView.count(
-          crossAxisCount: 2,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          mainAxisSpacing: 12,
-          crossAxisSpacing: 12,
-          childAspectRatio: 1.5,
-          children: [
-            FadeInUp(
-              child: _buildMetricCard(
-                'Total Users',
-                totalUsers.toString(),
-                Icons.people_rounded,
-                AppColors.primary,
-              ),
-            ),
-            FadeInUp(
-              delay: const Duration(milliseconds: 100),
-              child: _buildMetricCard(
-                'Shopkeepers',
-                totalShopkeepers.toString(),
-                Icons.store_rounded,
-                AppColors.accent,
-              ),
-            ),
-            FadeInUp(
-              delay: const Duration(milliseconds: 200),
-              child: _buildMetricCard(
-                'Active Offers',
-                activeOffers.toString(),
-                Icons.local_offer_rounded,
-                AppColors.success,
-              ),
-            ),
-            FadeInUp(
-              delay: const Duration(milliseconds: 300),
-              child: _buildMetricCard(
-                'Pending Approvals',
-                pendingShopkeepers.toString(),
-                Icons.pending_rounded,
-                AppColors.warning,
-              ),
-            ),
-          ],
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final width = constraints.maxWidth;
+            final crossAxisCount = width >= 1024
+                ? 4
+                : width >= 720
+                    ? 3
+                    : width >= 420
+                        ? 2
+                        : 1;
+            final isCompact = width < 360;
+            final childAspectRatio = crossAxisCount == 1
+                ? (isCompact ? 2.7 : 3.1)
+                : (isCompact ? 1.25 : 1.45);
+
+            return GridView.count(
+              crossAxisCount: crossAxisCount,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              childAspectRatio: childAspectRatio,
+              children: [
+                FadeInUp(
+                  child: _buildMetricCard(
+                    'Total Users',
+                    totalUsers.toString(),
+                    Icons.people_rounded,
+                    AppColors.primary,
+                    compact: isCompact,
+                  ),
+                ),
+                FadeInUp(
+                  delay: const Duration(milliseconds: 100),
+                  child: _buildMetricCard(
+                    'Shopkeepers',
+                    totalShopkeepers.toString(),
+                    Icons.store_rounded,
+                    AppColors.accent,
+                    compact: isCompact,
+                  ),
+                ),
+                FadeInUp(
+                  delay: const Duration(milliseconds: 200),
+                  child: _buildMetricCard(
+                    'Active Offers',
+                    activeOffers.toString(),
+                    Icons.local_offer_rounded,
+                    AppColors.success,
+                    compact: isCompact,
+                  ),
+                ),
+                FadeInUp(
+                  delay: const Duration(milliseconds: 300),
+                  child: _buildMetricCard(
+                    'Pending Approvals',
+                    pendingShopkeepers.toString(),
+                    Icons.pending_rounded,
+                    AppColors.warning,
+                    compact: isCompact,
+                  ),
+                ),
+              ],
+            );
+          },
         ),
       ],
     );
@@ -206,6 +266,9 @@ class _PlatformAnalyticsScreenState extends State<PlatformAnalyticsScreen> {
     String value,
     IconData icon,
     Color color,
+    {
+    bool compact = false,
+    }
   ) {
     return GradientCard(
       gradient: LinearGradient(
@@ -213,31 +276,40 @@ class _PlatformAnalyticsScreenState extends State<PlatformAnalyticsScreen> {
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
       ),
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(compact ? 12 : 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        mainAxisSize: MainAxisSize.max,
         children: [
-          Icon(icon, color: AppColors.white, size: 32),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          Row(
             children: [
-              Text(
-                value,
-                style: const TextStyle(
-                  color: AppColors.white,
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Text(
-                title,
-                style: const TextStyle(
-                  color: AppColors.white,
-                  fontSize: 12,
+              Icon(icon, color: AppColors.white, size: compact ? 20 : 28),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: AppColors.white,
+                    fontSize: compact ? 11 : 12,
+                  ),
                 ),
               ),
             ],
+          ),
+          const Spacer(),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              style: TextStyle(
+                color: AppColors.white,
+                fontSize: compact ? 24 : 28,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ],
       ),
