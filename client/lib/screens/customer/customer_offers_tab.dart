@@ -780,6 +780,7 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 DropdownButtonFormField<String>(
+                  isExpanded: true,
                   initialValue: _categoryFilter,
                   decoration: const InputDecoration(
                     labelText: 'Category',

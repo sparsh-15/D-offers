@@ -10,6 +10,7 @@ import '../../core/utils/dialog_helper.dart';
 import '../../core/utils/theme_helper.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_text_field.dart';
+import '../../services/auth_store.dart';
 import '../../services/loan_service.dart';
 import '../../services/upload_service.dart';
 
@@ -37,6 +38,91 @@ class _CustomerLoansTabState extends State<CustomerLoansTab> {
   bool _communicationConsent = true;
   bool _isSubmitting = false;
   bool _isUploadingBankStatement = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _prefillKnownUserDetails();
+    _prefillFromLatestLoanApplication();
+  }
+
+  void _prefillKnownUserDetails() {
+    final user = AuthStore.currentUser;
+    if (user == null) return;
+
+    final name = user.name.trim();
+    if (_fullNameController.text.trim().isEmpty && name.isNotEmpty) {
+      _fullNameController.text = name;
+    }
+
+    final digitsOnlyPhone = user.phone.replaceAll(RegExp(r'[^0-9]'), '');
+    final tenDigitPhone = digitsOnlyPhone.length > 10
+        ? digitsOnlyPhone.substring(digitsOnlyPhone.length - 10)
+        : digitsOnlyPhone;
+    if (_mobileController.text.trim().isEmpty && tenDigitPhone.length == 10) {
+      _mobileController.text = tenDigitPhone;
+    }
+  }
+
+  Future<void> _prefillFromLatestLoanApplication() async {
+    try {
+      final applications = await LoanService.instance.getLoanApplications(limit: 1);
+      if (!mounted || applications.isEmpty) return;
+
+      final latest = applications.first;
+
+      if (_employmentType == null && _isValidEmploymentType(latest.employmentType)) {
+        _employmentType = latest.employmentType;
+      }
+      if (_accountType == null && _isValidAccountType(latest.accountType)) {
+        _accountType = latest.accountType;
+      }
+      if (_salaryController.text.trim().isEmpty && latest.monthlySalaryIncome.trim().isNotEmpty) {
+        _salaryController.text = latest.monthlySalaryIncome.trim();
+      }
+      if (_loanAmountController.text.trim().isEmpty && latest.loanAmount.trim().isNotEmpty) {
+        _loanAmountController.text = latest.loanAmount.trim();
+      }
+      if (_panController.text.trim().isEmpty && latest.panNumber.trim().isNotEmpty) {
+        _panController.text = latest.panNumber.trim().toUpperCase();
+      }
+      if (_bankNameController.text.trim().isEmpty && latest.bankName.trim().isNotEmpty) {
+        _bankNameController.text = latest.bankName.trim();
+      }
+      if (_accountNumberController.text.trim().isEmpty &&
+          latest.last4AccountDigits.trim().length == 4) {
+        _accountNumberController.text = latest.last4AccountDigits.trim();
+      }
+
+      setState(() {
+        if (!_cibilConsent) {
+          _cibilConsent = latest.cibilConsent;
+        }
+        if (!_communicationConsent) {
+          _communicationConsent = latest.communicationConsent;
+        }
+      });
+    } catch (_) {
+      // Ignore prefill errors and keep form usable with manual input.
+    }
+  }
+
+  bool _isValidEmploymentType(String value) {
+    return const {
+      'salaried',
+      'self_employed',
+      'business_owner',
+      'freelancer',
+    }.contains(value);
+  }
+
+  bool _isValidAccountType(String value) {
+    return const {
+      'salary',
+      'savings',
+      'current',
+    }.contains(value);
+  }
 
   @override
   void dispose() {
@@ -104,6 +190,8 @@ class _CustomerLoansTabState extends State<CustomerLoansTab> {
           _cibilConsent = false;
           _communicationConsent = true;
         });
+        _prefillKnownUserDetails();
+        _prefillFromLatestLoanApplication();
 
         DialogHelper.showSuccessSnackBar(
           context,
@@ -274,6 +362,7 @@ class _CustomerLoansTabState extends State<CustomerLoansTab> {
                           ),
                           const SizedBox(height: AppTokens.spaceMD),
                           DropdownButtonFormField<String>(
+                            isExpanded: true,
                             value: _employmentType,
                             decoration: const InputDecoration(
                               labelText: 'Employment type',
@@ -370,6 +459,7 @@ class _CustomerLoansTabState extends State<CustomerLoansTab> {
                           ),
                           const SizedBox(height: AppTokens.spaceMD),
                           DropdownButtonFormField<String>(
+                            isExpanded: true,
                             value: _accountType,
                             decoration: const InputDecoration(
                               labelText: 'Account type',

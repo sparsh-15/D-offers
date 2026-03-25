@@ -17,8 +17,8 @@ class AppColors {
 
   // ── Text ───────────────────────────────────────────────────────────────────
   static const Color textPrimary = Color(0xFFF5F5F8);
-  static const Color textSecondary = Color(0xFF9A9FB5);
-  static const Color textMuted = Color(0xFF5D6273);
+  static const Color textSecondary = Color(0xFFB1B6CB);
+  static const Color textMuted = Color(0xFF7C8398);
 
   // ── Accent ─────────────────────────────────────────────────────────────────
   /// Brand accent — #00FF84, used on key interactive elements and highlights
@@ -61,12 +61,12 @@ class AppColors {
   static const Color deepOrange = accentDim;
 
   // Grey aliases (for remaining legacy usages — prefer textMuted / borderSubtle)
-  static const Color grey = Color(0xFF9A9FB5);
+  static const Color grey = textSecondary;
   static const Color grey100 = Color(0xFF15161C);
   static const Color grey200 = Color(0xFF1C1E25);
   static const Color grey300 = Color(0xFF252733);
-  static const Color grey400 = Color(0xFF5D6273);
-  static const Color grey600 = Color(0xFF8C909E);
+  static const Color grey400 = textMuted;
+  static const Color grey600 = Color(0xFFA8ADC0);
   static const Color grey700 = Color(0xFFA4A8B6);
   static const Color grey800 = Color(0xFFCACDD8);
   static const Color black54 = Color(0x8A000000);

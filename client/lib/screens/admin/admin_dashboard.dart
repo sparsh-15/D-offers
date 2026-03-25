@@ -633,6 +633,7 @@ class _UsersManagementTabState extends State<UsersManagementTab> {
                                 SizedBox(
                                   width: 140,
                                   child: DropdownButtonFormField<String>(
+                                    isExpanded: true,
                                     value: _selectedState,
                                     decoration: InputDecoration(
                                       labelText: 'State',
@@ -646,10 +647,21 @@ class _UsersManagementTabState extends State<UsersManagementTab> {
                                     ),
                                     items: [
                                       const DropdownMenuItem(
-                                          value: null,
-                                          child: Text('All States')),
+                                        value: null,
+                                        child: Text(
+                                          'All States',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
                                       ...states.map((s) => DropdownMenuItem(
-                                          value: s, child: Text(s))),
+                                        value: s,
+                                        child: Text(
+                                          s,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      )),
                                     ],
                                     onChanged: (v) {
                                       setState(() {
@@ -664,6 +676,7 @@ class _UsersManagementTabState extends State<UsersManagementTab> {
                                 SizedBox(
                                   width: 140,
                                   child: DropdownButtonFormField<String>(
+                                    isExpanded: true,
                                     value: _selectedCity,
                                     decoration: InputDecoration(
                                       labelText: 'City',
@@ -677,11 +690,22 @@ class _UsersManagementTabState extends State<UsersManagementTab> {
                                     ),
                                     items: [
                                       const DropdownMenuItem(
-                                          value: null,
-                                          child: Text('All Cities')),
+                                        value: null,
+                                        child: Text(
+                                          'All Cities',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
                                       ...citiesForState.map((c) =>
                                           DropdownMenuItem(
-                                              value: c, child: Text(c))),
+                                            value: c,
+                                            child: Text(
+                                              c,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          )),
                                     ],
                                     onChanged: (v) {
                                       setState(() {
@@ -1199,6 +1223,7 @@ class _UsersManagementTabState extends State<UsersManagementTab> {
       builder: (context, catSnapshot) {
         final categories = catSnapshot.data ?? [];
         return DropdownButtonFormField<String>(
+          isExpanded: true,
           value: _selectedCategory,
           decoration: InputDecoration(
             labelText: 'Category',
@@ -1210,11 +1235,21 @@ class _UsersManagementTabState extends State<UsersManagementTab> {
             ),
           ),
           items: [
-            const DropdownMenuItem(value: null, child: Text('All Categories')),
+            const DropdownMenuItem(
+              value: null,
+              child: Text(
+                'All Categories',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
             ...categories.map((c) => DropdownMenuItem(
                   value: c['value']?.toString(),
                   child: Text(
-                      c['label']?.toString() ?? c['value']?.toString() ?? ''),
+                    c['label']?.toString() ?? c['value']?.toString() ?? '',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 )),
           ],
           onChanged: (v) {

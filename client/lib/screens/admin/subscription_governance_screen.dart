@@ -194,7 +194,7 @@ class _PlansManagementTabState extends State<PlansManagementTab> {
                           tooltip: 'Bulk management tools',
                           onSelected: _handleBulkAction,
                           surfaceTintColor: Colors.transparent,
-                          constraints: const BoxConstraints(minWidth: 260),
+                          constraints: const BoxConstraints(minWidth: 228),
                           itemBuilder: (context) => [
                             PopupMenuItem(
                               enabled: false,
@@ -215,7 +215,7 @@ class _PlansManagementTabState extends State<PlansManagementTab> {
                                   Icon(Icons.description_outlined, size: 18, color: AppColors.primary),
                                   const SizedBox(width: 10),
                                   Expanded(
-                                    child: Text('Download Template', style: Theme.of(context).textTheme.bodyMedium),
+                                    child: Text('Template', style: Theme.of(context).textTheme.bodyMedium),
                                   ),
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -236,7 +236,7 @@ class _PlansManagementTabState extends State<PlansManagementTab> {
                                   Icon(Icons.table_chart_outlined, size: 18, color: AppColors.primary),
                                   const SizedBox(width: 10),
                                   Expanded(
-                                    child: Text('Download Template', style: Theme.of(context).textTheme.bodyMedium),
+                                    child: Text('Template', style: Theme.of(context).textTheme.bodyMedium),
                                   ),
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -269,7 +269,7 @@ class _PlansManagementTabState extends State<PlansManagementTab> {
                                   Icon(Icons.file_download_outlined, size: 18, color: AppColors.primary),
                                   const SizedBox(width: 10),
                                   Expanded(
-                                    child: Text('Export Plans', style: Theme.of(context).textTheme.bodyMedium),
+                                    child: Text('Export', style: Theme.of(context).textTheme.bodyMedium),
                                   ),
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -290,7 +290,7 @@ class _PlansManagementTabState extends State<PlansManagementTab> {
                                   Icon(Icons.download_rounded, size: 18, color: AppColors.primary),
                                   const SizedBox(width: 10),
                                   Expanded(
-                                    child: Text('Export Plans', style: Theme.of(context).textTheme.bodyMedium),
+                                    child: Text('Export', style: Theme.of(context).textTheme.bodyMedium),
                                   ),
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -322,14 +322,14 @@ class _PlansManagementTabState extends State<PlansManagementTab> {
                                 children: [
                                   Icon(Icons.file_upload_outlined, size: 18, color: AppColors.primary),
                                   const SizedBox(width: 10),
-                                  Text('Bulk Upload Plans', style: Theme.of(context).textTheme.bodyMedium),
+                                  Text('Import Plans', style: Theme.of(context).textTheme.bodyMedium),
                                 ],
                               ),
                             ),
                           ],
                           child: Container(
-                            height: 42,
-                            padding: const EdgeInsets.symmetric(horizontal: 14),
+                            height: 36,
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 colors: [
@@ -344,41 +344,43 @@ class _PlansManagementTabState extends State<PlansManagementTab> {
                               children: [
                                 _bulkBusy
                                     ? const SizedBox(
-                                        width: 16,
-                                        height: 16,
+                                        width: 14,
+                                        height: 14,
                                         child: CircularProgressIndicator(
                                           strokeWidth: 2.2,
                                           valueColor: AlwaysStoppedAnimation(Colors.white),
                                         ),
                                       )
-                                    : const Icon(Icons.tune_rounded, size: 18, color: Colors.white),
-                                const SizedBox(width: 8),
+                                    : const Icon(Icons.tune_rounded, size: 16, color: Colors.white),
+                                const SizedBox(width: 6),
                                 const Text(
                                   'Bulk Tools',
                                   style: TextStyle(
                                     color: Colors.white,
                                     fontWeight: FontWeight.w600,
+                                    fontSize: 12,
                                   ),
                                 ),
-                                const SizedBox(width: 6),
-                                const Icon(Icons.keyboard_arrow_down_rounded, size: 20, color: Colors.white),
+                                const SizedBox(width: 2),
+                                const Icon(Icons.keyboard_arrow_down_rounded, size: 18, color: Colors.white),
                               ],
                             ),
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: 6),
                         IntrinsicWidth(
                           child: SizedBox(
-                            height: 42,
+                            height: 36,
                             child: ElevatedButton.icon(
                               onPressed: () => _showPlanDialog(),
-                              icon: const Icon(Icons.add_rounded, size: 18),
+                              icon: const Icon(Icons.add_rounded, size: 16),
                               label: const Text('Add Plan'),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.accent,
                                 foregroundColor: AppColors.black,
                                 elevation: 0,
-                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                padding: const EdgeInsets.symmetric(horizontal: 12),
+                                textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(10),
                                 ),
@@ -617,7 +619,7 @@ class _PlansManagementTabState extends State<PlansManagementTab> {
                     Expanded(
                       child: _buildPlanDetail(
                         'Price',
-                        'G₹$monthlyPrice',
+                        '₹$monthlyPrice',
                         Icons.currency_rupee_rounded,
                       ),
                     ),
@@ -1677,10 +1679,10 @@ class _AiCreditPacksTabState extends State<AiCreditPacksTab> {
                       tooltip: 'Bulk management tools',
                       enabled: !_bulkBusy,
                       onSelected: _handleBulkAction,
-                      constraints: const BoxConstraints(minWidth: 260),
+                      constraints: const BoxConstraints(minWidth: 228),
                       child: Container(
-                        height: 42,
-                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        height: 36,
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [AppColors.primary, AppColors.primary.withValues(alpha: 0.82)],
@@ -1692,21 +1694,21 @@ class _AiCreditPacksTabState extends State<AiCreditPacksTab> {
                           children: [
                             _bulkBusy
                                 ? const SizedBox(
-                                    width: 16,
-                                    height: 16,
+                                    width: 14,
+                                    height: 14,
                                     child: CircularProgressIndicator(
                                       strokeWidth: 2.2,
                                       valueColor: AlwaysStoppedAnimation(Colors.white),
                                     ),
                                   )
-                                : const Icon(Icons.tune_rounded, size: 18, color: Colors.white),
-                            const SizedBox(width: 8),
+                                : const Icon(Icons.tune_rounded, size: 16, color: Colors.white),
+                            const SizedBox(width: 6),
                             const Text(
                               'Bulk Tools',
-                              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 12),
                             ),
-                            const SizedBox(width: 6),
-                            const Icon(Icons.keyboard_arrow_down_rounded, size: 20, color: Colors.white),
+                            const SizedBox(width: 2),
+                            const Icon(Icons.keyboard_arrow_down_rounded, size: 18, color: Colors.white),
                           ],
                         ),
                       ),
@@ -1829,7 +1831,7 @@ class _AiCreditPacksTabState extends State<AiCreditPacksTab> {
                             children: [
                               Icon(Icons.file_upload_outlined, size: 18, color: AppColors.textMuted),
                               const SizedBox(width: 12),
-                              const Expanded(child: Text('Bulk Upload Packs')),
+                              const Expanded(child: Text('Import Packs')),
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(
@@ -1851,7 +1853,7 @@ class _AiCreditPacksTabState extends State<AiCreditPacksTab> {
                             children: [
                               Icon(Icons.file_upload_outlined, size: 18, color: AppColors.textMuted),
                               const SizedBox(width: 12),
-                              const Expanded(child: Text('Bulk Upload Packs')),
+                              const Expanded(child: Text('Import Packs')),
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(
@@ -1870,16 +1872,17 @@ class _AiCreditPacksTabState extends State<AiCreditPacksTab> {
                     ),
                     IntrinsicWidth(
                       child: SizedBox(
-                        height: 42,
+                        height: 36,
                         child: ElevatedButton.icon(
                           onPressed: () => _showPackDialog(),
-                          icon: const Icon(Icons.add_rounded, size: 18),
+                          icon: const Icon(Icons.add_rounded, size: 16),
                           label: const Text('Add Pack'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.accent,
                             foregroundColor: AppColors.black,
                             elevation: 0,
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                           ),
                         ),

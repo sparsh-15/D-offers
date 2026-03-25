@@ -227,6 +227,7 @@ class _CreateCouponScreenState extends State<CreateCouponScreen> {
                                   ),
                                   const SizedBox(height: innerGap),
                                   DropdownButtonFormField<String>(
+                                    isExpanded: true,
                                     initialValue: _discountType,
                                     decoration: const InputDecoration(
                                       labelText: 'Discount Type',
@@ -296,6 +297,7 @@ class _CreateCouponScreenState extends State<CreateCouponScreen> {
                                   ),
                                   const SizedBox(height: innerGap),
                                   DropdownButtonFormField<String>(
+                                    isExpanded: true,
                                     initialValue: _selectedAgentId,
                                     decoration: const InputDecoration(
                                       labelText: 'Select Agent',

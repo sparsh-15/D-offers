@@ -115,6 +115,7 @@ class _ShopsManagementScreenState extends State<ShopsManagementScreen> {
           ),
           const SizedBox(height: 16),
           DropdownButtonFormField<String>(
+            isExpanded: true,
             value: _selectedSubscriptionStatus,
             decoration: const InputDecoration(
               labelText: 'Subscription Status',

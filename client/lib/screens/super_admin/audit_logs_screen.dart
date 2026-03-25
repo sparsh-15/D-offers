@@ -110,6 +110,7 @@ class _AuditLogsScreenState extends State<AuditLogsScreen> {
           ),
           const SizedBox(height: 16),
           DropdownButtonFormField<String>(
+            isExpanded: true,
             value: _selectedAction,
             decoration: const InputDecoration(
               labelText: 'Action Type',

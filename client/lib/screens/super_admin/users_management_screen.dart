@@ -152,6 +152,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
           ),
           const SizedBox(height: 16),
           DropdownButtonFormField<String>(
+            isExpanded: true,
             value: _selectedRole,
             decoration: const InputDecoration(
               labelText: 'Role',
@@ -172,6 +173,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<bool>(
+            isExpanded: true,
             value: _selectedIsActive,
             decoration: const InputDecoration(
               labelText: 'Status',
