@@ -4,6 +4,10 @@ const app = require('./src/app');
 const { seedAdminFromEnv } = require('./src/bootstrap/seedAdmin');
 const { prisma } = require('./src/db/prisma');
 const { startCampaignScheduler, stopCampaignScheduler } = require('./src/services/campaignScheduler');
+const {
+  startRewardMaintenanceScheduler,
+  stopRewardMaintenanceScheduler,
+} = require('./src/services/rewardMaintenanceService');
 
 async function startServer() {
   try {
@@ -20,6 +24,11 @@ async function startServer() {
     console.log(`Server running on port ${config.port}`);
     console.log('DB provider: postgres');
     startCampaignScheduler();
+    startRewardMaintenanceScheduler({
+      expiryIntervalMs: config.rewards.expiryIntervalMs,
+      reconciliationIntervalMs: config.rewards.reconciliationIntervalMs,
+      startupDelayMs: config.rewards.startupDelayMs,
+    });
   });
 }
 
@@ -27,12 +36,14 @@ startServer();
 
 process.on('SIGINT', async () => {
   stopCampaignScheduler();
+  stopRewardMaintenanceScheduler();
   await prisma.$disconnect();
   process.exit(0);
 });
 
 process.on('SIGTERM', async () => {
   stopCampaignScheduler();
+  stopRewardMaintenanceScheduler();
   await prisma.$disconnect();
   process.exit(0);
 });

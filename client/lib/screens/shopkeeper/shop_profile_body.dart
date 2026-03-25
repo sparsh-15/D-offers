@@ -23,6 +23,7 @@ import '../common/about_page.dart';
 import '../common/customer_experience_shell.dart';
 import 'shop_business_details_page.dart';
 import 'current_plan_details_page.dart';
+import 'shop_rewards_screen.dart';
 import 'subscription_plans_screen.dart';
 
 class ShopProfileBody extends StatefulWidget {
@@ -141,7 +142,8 @@ class _ShopProfileBodyState extends State<ShopProfileBody> {
                                     child: SizedBox(
                                       width: 24,
                                       height: 24,
-                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2),
                                     ),
                                   ),
                                 ),
@@ -171,7 +173,8 @@ class _ShopProfileBodyState extends State<ShopProfileBody> {
                   Expanded(
                     child: Container(
                       margin: const EdgeInsets.only(top: 4),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 10),
                       decoration: BoxDecoration(
                         color: AppColors.elevated,
                         borderRadius: BorderRadius.circular(12),
@@ -185,14 +188,20 @@ class _ShopProfileBodyState extends State<ShopProfileBody> {
                               children: [
                                 Text(
                                   'Customer View',
-                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodyMedium
+                                      ?.copyWith(
                                         fontWeight: FontWeight.w600,
                                       ),
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
                                   'Browse app as customer',
-                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodySmall
+                                      ?.copyWith(
                                         color: AppColors.textSecondary,
                                       ),
                                 ),
@@ -251,6 +260,17 @@ class _ShopProfileBodyState extends State<ShopProfileBody> {
                       icon: Icons.workspace_premium_rounded,
                       title: 'Manage Subscription Plans',
                       onTap: () => _openCurrentPlanDetails(context),
+                    ),
+                    ProfileOptionTile(
+                      icon: Icons.emoji_events_rounded,
+                      title: 'Rewards & Milestones',
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const ShopRewardsScreen(),
+                          ),
+                        );
+                      },
                     ),
                     ProfileOptionTile(
                       icon: Icons.settings_rounded,
@@ -321,12 +341,13 @@ class _ShopProfileBodyState extends State<ShopProfileBody> {
         sub['planSnapshot'] as Map<String, dynamic>? ?? <String, dynamic>{};
     final isTrial = sub['trial'] == true || planSnapshot['isTrial'] == true;
     final planName = isTrial
-      ? (planSnapshot['trialDisplayName'] ?? 'Free Trial')
-      : (planSnapshot['displayName'] ?? planSnapshot['name'] ?? 'Plan');
+        ? (planSnapshot['trialDisplayName'] ?? 'Free Trial')
+        : (planSnapshot['displayName'] ?? planSnapshot['name'] ?? 'Plan');
     final status = (sub['status'] ?? 'inactive').toString();
     final endDate = _parseSubscriptionEndDate(sub['endDate']);
     final daysLeft = _calculateDaysLeft(endDate);
-    final isExpired = status.toLowerCase() == 'expired' || (daysLeft != null && daysLeft < 0);
+    final isExpired =
+        status.toLowerCase() == 'expired' || (daysLeft != null && daysLeft < 0);
     final statusColor = _subscriptionStatusColor(status, isExpired);
     final Object? maxOffers = planSnapshot['maxOffers'];
     final Object? monthlyAiLimit = planSnapshot['monthlyAiLimit'];
@@ -406,7 +427,8 @@ class _ShopProfileBodyState extends State<ShopProfileBody> {
             child: Text(
               validityLabel,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: isExpired ? AppColors.error : AppColors.textSecondary,
+                    color:
+                        isExpired ? AppColors.error : AppColors.textSecondary,
                   ),
             ),
           ),
@@ -433,7 +455,10 @@ class _ShopProfileBodyState extends State<ShopProfileBody> {
                       color: AppColors.textSecondary,
                     ),
               ),
-            if (!isExpired && endDate != null && daysLeft != null && daysLeft > 0)
+            if (!isExpired &&
+                endDate != null &&
+                daysLeft != null &&
+                daysLeft > 0)
               Text(
                 'Ends on ${_formatSubscriptionDate(endDate)}',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -516,9 +541,8 @@ class _ShopProfileBodyState extends State<ShopProfileBody> {
   }
 
   void _openSubscriptionPlansScreen(BuildContext context) {
-    final category = (_profile?.category.isNotEmpty ?? false)
-        ? _profile!.category
-        : 'all';
+    final category =
+        (_profile?.category.isNotEmpty ?? false) ? _profile!.category : 'all';
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => SubscriptionPlansScreen(shopCategory: category),
@@ -532,9 +556,8 @@ class _ShopProfileBodyState extends State<ShopProfileBody> {
       _openSubscriptionPlansScreen(context);
       return;
     }
-    final category = (_profile?.category.isNotEmpty ?? false)
-        ? _profile!.category
-        : 'all';
+    final category =
+        (_profile?.category.isNotEmpty ?? false) ? _profile!.category : 'all';
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => CurrentPlanDetailsPage(
@@ -580,7 +603,7 @@ class _ShopProfileBodyState extends State<ShopProfileBody> {
             ? null
             : result['description']!.trim(),
         clearLocationCoordinates:
-          result['clearLocationCoordinates'] as bool? ?? false,
+            result['clearLocationCoordinates'] as bool? ?? false,
       );
       if (!mounted) return;
       setState(() => _profile = updated);
@@ -797,9 +820,8 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
       final street = (locationData['street']?.toString() ?? '').trim();
       final subLocality =
           (locationData['subLocality']?.toString() ?? '').trim();
-      final detectedAddress = [street, subLocality]
-          .where((value) => value.isNotEmpty)
-          .join(', ');
+      final detectedAddress =
+          [street, subLocality].where((value) => value.isNotEmpty).join(', ');
 
       _suppressPincodeLookup = true;
       _runWithSuppressedLocationChangeTracking(() {
@@ -936,7 +958,8 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
             Align(
               alignment: Alignment.centerLeft,
               child: TextButton.icon(
-                onPressed: _isLoadingCurrentLocation ? null : _useCurrentLocation,
+                onPressed:
+                    _isLoadingCurrentLocation ? null : _useCurrentLocation,
                 icon: _isLoadingCurrentLocation
                     ? const SizedBox(
                         width: 16,

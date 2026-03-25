@@ -5,12 +5,14 @@ import '../../services/auth_service.dart';
 import '../../services/auth_store.dart';
 import '../../services/campaign_service.dart';
 import '../../services/location_service.dart';
+import '../../services/reward_service.dart';
 import '../../models/offer_model.dart';
 import '../../widgets/offer_card.dart';
 import '../../core/utils/dialog_helper.dart';
 import '../../services/subscription_service.dart';
 import 'dart:async';
 import 'customer_inbox_screen.dart';
+import '../common/reward_wallet_screen.dart';
 
 class CustomerHomeTab extends StatefulWidget {
   const CustomerHomeTab({super.key, this.onViewAllOffers});
@@ -40,6 +42,8 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
   String _sortBy = 'newest';
   List<Map<String, dynamic>> _categories = [];
   int _unreadInboxCount = 0;
+  int _walletBalance = 0;
+  bool _loadingWallet = false;
 
   @override
   void initState() {
@@ -47,6 +51,7 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
     _loadCategories();
     _loadDeals();
     _loadUnreadInboxCount();
+    _loadWalletBalance();
   }
 
   @override
@@ -60,7 +65,23 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
     await Future.wait([
       _loadDeals(),
       _loadUnreadInboxCount(),
+      _loadWalletBalance(),
     ]);
+  }
+
+  Future<void> _loadWalletBalance() async {
+    setState(() => _loadingWallet = true);
+    try {
+      final wallet = await RewardService.instance.getMyWallet();
+      if (!mounted) return;
+      setState(() {
+        _walletBalance = (wallet['balance'] as num?)?.toInt() ?? 0;
+        _loadingWallet = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loadingWallet = false);
+    }
   }
 
   Future<void> _loadUnreadInboxCount() async {
@@ -265,8 +286,9 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
       final pincode = (user?.pincode ?? '').trim();
       if (city.isNotEmpty) parts.add(city);
       if (pincode.isNotEmpty) parts.add(pincode);
-      locationLine =
-          parts.isNotEmpty ? parts.join(', ') : 'Set your area for better deals';
+      locationLine = parts.isNotEmpty
+          ? parts.join(', ')
+          : 'Set your area for better deals';
     }
 
     final totalDeals = _featuredDeals.length + _allPreviewDeals.length;
@@ -314,6 +336,47 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                 ],
               ),
               actions: [
+                Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: TextButton.icon(
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 8),
+                      backgroundColor: AppColors.elevated,
+                      shape: RoundedRectangleBorder(
+                        borderRadius:
+                            BorderRadius.circular(AppTokens.radiusFull),
+                        side: const BorderSide(color: AppColors.borderSubtle),
+                      ),
+                    ),
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const RewardWalletScreen(
+                              title: 'Customer Wallet'),
+                        ),
+                      );
+                    },
+                    icon: _loadingWallet
+                        ? const SizedBox(
+                            width: 12,
+                            height: 12,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(
+                            Icons.monetization_on_rounded,
+                            size: 16,
+                            color: AppColors.accent,
+                          ),
+                    label: Text(
+                      _loadingWallet ? '...' : '$_walletBalance',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
                 IconButton(
                   onPressed: _openInbox,
                   tooltip: 'Inbox',
@@ -344,7 +407,9 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                               shape: BoxShape.circle,
                             ),
                             child: Text(
-                              _unreadInboxCount > 9 ? '9+' : '$_unreadInboxCount',
+                              _unreadInboxCount > 9
+                                  ? '9+'
+                                  : '$_unreadInboxCount',
                               style: const TextStyle(
                                 color: AppColors.black,
                                 fontSize: 9,
@@ -433,8 +498,7 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                       padding: const EdgeInsets.all(AppTokens.spaceSM),
                       decoration: BoxDecoration(
                         color: AppColors.elevated,
-                        borderRadius:
-                            BorderRadius.circular(AppTokens.radiusLG),
+                        borderRadius: BorderRadius.circular(AppTokens.radiusLG),
                         border: Border.all(
                           color: AppColors.borderSubtle,
                         ),
@@ -455,8 +519,7 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                                   locationLine,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style:
-                                      theme.textTheme.bodySmall?.copyWith(
+                                  style: theme.textTheme.bodySmall?.copyWith(
                                     color: AppColors.textSecondary,
                                     fontWeight: FontWeight.w500,
                                   ),
@@ -466,9 +529,38 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                                   dealsLine,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style:
-                                      theme.textTheme.bodySmall?.copyWith(
+                                  style: theme.textTheme.bodySmall?.copyWith(
                                     color: AppColors.textMuted,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: AppTokens.spaceSM),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppTokens.spaceSM,
+                              vertical: AppTokens.spaceXS,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.accent.withValues(alpha: 0.14),
+                              borderRadius:
+                                  BorderRadius.circular(AppTokens.radiusFull),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.monetization_on_rounded,
+                                  size: 14,
+                                  color: AppColors.accent,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '$_walletBalance',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: AppColors.accent,
+                                    fontWeight: FontWeight.w700,
                                   ),
                                 ),
                               ],
@@ -482,8 +574,10 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                   // ── Search bar ─────────────────────────────────────────────
                   Padding(
                     padding: const EdgeInsets.fromLTRB(
-                      AppTokens.spaceMD, AppTokens.spaceSM,
-                      AppTokens.spaceMD, 0,
+                      AppTokens.spaceMD,
+                      AppTokens.spaceSM,
+                      AppTokens.spaceMD,
+                      0,
                     ),
                     child: TextField(
                       controller: _searchController,
@@ -585,8 +679,7 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                           return GestureDetector(
                             onTap: () {
                               setState(() {
-                                _selectedCategory =
-                                    isSelected ? null : value;
+                                _selectedCategory = isSelected ? null : value;
                               });
                               _refresh();
                             },
@@ -793,8 +886,7 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                         Container(
                           padding: const EdgeInsets.all(2),
                           decoration: BoxDecoration(
-                            color:
-                                AppColors.elevated.withValues(alpha: 0.9),
+                            color: AppColors.elevated.withValues(alpha: 0.9),
                             borderRadius: BorderRadius.circular(
                               AppTokens.radiusFull,
                             ),

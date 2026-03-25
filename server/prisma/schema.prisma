@@ -133,6 +133,35 @@ enum CallbackStatusEnum {
   @@map("callback_status_enum")
 }
 
+enum CoinDirectionEnum {
+  credit
+  debit
+
+  @@map("coin_direction_enum")
+}
+
+enum CoinActionTypeEnum {
+  like_offer
+  purchase_success
+  sale_closed
+  install_verified
+  reversal
+  expiry
+  milestone_redeem
+  admin_adjustment
+
+  @@map("coin_action_type_enum")
+}
+
+enum MilestoneRedemptionStatusEnum {
+  pending
+  approved
+  rejected
+  paid
+
+  @@map("milestone_redemption_status_enum")
+}
+
 model AppSetting {
   id    String @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
   key   String @unique
@@ -200,6 +229,12 @@ model User {
   campaignDeliveries     CampaignDelivery[]             @relation("CustomerDeliveries")
   inboxMessages          InboxMessage[]                 @relation("CustomerInbox")
   sentInboxMessages      InboxMessage[]                 @relation("InboxSender")
+  coinWallet             CoinWallet?
+  coinLedgerEntries      CoinLedgerEntry[]
+  rewardEvents           RewardEvent[]
+  milestoneProgress      CoinMilestoneProgress?
+  milestoneRedemptions   CoinMilestoneRedemption[]
+  reconciliationRuns     CoinReconciliationRun[]
 
   @@index([role, approvalStatus, createdAt(sort: Desc)], map: "idx_users_role_approval_created_desc")
   @@index([role, isActive, createdAt(sort: Desc)], map: "idx_users_role_active_created_desc")
@@ -700,6 +735,168 @@ model LoanApplication {
   @@index([customerId, createdAt(sort: Desc)], map: "idx_loan_applications_customer_created_desc")
   @@index([status], map: "idx_loan_applications_status")
   @@map("loan_applications")
+}
+
+model CoinWallet {
+  id               String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  userId           String   @unique @map("user_id") @db.Uuid
+  userType         RoleEnum @map("user_type")
+  balance          Int      @default(0)
+  lastReconciledAt DateTime? @map("last_reconciled_at") @db.Timestamptz(6)
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user         User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ledgerEntries CoinLedgerEntry[]
+  coinLots     CoinLot[]
+
+  @@index([userType], map: "idx_coin_wallets_user_type")
+  @@map("coin_wallets")
+}
+
+model CoinLedgerEntry {
+  id               String             @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  walletId         String             @map("wallet_id") @db.Uuid
+  userId           String             @map("user_id") @db.Uuid
+  userType         RoleEnum           @map("user_type")
+  direction        CoinDirectionEnum
+  amount           Int
+  actionType       CoinActionTypeEnum @map("action_type")
+  sourceRef        String             @map("source_ref")
+  idempotencyKey   String             @unique @map("idempotency_key")
+  referenceEntryId String?            @map("reference_entry_id") @db.Uuid
+  metadata         Json               @default("{}")
+  expiresAt        DateTime?          @map("expires_at") @db.Timestamptz(6)
+  createdAt        DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  wallet         CoinWallet        @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  referenceEntry CoinLedgerEntry?  @relation("CoinLedgerReference", fields: [referenceEntryId], references: [id], onDelete: SetNull)
+  reverseEntries CoinLedgerEntry[] @relation("CoinLedgerReference")
+  coinLot        CoinLot?
+
+  @@index([userId, createdAt(sort: Desc)], map: "idx_coin_ledger_user_created_desc")
+  @@index([walletId, createdAt(sort: Desc)], map: "idx_coin_ledger_wallet_created_desc")
+  @@index([actionType, createdAt(sort: Desc)], map: "idx_coin_ledger_action_created_desc")
+  @@index([userId, direction, createdAt(sort: Desc)], map: "idx_coin_ledger_user_direction_created_desc")
+  @@index([expiresAt], map: "idx_coin_ledger_expires_at")
+  @@unique([userId, actionType, sourceRef], map: "uq_coin_ledger_user_action_source")
+  @@map("coin_ledger_entries")
+}
+
+model RewardEvent {
+  id                String             @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  userId            String             @map("user_id") @db.Uuid
+  userType          RoleEnum           @map("user_type")
+  actionType        CoinActionTypeEnum @map("action_type")
+  sourceRef         String             @map("source_ref")
+  deviceFingerprint String?            @map("device_fingerprint")
+  idempotencyKey    String?            @map("idempotency_key")
+  validated         Boolean            @default(false)
+  rejectedReason    String?            @map("rejected_reason")
+  createdAt         DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)], map: "idx_reward_events_user_created_desc")
+  @@index([actionType, createdAt(sort: Desc)], map: "idx_reward_events_action_created_desc")
+  @@index([deviceFingerprint], map: "idx_reward_events_device_fingerprint")
+  @@unique([userId, actionType, sourceRef], map: "uq_reward_events_user_action_source")
+  @@map("reward_events")
+}
+
+model CoinLot {
+  id             String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  walletId       String   @map("wallet_id") @db.Uuid
+  ledgerEntryId  String   @unique @map("ledger_entry_id") @db.Uuid
+  originalAmount Int      @map("original_amount")
+  remainingAmount Int     @map("remaining_amount")
+  earnedAt       DateTime @map("earned_at") @db.Timestamptz(6)
+  expiresAt      DateTime @map("expires_at") @db.Timestamptz(6)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  wallet      CoinWallet       @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  ledgerEntry CoinLedgerEntry  @relation(fields: [ledgerEntryId], references: [id], onDelete: Cascade)
+
+  @@index([walletId, expiresAt], map: "idx_coin_lots_wallet_expires")
+  @@index([expiresAt], map: "idx_coin_lots_expires_at")
+  @@map("coin_lots")
+}
+
+model CoinMilestoneDefinition {
+  id               String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  thresholdCoins   Int      @unique @map("threshold_coins")
+  rewardAmountPaise Int     @map("reward_amount_paise")
+  sortOrder        Int      @default(0) @map("sort_order")
+  isActive         Boolean  @default(true) @map("is_active")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  progressions CoinMilestoneProgress[]
+  redemptions  CoinMilestoneRedemption[]
+
+  @@index([isActive, sortOrder], map: "idx_coin_milestones_active_sort")
+  @@map("coin_milestone_definitions")
+}
+
+model CoinMilestoneProgress {
+  id                String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  userId            String   @unique @map("user_id") @db.Uuid
+  lifetimeCredited  Int      @default(0) @map("lifetime_credited")
+  currentMilestoneId String? @map("current_milestone_id") @db.Uuid
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user             User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currentMilestone CoinMilestoneDefinition? @relation(fields: [currentMilestoneId], references: [id], onDelete: SetNull)
+
+  @@index([lifetimeCredited], map: "idx_coin_milestone_progress_lifetime")
+  @@map("coin_milestone_progress")
+}
+
+model CoinMilestoneRedemption {
+  id           String                         @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  userId       String                         @map("user_id") @db.Uuid
+  milestoneId  String                         @map("milestone_id") @db.Uuid
+  status       MilestoneRedemptionStatusEnum  @default(pending)
+  requestedAt  DateTime                       @default(now()) @map("requested_at") @db.Timestamptz(6)
+  processedAt  DateTime?                      @map("processed_at") @db.Timestamptz(6)
+  notes        String?
+
+  user      User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  milestone CoinMilestoneDefinition @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+
+  @@index([userId, requestedAt(sort: Desc)], map: "idx_coin_redemptions_user_requested_desc")
+  @@unique([userId, milestoneId], map: "uq_coin_redemptions_user_milestone")
+  @@map("coin_milestone_redemptions")
+}
+
+model RewardConfig {
+  id          String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  key         String   @unique
+  configValue Json     @default("{}") @map("config_value")
+  version     Int      @default(1)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("reward_configs")
+}
+
+model CoinReconciliationRun {
+  id                    String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  userId                String?  @map("user_id") @db.Uuid
+  checkedWallets        Int      @default(0) @map("checked_wallets")
+  mismatchedWallets     Int      @default(0) @map("mismatched_wallets")
+  autoHealedWallets     Int      @default(0) @map("auto_healed_wallets")
+  metadata              Json     @default("{}")
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt(sort: Desc)], map: "idx_coin_reconciliation_created_desc")
+  @@map("coin_reconciliation_runs")
 }
 
 

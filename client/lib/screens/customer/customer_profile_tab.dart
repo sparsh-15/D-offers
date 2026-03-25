@@ -9,6 +9,7 @@ import '../common/addresses_page.dart';
 import '../common/settings_page.dart';
 import '../common/help_support_page.dart';
 import '../common/about_page.dart';
+import '../common/reward_wallet_screen.dart';
 import '../customer/become_ssa_onboarding_screen.dart';
 import '../ssa/ssa_dashboard.dart';
 import '../../services/auth_service.dart';
@@ -197,6 +198,19 @@ class _CustomerProfileTabState extends State<CustomerProfileTab> {
                             ),
                           );
                           if (mounted) _reload();
+                        },
+                      ),
+                      ProfileOptionTile(
+                        icon: Icons.account_balance_wallet_rounded,
+                        title: 'Wallet & Coins',
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const RewardWalletScreen(
+                                title: 'Customer Wallet',
+                              ),
+                            ),
+                          );
                         },
                       ),
                       if (user != null && user.role == UserRole.customer)

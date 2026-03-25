@@ -15,6 +15,7 @@ const superAdminRoutes = require('./superAdminRoutes');
 const subscriptionGovernanceRoutes = require('./subscriptionGovernanceRoutes');
 const agentGovernanceRoutes = require('./agentGovernanceRoutes');
 const aiRoutes = require('./aiRoutes');
+const rewardRoutes = require('./rewardRoutes');
 
 const router = express.Router();
 
@@ -34,5 +35,6 @@ router.use('/super-admin', superAdminRoutes);
 router.use('/subscription-governance', subscriptionGovernanceRoutes);
 router.use('/agent-governance', agentGovernanceRoutes);
 router.use('/ai', aiRoutes);
+router.use('/rewards', rewardRoutes);
 
 module.exports = router;

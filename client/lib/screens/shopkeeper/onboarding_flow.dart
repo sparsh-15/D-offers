@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/utils/reward_action_mixin.dart';
 import '../../core/utils/theme_helper.dart';
 import '../../core/utils/dialog_helper.dart';
 import '../../services/auth_service.dart';
@@ -23,7 +24,8 @@ class OnboardingFlow extends StatefulWidget {
   State<OnboardingFlow> createState() => _OnboardingFlowState();
 }
 
-class _OnboardingFlowState extends State<OnboardingFlow> {
+class _OnboardingFlowState extends State<OnboardingFlow>
+    with RewardActionMixin<OnboardingFlow> {
   bool _loading = true;
   ShopkeeperProfileModel? _profile;
   Map<String, dynamic>? _subscriptionStatus;
@@ -126,22 +128,24 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         actions: [
           TextButton(
             onPressed: () async {
-              final shouldLogout =
-                  await DialogHelper.showLogoutDialog(context);
-              if (shouldLogout && context.mounted) {
-                await AuthStore.clearPersistedAuth();
-                AuthStore.clear();
-                Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(
-                    builder: (_) => const LoginScreen(),
-                  ),
-                  (route) => false,
-                );
-                DialogHelper.showSuccessSnackBar(
-                  context,
-                  'Logged out successfully',
-                );
-              }
+              final shouldLogout = await DialogHelper.showLogoutDialog(context);
+              if (!shouldLogout) return;
+              if (!mounted) return;
+
+              await AuthStore.clearPersistedAuth();
+              if (!mounted) return;
+
+              AuthStore.clear();
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(
+                  builder: (_) => const LoginScreen(),
+                ),
+                (route) => false,
+              );
+              DialogHelper.showSuccessSnackBar(
+                context,
+                'Logged out successfully',
+              );
             },
             child: const Text('Logout'),
           ),
@@ -543,11 +547,14 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             ? null
             : result['description']!.trim(),
         clearLocationCoordinates:
-          result['clearLocationCoordinates'] as bool? ?? false,
+            result['clearLocationCoordinates'] as bool? ?? false,
       );
       if (!mounted) return;
       try {
         await AuthService.instance.completeOnboardingProfile();
+        emitInstallVerifiedReward(
+          'onboarding-complete:${AuthStore.currentUser?.id ?? 'shopkeeper'}',
+        );
       } catch (_) {
         if (mounted) {
           DialogHelper.showInfoSnackBar(
@@ -762,9 +769,8 @@ class _ProfileDialogState extends State<_ProfileDialog> {
       final street = (locationData['street']?.toString() ?? '').trim();
       final subLocality =
           (locationData['subLocality']?.toString() ?? '').trim();
-      final detectedAddress = [street, subLocality]
-          .where((value) => value.isNotEmpty)
-          .join(', ');
+      final detectedAddress =
+          [street, subLocality].where((value) => value.isNotEmpty).join(', ');
 
       _suppressPincodeLookup = true;
       _runWithSuppressedLocationChangeTracking(() {
@@ -838,7 +844,8 @@ class _ProfileDialogState extends State<_ProfileDialog> {
             Align(
               alignment: Alignment.centerLeft,
               child: TextButton.icon(
-                onPressed: _isLoadingCurrentLocation ? null : _useCurrentLocation,
+                onPressed:
+                    _isLoadingCurrentLocation ? null : _useCurrentLocation,
                 icon: _isLoadingCurrentLocation
                     ? const SizedBox(
                         width: 16,

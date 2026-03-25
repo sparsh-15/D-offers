@@ -23,6 +23,7 @@ import 'subscription_governance_screen.dart';
 import 'agent_coupon_governance_screen.dart';
 import 'platform_analytics_screen.dart';
 import 'reports_screen.dart';
+import 'reward_config_screen.dart';
 import 'user_details_screen.dart';
 
 class AdminDashboard extends StatefulWidget {
@@ -43,10 +44,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
         final shouldExit = await DialogHelper.showExitDialog(context);
-        return shouldExit;
+        if (shouldExit && context.mounted) {
+          Navigator.of(context).pop();
+        }
       },
       child: Scaffold(
         body: _screens[_selectedIndex],
@@ -302,6 +307,23 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
                             },
                           ),
                         ),
+                        FadeInUp(
+                          delay: const Duration(milliseconds: 600),
+                          child: _buildQuickAction(
+                            context,
+                            'Reward Configuration',
+                            'Manage coin rewards, limits and expiry rules',
+                            Icons.tune_rounded,
+                            AppColors.accentDim,
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const RewardConfigScreen(),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
                       ],
                     ),
                   );
@@ -340,7 +362,7 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
           Text(
             title,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppColors.white.withOpacity(0.9),
+                  color: AppColors.white.withValues(alpha: 0.9),
                 ),
           ),
         ],
@@ -634,7 +656,7 @@ class _UsersManagementTabState extends State<UsersManagementTab> {
                                   width: 140,
                                   child: DropdownButtonFormField<String>(
                                     isExpanded: true,
-                                    value: _selectedState,
+                                    initialValue: _selectedState,
                                     decoration: InputDecoration(
                                       labelText: 'State',
                                       isDense: true,
@@ -655,13 +677,13 @@ class _UsersManagementTabState extends State<UsersManagementTab> {
                                         ),
                                       ),
                                       ...states.map((s) => DropdownMenuItem(
-                                        value: s,
-                                        child: Text(
-                                          s,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      )),
+                                            value: s,
+                                            child: Text(
+                                              s,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          )),
                                     ],
                                     onChanged: (v) {
                                       setState(() {
@@ -677,7 +699,7 @@ class _UsersManagementTabState extends State<UsersManagementTab> {
                                   width: 140,
                                   child: DropdownButtonFormField<String>(
                                     isExpanded: true,
-                                    value: _selectedCity,
+                                    initialValue: _selectedCity,
                                     decoration: InputDecoration(
                                       labelText: 'City',
                                       isDense: true,
@@ -697,15 +719,16 @@ class _UsersManagementTabState extends State<UsersManagementTab> {
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
-                                      ...citiesForState.map((c) =>
-                                          DropdownMenuItem(
-                                            value: c,
-                                            child: Text(
-                                              c,
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          )),
+                                      ...citiesForState
+                                          .map((c) => DropdownMenuItem(
+                                                value: c,
+                                                child: Text(
+                                                  c,
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                              )),
                                     ],
                                     onChanged: (v) {
                                       setState(() {
@@ -746,7 +769,7 @@ class _UsersManagementTabState extends State<UsersManagementTab> {
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.black.withOpacity(0.1),
+                          color: AppColors.black.withValues(alpha: 0.1),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
@@ -856,7 +879,7 @@ class _UsersManagementTabState extends State<UsersManagementTab> {
                                   : Icons.people_outline_rounded,
                               size: 64,
                               color: ThemeHelper.getTextColor(context)
-                                  .withOpacity(0.5),
+                                  .withValues(alpha: 0.5),
                             ),
                             const SizedBox(height: 16),
                             Text(
@@ -910,7 +933,7 @@ class _UsersManagementTabState extends State<UsersManagementTab> {
                                       height: 56,
                                       decoration: BoxDecoration(
                                         color: _getRoleColor(user.role)
-                                            .withOpacity(0.2),
+                                            .withValues(alpha: 0.2),
                                         shape: BoxShape.circle,
                                       ),
                                       child: Icon(
@@ -955,7 +978,7 @@ class _UsersManagementTabState extends State<UsersManagementTab> {
                                                 decoration: BoxDecoration(
                                                   color: _getStatusColor(
                                                           user.statusLabel)
-                                                      .withOpacity(0.2),
+                                                      .withValues(alpha: 0.2),
                                                   borderRadius:
                                                       BorderRadius.circular(8),
                                                 ),
@@ -982,7 +1005,7 @@ class _UsersManagementTabState extends State<UsersManagementTab> {
                                                 size: 14,
                                                 color: ThemeHelper.getTextColor(
                                                         context)
-                                                    .withOpacity(0.6),
+                                                    .withValues(alpha: 0.6),
                                               ),
                                               const SizedBox(width: 4),
                                               Text(
@@ -1000,10 +1023,9 @@ class _UsersManagementTabState extends State<UsersManagementTab> {
                                                 Icon(
                                                   Icons.location_on_rounded,
                                                   size: 14,
-                                                  color:
-                                                      ThemeHelper.getTextColor(
-                                                              context)
-                                                          .withOpacity(0.6),
+                                                  color: ThemeHelper
+                                                          .getTextColor(context)
+                                                      .withValues(alpha: 0.6),
                                                 ),
                                                 const SizedBox(width: 4),
                                                 Expanded(
@@ -1020,7 +1042,8 @@ class _UsersManagementTabState extends State<UsersManagementTab> {
                                               ],
                                             ),
                                           ],
-                                          if (user.role == UserRole.shopkeeper &&
+                                          if (user.role ==
+                                                  UserRole.shopkeeper &&
                                               user.category.isNotEmpty) ...[
                                             const SizedBox(height: 4),
                                             Row(
@@ -1028,10 +1051,9 @@ class _UsersManagementTabState extends State<UsersManagementTab> {
                                                 Icon(
                                                   Icons.category_rounded,
                                                   size: 14,
-                                                  color:
-                                                      ThemeHelper.getTextColor(
-                                                              context)
-                                                          .withOpacity(0.6),
+                                                  color: ThemeHelper
+                                                          .getTextColor(context)
+                                                      .withValues(alpha: 0.6),
                                                 ),
                                                 const SizedBox(width: 4),
                                                 Expanded(
@@ -1057,7 +1079,7 @@ class _UsersManagementTabState extends State<UsersManagementTab> {
                                             ),
                                             decoration: BoxDecoration(
                                               color: _getRoleColor(user.role)
-                                                  .withOpacity(0.15),
+                                                  .withValues(alpha: 0.15),
                                               borderRadius:
                                                   BorderRadius.circular(20),
                                             ),
@@ -1091,7 +1113,7 @@ class _UsersManagementTabState extends State<UsersManagementTab> {
                                       icon: Icon(
                                         Icons.more_vert_rounded,
                                         color: ThemeHelper.getTextColor(context)
-                                            .withOpacity(0.6),
+                                            .withValues(alpha: 0.6),
                                       ),
                                       itemBuilder: (context) => [
                                         const PopupMenuItem(
@@ -1186,7 +1208,7 @@ class _UsersManagementTabState extends State<UsersManagementTab> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: AppColors.black.withOpacity(0.06),
+            color: AppColors.black.withValues(alpha: 0.06),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -1224,7 +1246,7 @@ class _UsersManagementTabState extends State<UsersManagementTab> {
         final categories = catSnapshot.data ?? [];
         return DropdownButtonFormField<String>(
           isExpanded: true,
-          value: _selectedCategory,
+          initialValue: _selectedCategory,
           decoration: InputDecoration(
             labelText: 'Category',
             isDense: true,
@@ -1392,7 +1414,7 @@ class _ShopkeepersApprovalBodyState extends State<_ShopkeepersApprovalBody>
           indicatorColor: AppColors.accent,
           labelColor: AppColors.accent,
           unselectedLabelColor:
-              ThemeHelper.getTextColor(context).withOpacity(0.6),
+              ThemeHelper.getTextColor(context).withValues(alpha: 0.6),
           tabs: [
             Tab(
               child: Row(
@@ -1530,7 +1552,8 @@ class _ShopkeepersApprovalBodyState extends State<_ShopkeepersApprovalBody>
                   Icon(
                     icon,
                     size: 64,
-                    color: ThemeHelper.getTextColor(context).withOpacity(0.5),
+                    color: ThemeHelper.getTextColor(context)
+                        .withValues(alpha: 0.5),
                   ),
                   const SizedBox(height: 16),
                   Text(
@@ -1608,7 +1631,7 @@ class _ShopkeepersApprovalBodyState extends State<_ShopkeepersApprovalBody>
                                         Icons.phone_rounded,
                                         size: 16,
                                         color: ThemeHelper.getTextColor(context)
-                                            .withOpacity(0.6),
+                                            .withValues(alpha: 0.6),
                                       ),
                                       const SizedBox(width: 4),
                                       Text(
@@ -1631,7 +1654,7 @@ class _ShopkeepersApprovalBodyState extends State<_ShopkeepersApprovalBody>
                               decoration: BoxDecoration(
                                 color:
                                     _getStatusColor(shopkeeper.approvalStatus)
-                                        .withOpacity(0.2),
+                                        .withValues(alpha: 0.2),
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Text(
@@ -1701,7 +1724,6 @@ class _ShopkeepersApprovalBodyState extends State<_ShopkeepersApprovalBody>
                               Expanded(
                                 child: ElevatedButton.icon(
                                   onPressed: () => _approve(
-                                      context,
                                       shopkeeper.id,
                                       shopkeeper.name.isEmpty
                                           ? 'Shopkeeper'
@@ -1732,7 +1754,6 @@ class _ShopkeepersApprovalBodyState extends State<_ShopkeepersApprovalBody>
                               Expanded(
                                 child: OutlinedButton.icon(
                                   onPressed: () => _reject(
-                                      context,
                                       shopkeeper.id,
                                       shopkeeper.name.isEmpty
                                           ? 'Shopkeeper'
@@ -1790,8 +1811,7 @@ class _ShopkeepersApprovalBodyState extends State<_ShopkeepersApprovalBody>
     }
   }
 
-  Future<void> _approve(
-      BuildContext context, String id, String displayName) async {
+  Future<void> _approve(String id, String displayName) async {
     try {
       await AuthService.instance.approveShopkeeper(id);
       if (!mounted) return;
@@ -1804,8 +1824,7 @@ class _ShopkeepersApprovalBodyState extends State<_ShopkeepersApprovalBody>
     }
   }
 
-  Future<void> _reject(
-      BuildContext context, String id, String displayName) async {
+  Future<void> _reject(String id, String displayName) async {
     final confirm = await DialogHelper.showConfirmDialog(
       context: context,
       title: 'Reject Shopkeeper',
@@ -1940,20 +1959,18 @@ class _AdminProfileTabState extends State<AdminProfileTab> {
                               Theme(
                                 data: Theme.of(context).copyWith(
                                   switchTheme: SwitchThemeData(
-                                    thumbColor:
-                                        WidgetStateProperty.resolveWith(
-                                            (states) {
-                                      if (states.contains(
-                                          WidgetState.selected)) {
+                                    thumbColor: WidgetStateProperty.resolveWith(
+                                        (states) {
+                                      if (states
+                                          .contains(WidgetState.selected)) {
                                         return AppColors.accent;
                                       }
                                       return AppColors.textMuted;
                                     }),
-                                    trackColor:
-                                        WidgetStateProperty.resolveWith(
-                                            (states) {
-                                      if (states.contains(
-                                          WidgetState.selected)) {
+                                    trackColor: WidgetStateProperty.resolveWith(
+                                        (states) {
+                                      if (states
+                                          .contains(WidgetState.selected)) {
                                         return AppColors.accent
                                             .withValues(alpha: 0.4);
                                       }

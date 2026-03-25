@@ -6,6 +6,7 @@ import '../../core/utils/dialog_helper.dart';
 import '../../widgets/gradient_card.dart';
 import '../../services/auth_service.dart';
 import '../../services/subscription_service.dart';
+import '../../services/reward_service.dart';
 import '../../models/offer_model.dart';
 import 'shop_profile_body.dart';
 import '../common/customer_experience_shell.dart';
@@ -17,6 +18,7 @@ import 'subscription_plans_screen.dart';
 import 'campaigns_tab.dart';
 import 'create_campaign_screen.dart';
 import '../customer/customer_loans_tab.dart';
+import 'shop_rewards_screen.dart';
 
 class ShopDashboard extends StatefulWidget {
   const ShopDashboard({super.key});
@@ -166,11 +168,13 @@ class _ShopDashboardState extends State<ShopDashboard> {
                     );
                     return;
                   }
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const CreateCampaignScreen(),
-                    ),
-                  ).then((_) => _refreshCampaigns?.call());
+                  Navigator.of(context)
+                      .push(
+                        MaterialPageRoute(
+                          builder: (_) => const CreateCampaignScreen(),
+                        ),
+                      )
+                      .then((_) => _refreshCampaigns?.call());
                 },
                 icon: const Icon(Icons.add_rounded),
                 label: Text(_selectedIndex == 1 ? 'Add Offer' : 'New Campaign'),
@@ -190,11 +194,25 @@ class ShopHomeTab extends StatefulWidget {
 
 class _ShopHomeTabState extends State<ShopHomeTab> {
   late Future<List<OfferModel>> _offersFuture;
+  late Future<Map<String, dynamic>> _rewardsFuture;
 
   @override
   void initState() {
     super.initState();
     _offersFuture = AuthService.instance.getShopkeeperOffers();
+    _rewardsFuture = _loadRewardsSnapshot();
+  }
+
+  Future<Map<String, dynamic>> _loadRewardsSnapshot() async {
+    final responses = await Future.wait([
+      RewardService.instance.getMyWallet(),
+      RewardService.instance.getShopkeeperMilestones(),
+    ]);
+
+    return {
+      'wallet': responses[0],
+      'milestones': responses[1],
+    };
   }
 
   @override
@@ -331,6 +349,106 @@ class _ShopHomeTabState extends State<ShopHomeTab> {
                           ),
                         ),
                         const SizedBox(height: 24),
+                        FutureBuilder<Map<String, dynamic>>(
+                          future: _rewardsFuture,
+                          builder: (context, rewardSnapshot) {
+                            final rewardData = rewardSnapshot.data ?? const {};
+                            final wallet = (rewardData['wallet']
+                                    as Map<String, dynamic>?) ??
+                                const {};
+                            final milestones = (rewardData['milestones']
+                                    as Map<String, dynamic>?) ??
+                                const {};
+                            final balance =
+                                (wallet['balance'] as num?)?.toInt() ?? 0;
+                            final lifetime =
+                                (milestones['lifetimeCredited'] as num?)
+                                        ?.toInt() ??
+                                    0;
+                            final milestoneList =
+                                (milestones['milestones'] as List<dynamic>? ??
+                                    const []);
+                            final reachedCount = milestoneList.where((m) {
+                              if (m is! Map<String, dynamic>) return false;
+                              return m['reached'] == true;
+                            }).length;
+
+                            return FadeInDown(
+                              delay: const Duration(milliseconds: 80),
+                              child: Card(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(14),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          const Icon(Icons.emoji_events_rounded,
+                                              color: AppColors.accent),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            'Coin Rewards',
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .titleMedium,
+                                          ),
+                                          const Spacer(),
+                                          TextButton(
+                                            onPressed: () {
+                                              Navigator.of(context)
+                                                  .push(
+                                                MaterialPageRoute(
+                                                  builder: (_) =>
+                                                      const ShopRewardsScreen(),
+                                                ),
+                                              )
+                                                  .then((_) {
+                                                if (!mounted) return;
+                                                setState(() {
+                                                  _rewardsFuture =
+                                                      _loadRewardsSnapshot();
+                                                });
+                                              });
+                                            },
+                                            child: const Text('Open'),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 10),
+                                      Wrap(
+                                        spacing: 10,
+                                        runSpacing: 10,
+                                        children: [
+                                          _buildRewardChip(
+                                            context,
+                                            label: 'Balance',
+                                            value: '$balance',
+                                            icon: Icons.monetization_on_rounded,
+                                          ),
+                                          _buildRewardChip(
+                                            context,
+                                            label: 'Lifetime',
+                                            value: '$lifetime',
+                                            icon: Icons.trending_up_rounded,
+                                          ),
+                                          _buildRewardChip(
+                                            context,
+                                            label: 'Milestones',
+                                            value:
+                                                '$reachedCount/${milestoneList.length}',
+                                            icon: Icons.flag_rounded,
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 16),
                         FadeInLeft(
                           child: Text(
                             'Quick Actions',
@@ -365,6 +483,35 @@ class _ShopHomeTabState extends State<ShopHomeTab> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildRewardChip(
+    BuildContext context, {
+    required String label,
+    required String value,
+    required IconData icon,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.elevated,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.borderSubtle),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: AppColors.accent),
+          const SizedBox(width: 6),
+          Text(
+            '$label: $value',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+          ),
+        ],
       ),
     );
   }
@@ -674,7 +821,6 @@ class _ShopProfileTabState extends State<ShopProfileTab> {
       setState(() {});
     }
   }
-
 
   @override
   Widget build(BuildContext context) {

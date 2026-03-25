@@ -7,6 +7,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/utils/dialog_helper.dart';
 import '../../core/utils/theme_helper.dart';
 import '../../services/auth_service.dart';
+import '../../services/reward_service.dart';
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
@@ -28,6 +29,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
   DateTime? _endDate;
   String _selectedReportType = 'users';
   late Future<Map<String, dynamic>> _statsFuture;
+  late Future<Map<String, dynamic>> _rewardMetricsFuture;
 
   final List<Map<String, dynamic>> _reportTypes = [
     {
@@ -78,6 +80,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
   void initState() {
     super.initState();
     _statsFuture = AuthService.instance.getAdminStats();
+    _rewardMetricsFuture = RewardService.instance.getAdminRewardMetrics();
   }
 
   @override
@@ -104,6 +107,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   _buildDateRangeSelector(),
                   SizedBox(height: sectionGap),
                   _buildMetricsSection(),
+                  SizedBox(height: sectionGap),
+                  _buildRewardMetricsSection(),
                   SizedBox(height: sectionGap),
                   const Text(
                     'Select Report Type',
@@ -284,6 +289,80 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   ),
                 ),
               ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildRewardMetricsSection() {
+    return FutureBuilder<Map<String, dynamic>>(
+      future: _rewardMetricsFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Card(
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: LinearProgressIndicator(),
+            ),
+          );
+        }
+
+        if (snapshot.hasError) {
+          return Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                'Reward metrics unavailable right now',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ),
+          );
+        }
+
+        final metrics = snapshot.data ?? const {};
+        final issued = (metrics['totalIssued'] as num?)?.toInt() ?? 0;
+        final debited = (metrics['totalDebited'] as num?)?.toInt() ?? 0;
+        final wallets = (metrics['activeWallets'] as num?)?.toInt() ?? 0;
+        final net = issued - debited;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Coin Economy',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final width = constraints.maxWidth;
+                final crossAxisCount = width >= 900
+                    ? 4
+                    : width >= 620
+                        ? 2
+                        : 1;
+
+                return GridView.count(
+                  crossAxisCount: crossAxisCount,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  mainAxisSpacing: 10,
+                  crossAxisSpacing: 10,
+                  childAspectRatio: crossAxisCount == 1 ? 3.2 : 2.2,
+                  children: [
+                    _buildMiniMetricCard(
+                        'Issued', '$issued', Icons.add_circle_rounded),
+                    _buildMiniMetricCard(
+                        'Debited', '$debited', Icons.remove_circle_rounded),
+                    _buildMiniMetricCard(
+                        'Net Coins', '$net', Icons.balance_rounded),
+                    _buildMiniMetricCard('Wallets', '$wallets',
+                        Icons.account_balance_wallet_rounded),
+                  ],
+                );
+              },
             ),
           ],
         );

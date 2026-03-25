@@ -40,6 +40,11 @@ module.exports = {
       phoneNumber: process.env.TWILIO_PHONE_NUMBER,
     },
   },
+  rewards: {
+    expiryIntervalMs: parseInt(process.env.REWARD_EXPIRY_INTERVAL_MS, 10) || 10 * 60 * 1000,
+    reconciliationIntervalMs: parseInt(process.env.REWARD_RECONCILIATION_INTERVAL_MS, 10) || 30 * 60 * 1000,
+    startupDelayMs: parseInt(process.env.REWARD_MAINTENANCE_STARTUP_DELAY_MS, 10) || 15 * 1000,
+  },
   isDev: process.env.NODE_ENV !== 'production',
   ROLES,
 };

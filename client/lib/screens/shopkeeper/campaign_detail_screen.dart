@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/constants/app_colors.dart';
+import '../../core/utils/reward_action_mixin.dart';
 import '../../models/campaign_model.dart';
 import '../../services/campaign_service.dart';
 import '../../services/subscription_service.dart';
@@ -20,7 +21,8 @@ class CampaignDetailScreen extends StatefulWidget {
   State<CampaignDetailScreen> createState() => _CampaignDetailScreenState();
 }
 
-class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
+class _CampaignDetailScreenState extends State<CampaignDetailScreen>
+    with RewardActionMixin<CampaignDetailScreen> {
   CampaignModel? _campaign;
   Map<String, dynamic>? _subscription;
   bool _loading = true;
@@ -85,14 +87,15 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                 const Text('Recommended plans:'),
                 const SizedBox(height: 8),
                 ...recommendations.take(3).map(
-                  (plan) => Padding(
-                    padding: const EdgeInsets.only(bottom: 4),
-                    child: Text(
-                      '- ${plan['name'] ?? plan['planType']} (Rs ${plan['price'] ?? '-'}/month)',
-                      style: const TextStyle(color: AppColors.textSecondary),
+                      (plan) => Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Text(
+                          '- ${plan['name'] ?? plan['planType']} (Rs ${plan['price'] ?? '-'}/month)',
+                          style:
+                              const TextStyle(color: AppColors.textSecondary),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
               ],
             ],
           ),
@@ -108,8 +111,7 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                 Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (_) => SubscriptionPlansScreen(
-                      shopCategory:
-                          shopCategory.isEmpty ? 'all' : shopCategory,
+                      shopCategory: shopCategory.isEmpty ? 'all' : shopCategory,
                     ),
                   ),
                 );
@@ -127,7 +129,8 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
     if (!isActive) {
       await _showUpgradePrompt(
         title: 'Subscription Required',
-        message: 'Your trial has ended. Upgrade to continue launching campaigns.',
+        message:
+            'Your trial has ended. Upgrade to continue launching campaigns.',
       );
       return;
     }
@@ -158,7 +161,8 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                     items: const [
                       DropdownMenuItem(value: 'upi', child: Text('UPI')),
                       DropdownMenuItem(value: 'card', child: Text('Card')),
-                      DropdownMenuItem(value: 'netbanking', child: Text('Net Banking')),
+                      DropdownMenuItem(
+                          value: 'netbanking', child: Text('Net Banking')),
                     ],
                     onChanged: (value) {
                       if (value != null) {
@@ -204,19 +208,23 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
       );
       if (!mounted) return;
       setState(() => _campaign = campaign);
+      emitSaleClosedReward(widget.campaignId);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Campaign launched successfully.')),
       );
     } on CampaignAccessException catch (error) {
       if (!mounted) return;
-      final reached = _campaign?.analytics?.totalReached ?? _campaign?.actualAudienceReached ?? 0;
+      final reached = _campaign?.analytics?.totalReached ??
+          _campaign?.actualAudienceReached ??
+          0;
       final details = error.details;
       final recommendations = details['recommendedPlans'] is List
           ? List<Map<String, dynamic>>.from(details['recommendedPlans'] as List)
           : const <Map<String, dynamic>>[];
       await _showUpgradePrompt(
         title: 'Upgrade to Continue',
-        message: '${error.message} Your campaign already reached $reached users. Upgrade to continue growth.',
+        message:
+            '${error.message} Your campaign already reached $reached users. Upgrade to continue growth.',
         recommendations: recommendations,
       );
     } catch (error) {
@@ -267,36 +275,57 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                           spacing: 8,
                           runSpacing: 8,
                           children: [
-                            Chip(label: Text(campaign.status.replaceAll('_', ' '))),
-                            Chip(label: Text('Rs ${campaign.totalCost.toStringAsFixed(0)}')),
-                            Chip(label: Text('${campaign.selectedAudienceSize} targets')),
+                            Chip(
+                                label:
+                                    Text(campaign.status.replaceAll('_', ' '))),
+                            Chip(
+                                label: Text(
+                                    'Rs ${campaign.totalCost.toStringAsFixed(0)}')),
+                            Chip(
+                                label: Text(
+                                    '${campaign.selectedAudienceSize} targets')),
                           ],
                         ),
                         const SizedBox(height: 12),
-                        Text(campaign.description ?? 'No description provided.'),
+                        Text(
+                            campaign.description ?? 'No description provided.'),
                         const SizedBox(height: 20),
                         _InfoSection(
                           title: 'Audience',
                           children: [
                             _InfoRow(
                               label: 'Targeting mode',
-                              value: campaign.targetPincode != null && campaign.targetPincode!.isNotEmpty
+                              value: campaign.targetPincode != null &&
+                                      campaign.targetPincode!.isNotEmpty
                                   ? 'Pincode'
-                                  : campaign.targetCity != null && campaign.targetCity!.isNotEmpty
+                                  : campaign.targetCity != null &&
+                                          campaign.targetCity!.isNotEmpty
                                       ? 'City-wise'
-                                      : campaign.targetState != null && campaign.targetState!.isNotEmpty
+                                      : campaign.targetState != null &&
+                                              campaign.targetState!.isNotEmpty
                                           ? 'State-wise'
                                           : 'Pan India',
                             ),
-                            _InfoRow(label: 'State', value: campaign.targetState ?? '-'),
-                            _InfoRow(label: 'City', value: campaign.targetCity ?? '-'),
-                            _InfoRow(label: 'Area', value: campaign.targetArea ?? '-'),
-                            _InfoRow(label: 'Pincode', value: campaign.targetPincode ?? '-'),
+                            _InfoRow(
+                                label: 'State',
+                                value: campaign.targetState ?? '-'),
+                            _InfoRow(
+                                label: 'City',
+                                value: campaign.targetCity ?? '-'),
+                            _InfoRow(
+                                label: 'Area',
+                                value: campaign.targetArea ?? '-'),
+                            _InfoRow(
+                                label: 'Pincode',
+                                value: campaign.targetPincode ?? '-'),
                             _InfoRow(
                               label: 'Age',
-                              value: '${campaign.targetAgeMin ?? '-'} - ${campaign.targetAgeMax ?? '-'}',
+                              value:
+                                  '${campaign.targetAgeMin ?? '-'} - ${campaign.targetAgeMax ?? '-'}',
                             ),
-                            _InfoRow(label: 'Gender', value: campaign.targetGender ?? 'all'),
+                            _InfoRow(
+                                label: 'Gender',
+                                value: campaign.targetGender ?? 'all'),
                           ],
                         ),
                         const SizedBox(height: 16),
@@ -308,10 +337,12 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                                 margin: const EdgeInsets.only(bottom: 12),
                                 padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
-                                  color: AppColors.warning.withValues(alpha: 0.12),
+                                  color:
+                                      AppColors.warning.withValues(alpha: 0.12),
                                   borderRadius: BorderRadius.circular(10),
                                   border: Border.all(
-                                    color: AppColors.warning.withValues(alpha: 0.5),
+                                    color: AppColors.warning
+                                        .withValues(alpha: 0.5),
                                   ),
                                 ),
                                 child: Column(
@@ -319,15 +350,18 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                                   children: [
                                     const Text(
                                       'Advanced analytics is locked on your current plan.',
-                                      style: TextStyle(fontWeight: FontWeight.w600),
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.w600),
                                     ),
                                     const SizedBox(height: 6),
-                                    const Text('Upgrade to unlock deeper campaign insights.'),
+                                    const Text(
+                                        'Upgrade to unlock deeper campaign insights.'),
                                     const SizedBox(height: 8),
                                     TextButton(
                                       onPressed: () => _showUpgradePrompt(
                                         title: 'Unlock Analytics',
-                                        message: 'Get full campaign analytics with a paid plan.',
+                                        message:
+                                            'Get full campaign analytics with a paid plan.',
                                       ),
                                       child: const Text('See Upgrade Options'),
                                     ),
@@ -336,19 +370,26 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                               ),
                             _InfoRow(
                               label: 'Scheduled at',
-                              value: campaign.scheduledAt?.toLocal().toString() ?? '-',
+                              value:
+                                  campaign.scheduledAt?.toLocal().toString() ??
+                                      '-',
                             ),
                             _InfoRow(
                               label: 'Reached',
-                              value: '${campaign.analytics?.totalReached ?? campaign.actualAudienceReached}',
+                              value:
+                                  '${campaign.analytics?.totalReached ?? campaign.actualAudienceReached}',
                             ),
                             _InfoRow(
                               label: 'Opened',
-                              value: _analyticsEnabled ? '${campaign.analytics?.opened ?? 0}' : 'Upgrade required',
+                              value: _analyticsEnabled
+                                  ? '${campaign.analytics?.opened ?? 0}'
+                                  : 'Upgrade required',
                             ),
                             _InfoRow(
                               label: 'Clicked',
-                              value: _analyticsEnabled ? '${campaign.analytics?.clicked ?? 0}' : 'Upgrade required',
+                              value: _analyticsEnabled
+                                  ? '${campaign.analytics?.clicked ?? 0}'
+                                  : 'Upgrade required',
                             ),
                             _InfoRow(
                               label: 'Open rate',
@@ -419,7 +460,9 @@ class _InfoRow extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         children: [
-          Expanded(child: Text(label, style: const TextStyle(color: AppColors.textSecondary))),
+          Expanded(
+              child: Text(label,
+                  style: const TextStyle(color: AppColors.textSecondary))),
           Expanded(
             child: Text(
               value,
