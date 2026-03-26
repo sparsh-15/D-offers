@@ -23,6 +23,10 @@ function requireRole(roles) {
     }
     
     if (!allowed.includes(req.user.role)) {
+      console.warn(
+        `[AUTHZ] Access denied: userId=${req.user.userId || 'unknown'} role=${req.user.role} path=${req.method} ${req.originalUrl} required=${allowed.join(',')}`,
+      );
+
       return res.status(403).json({ 
         success: false, 
         message: 'Insufficient permissions',

@@ -65,8 +65,15 @@ class _RewardWalletScreenState extends State<RewardWalletScreen> {
       });
     } catch (e) {
       if (!mounted) return;
+      final rawError = e.toString();
+      final lowerError = rawError.toLowerCase();
+
+        final friendlyError = lowerError.contains('insufficient permissions')
+          ? 'Wallet access denied for current role. $rawError'
+          : rawError;
+
       setState(() {
-        _error = e.toString();
+        _error = friendlyError;
         _loading = false;
       });
     }

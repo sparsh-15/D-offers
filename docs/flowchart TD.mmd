@@ -1,0 +1,25 @@
+flowchart TD
+    A[User Opens App] --> B{Role}
+    B -->|Customer| C1[Home: Offers Feed]
+    B -->|Shopkeeper| S1[Dashboard]
+    B -->|Admin| A1[Admin Panel]
+
+    C1 --> C2[Like Offer]
+    C1 --> C3[Unlock Deal]
+    C2 --> C4[Coins Added]
+    C3 --> C4
+    C4 --> C5[Wallet Screen]
+    C5 --> C6[History + Expiry Summary]
+
+    S1 --> S2[Sale Closed]
+    S1 --> S3[Install Verified]
+    S2 --> S4[Coins Added]
+    S3 --> S4
+    S4 --> S5[Rewards & Milestones Screen]
+    S5 --> S6[Redeem Milestone]
+
+    A1 --> A2[Reward Config Screen]
+    A1 --> A3[Coin Metrics]
+    A2 --> A4[Rules Updated]
+    A4 --> C1
+    A4 --> S1

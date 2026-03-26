@@ -57,8 +57,23 @@ class RewardService {
       return data;
     }
 
-    final message = data['message']?.toString() ??
-        'Request failed (${response.statusCode})';
+    var message = data['message']?.toString() ??
+      'Request failed (${response.statusCode})';
+
+    if (response.statusCode == 403 &&
+      data['code']?.toString() == 'INSUFFICIENT_PERMISSIONS') {
+      final userRole = data['userRole']?.toString();
+      final requiredRoles = (data['requiredRoles'] as List<dynamic>? ?? const [])
+        .map((e) => e.toString())
+        .where((e) => e.isNotEmpty)
+        .toList();
+
+      if (userRole != null && requiredRoles.isNotEmpty) {
+      message =
+        'Insufficient permissions (userRole=$userRole, required=${requiredRoles.join('/')})';
+      }
+    }
+
     throw Exception(message);
   }
 

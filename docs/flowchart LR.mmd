@@ -1,0 +1,24 @@
+flowchart LR
+    subgraph Customer App
+      C1[Customer Home]
+      C2[Offer Detail]
+      C3[Wallet]
+      C4[Ledger History]
+      C1 --> C2 --> C3 --> C4
+    end
+
+    subgraph Shopkeeper App
+      S1[Shop Dashboard]
+      S2[Create/Run Campaign]
+      S3[Rewards & Milestones]
+      S4[Redeem Request]
+      S1 --> S2 --> S3 --> S4
+    end
+
+    subgraph Admin App
+      A1[Admin Dashboard]
+      A2[Reward Config]
+      A3[Reports: Coin Metrics]
+      A1 --> A2
+      A1 --> A3
+    end

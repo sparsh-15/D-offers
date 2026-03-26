@@ -127,7 +127,7 @@ async function verifyOtp(req, res, next) {
     const { user } = await otpService.verifyOtp(phone.trim(), String(otp), role);
     const token = issueToken(user);
     console.log(
-      `[AUTH] verifyOtp success - Role: ${role}, Phone: ${phone?.substring(0, 3)}***, UserId: ${user.id}`
+      `[AUTH] verifyOtp success - RequestedRole: ${role}, AuthenticatedRole: ${user.role}, Phone: ${phone?.substring(0, 3)}***, UserId: ${user.id}`
     );
 
     try {
