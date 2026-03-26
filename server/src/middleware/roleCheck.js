@@ -22,9 +22,14 @@ function requireRole(roles) {
       });
     }
     
-    if (!allowed.includes(req.user.role)) {
+    const userRoles = Array.isArray(req.user.roles) && req.user.roles.length > 0
+      ? req.user.roles
+      : [req.user.role];
+    const hasAccess = allowed.some((role) => userRoles.includes(role));
+
+    if (!hasAccess) {
       console.warn(
-        `[AUTHZ] Access denied: userId=${req.user.userId || 'unknown'} role=${req.user.role} path=${req.method} ${req.originalUrl} required=${allowed.join(',')}`,
+        `[AUTHZ] Access denied: userId=${req.user.userId || 'unknown'} role=${req.user.role} roles=${userRoles.join('|')} path=${req.method} ${req.originalUrl} required=${allowed.join(',')}`,
       );
 
       return res.status(403).json({ 
@@ -32,7 +37,8 @@ function requireRole(roles) {
         message: 'Insufficient permissions',
         code: 'INSUFFICIENT_PERMISSIONS',
         requiredRoles: allowed,
-        userRole: req.user.role
+        userRole: req.user.role,
+        userRoles,
       });
     }
     

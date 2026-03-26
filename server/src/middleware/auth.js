@@ -16,6 +16,30 @@ function normalizeRole(rawRole) {
   return roleAliases[role] || role;
 }
 
+function normalizeRolesFromClaims(primaryRole, permissions) {
+  const roles = new Set();
+  const normalizedPrimary = normalizeRole(primaryRole);
+  if (normalizedPrimary) {
+    roles.add(normalizedPrimary);
+  }
+
+  // Backward compatibility: historically some customer users were converted to
+  // primary role `ssa`. They still need customer-scoped access (e.g. wallet).
+  if (normalizedPrimary === 'ssa') {
+    roles.add('customer');
+  }
+
+  const claims = Array.isArray(permissions) ? permissions : [];
+  for (const claim of claims) {
+    const normalized = normalizeRole(claim);
+    if (normalized && config.ROLES.includes(normalized)) {
+      roles.add(normalized);
+    }
+  }
+
+  return Array.from(roles);
+}
+
 function authMiddleware(req, res, next) {
   const authHeader = req.headers.authorization;
   const token = authHeader && authHeader.startsWith('Bearer ')
@@ -28,10 +52,17 @@ function authMiddleware(req, res, next) {
 
   try {
     const decoded = jwt.verify(token, config.jwt.secret);
+    const role = normalizeRole(decoded.role);
+    const roles = normalizeRolesFromClaims(role, decoded.permissions);
+
     req.user = {
       userId: decoded.userId,
       phone: decoded.phone,
-      role: normalizeRole(decoded.role),
+      role,
+      roles,
+      permissions: Array.isArray(decoded.permissions)
+        ? decoded.permissions
+        : [],
     };
     next();
   } catch (err) {

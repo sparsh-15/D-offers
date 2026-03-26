@@ -426,7 +426,13 @@ async function becomeSSA(req, res, next) {
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
-    if (user.role !== 'customer') {
+    const existingPermissions = Array.isArray(user.permissions)
+      ? user.permissions
+      : [];
+    const hasCustomerCapability =
+      user.role === 'customer' || existingPermissions.includes('customer');
+
+    if (!hasCustomerCapability) {
       return res.status(403).json({
         success: false,
         message: 'Only customers can become a Service Sales Agent',
@@ -450,8 +456,13 @@ async function becomeSSA(req, res, next) {
       });
     }
 
+    const mergedPermissions = Array.from(
+      new Set([...existingPermissions, 'customer']),
+    );
+
     const updates = {
       role: 'ssa',
+      permissions: mergedPermissions,
       pincode: pincodeStr,
       city: ci(city) || user.city || '',
       state: ci(state) || user.state || '',

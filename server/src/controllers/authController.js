@@ -7,7 +7,12 @@ const { resolveCityStateFromPincode } = require('../services/pincodeService');
 
 function issueToken(user) {
   return jwt.sign(
-    { userId: user.id, phone: user.phone, role: user.role },
+    {
+      userId: user.id,
+      phone: user.phone,
+      role: user.role,
+      permissions: Array.isArray(user.permissions) ? user.permissions : [],
+    },
     config.jwt.secret,
     { expiresIn: config.jwt.expiry }
   );
@@ -146,7 +151,12 @@ async function verifyOtp(req, res, next) {
     res.status(200).json({
       success: true,
       token,
-      user: { id: user.id, phone: user.phone, role: user.role },
+      user: {
+        id: user.id,
+        phone: user.phone,
+        role: user.role,
+        permissions: Array.isArray(user.permissions) ? user.permissions : [],
+      },
     });
   } catch (err) {
     console.error(`[AUTH] verifyOtp error - Role: ${req.body?.role}, Phone: ${req.body?.phone?.substring(0, 3)}***, Error: ${err.message}, StatusCode: ${err.statusCode || 500}`);
@@ -165,6 +175,7 @@ async function me(req, res, next) {
       name: user.name,
       phone: user.phone,
       role: user.role,
+      permissions: Array.isArray(user.permissions) ? user.permissions : [],
       pincode: user.pincode,
       city: user.city,
       state: user.state,
@@ -217,6 +228,7 @@ async function updateMe(req, res, next) {
         name: updated.name,
         phone: updated.phone,
         role: updated.role,
+        permissions: Array.isArray(updated.permissions) ? updated.permissions : [],
         pincode: updated.pincode,
         city: updated.city,
         state: updated.state,

@@ -12,6 +12,7 @@ import '../../core/constants/app_strings.dart';
 import '../../models/offer_model.dart';
 import '../../models/shopkeeper_profile_model.dart';
 import '../../services/auth_service.dart';
+import '../../services/reward_service.dart';
 import '../../widgets/shop_logo_widget.dart';
 
 /// Premium offer detail screen — full-bleed header, bottom-pinned CTA.
@@ -49,6 +50,11 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
 
   late AnimationController _heartController;
   late Animation<double> _heartScale;
+  late AnimationController _coinController;
+  late Animation<double> _coinFade;
+  late Animation<double> _coinScale;
+  late Animation<Offset> _coinSlide;
+  bool _showCoinSplash = false;
 
   @override
   void initState() {
@@ -64,7 +70,30 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
     _heartScale = TweenSequence<double>([
       TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.25), weight: 50),
       TweenSequenceItem(tween: Tween(begin: 1.25, end: 1.0), weight: 50),
-    ]).animate(CurvedAnimation(parent: _heartController, curve: Curves.easeInOut));
+    ]).animate(
+        CurvedAnimation(parent: _heartController, curve: Curves.easeInOut));
+
+    _coinController = AnimationController(
+      duration: const Duration(milliseconds: 700),
+      vsync: this,
+    );
+    _coinFade = CurvedAnimation(
+      parent: _coinController,
+      curve: const Interval(0.0, 0.75, curve: Curves.easeOut),
+    );
+    _coinScale = Tween<double>(begin: 0.85, end: 1.12).animate(
+      CurvedAnimation(parent: _coinController, curve: Curves.easeOutBack),
+    );
+    _coinSlide = Tween<Offset>(
+      begin: const Offset(0, 0.2),
+      end: const Offset(0, -1.1),
+    ).animate(
+        CurvedAnimation(parent: _coinController, curve: Curves.easeOutCubic));
+    _coinController.addStatusListener((status) {
+      if (status == AnimationStatus.completed && mounted) {
+        setState(() => _showCoinSplash = false);
+      }
+    });
 
     _startOfferPhotoAutoPlay();
     _loadShopDetails();
@@ -74,8 +103,15 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
   void dispose() {
     _offerPhotoAutoPlayTimer?.cancel();
     _offerPhotoController.dispose();
+    _coinController.dispose();
     _heartController.dispose();
     super.dispose();
+  }
+
+  void _playCoinSplash() {
+    if (!mounted) return;
+    setState(() => _showCoinSplash = true);
+    _coinController.forward(from: 0);
   }
 
   void _startOfferPhotoAutoPlay() {
@@ -125,10 +161,39 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
     });
     _heartController.forward(from: 0);
     try {
-      final result = await AuthService.instance.toggleOfferLike(widget.offer.id);
+      final result =
+          await AuthService.instance.toggleOfferLike(widget.offer.id);
+      final isLikedNow = result['isLiked'] as bool;
+
+      if (isLikedNow) {
+        try {
+          await RewardService.instance.awardLikeReward(widget.offer.id);
+          _playCoinSplash();
+        } catch (rewardError) {
+          debugPrint('Like reward award failed: $rewardError');
+        }
+      } else {
+        try {
+          final reversal =
+              await RewardService.instance.reverseLikeReward(widget.offer.id);
+          final reversed = reversal['reversed'] == true;
+          final reason = reversal['reason']?.toString();
+          final message = !reversed
+              ? RewardService.instance.unlikeReversalReasonMessage(reason)
+              : null;
+          if (mounted && message != null && message.isNotEmpty) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(message)),
+            );
+          }
+        } catch (reverseError) {
+          debugPrint('Like reward reverse failed: $reverseError');
+        }
+      }
+
       if (mounted) {
         setState(() {
-          _isLiked = result['isLiked'] as bool;
+          _isLiked = isLikedNow;
           _likesCount = result['likesCount'] as int;
           _isToggling = false;
         });
@@ -194,7 +259,8 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
             ? widget.offer.shopName!.trim()
             : 'Shop location');
 
-    final geoUri = Uri.parse('geo:$latitude,$longitude?q=$latitude,$longitude(${Uri.encodeComponent(label)})');
+    final geoUri = Uri.parse(
+        'geo:$latitude,$longitude?q=$latitude,$longitude(${Uri.encodeComponent(label)})');
     final googleMapsUri = Uri.parse(
       'https://www.google.com/maps/search/?api=1&query=$latitude,$longitude',
     );
@@ -238,11 +304,15 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
       context: context,
       backgroundColor: AppColors.cardBackground,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppTokens.radiusLG)),
+        borderRadius:
+            BorderRadius.vertical(top: Radius.circular(AppTokens.radiusLG)),
       ),
       builder: (_) => Padding(
         padding: const EdgeInsets.fromLTRB(
-          AppTokens.spaceLG, AppTokens.spaceLG, AppTokens.spaceLG, AppTokens.space2XL,
+          AppTokens.spaceLG,
+          AppTokens.spaceLG,
+          AppTokens.spaceLG,
+          AppTokens.space2XL,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -348,7 +418,8 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
       isScrollControlled: true,
       backgroundColor: AppColors.cardBackground,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppTokens.radiusLG)),
+        borderRadius:
+            BorderRadius.vertical(top: Radius.circular(AppTokens.radiusLG)),
       ),
       builder: (_) => Padding(
         padding: EdgeInsets.fromLTRB(
@@ -399,8 +470,9 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
 
   void _shareOffer() {
     final offer = widget.offer;
-    final shopName =
-        offer.shopName?.trim().isNotEmpty == true ? offer.shopName! : 'Local shop';
+    final shopName = offer.shopName?.trim().isNotEmpty == true
+        ? offer.shopName!
+        : 'Local shop';
     final dynamic rawDiscount = offer.discountValue;
     final num? discountVal = rawDiscount is num
         ? rawDiscount
@@ -435,7 +507,8 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
       isScrollControlled: true,
       backgroundColor: AppColors.cardBackground,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppTokens.radiusLG)),
+        borderRadius:
+            BorderRadius.vertical(top: Radius.circular(AppTokens.radiusLG)),
       ),
       builder: (ctx) {
         final mediaQuery = MediaQuery.of(ctx);
@@ -508,7 +581,9 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: Text(
-                                        e.toString().replaceFirst('Exception: ', ''),
+                                        e
+                                            .toString()
+                                            .replaceFirst('Exception: ', ''),
                                       ),
                                     ),
                                   );
@@ -543,7 +618,8 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
       context: context,
       backgroundColor: AppColors.cardBackground,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppTokens.radiusLG)),
+        borderRadius:
+            BorderRadius.vertical(top: Radius.circular(AppTokens.radiusLG)),
       ),
       builder: (_) => SafeArea(
         child: Column(
@@ -551,7 +627,8 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
           children: [
             const SizedBox(height: AppTokens.spaceSM),
             ListTile(
-              leading: const Icon(Icons.share_outlined, color: AppColors.textSecondary),
+              leading: const Icon(Icons.share_outlined,
+                  color: AppColors.textSecondary),
               title: const Text('Share offer'),
               onTap: () {
                 Navigator.pop(context);
@@ -559,7 +636,8 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
               },
             ),
             ListTile(
-              leading: const Icon(Icons.phone_callback_outlined, color: AppColors.textSecondary),
+              leading: const Icon(Icons.phone_callback_outlined,
+                  color: AppColors.textSecondary),
               title: const Text('Request callback'),
               onTap: () {
                 Navigator.pop(context);
@@ -568,7 +646,8 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
             ),
             if (widget.onChatPressed != null)
               ListTile(
-                leading: const Icon(Icons.chat_outlined, color: AppColors.textSecondary),
+                leading: const Icon(Icons.chat_outlined,
+                    color: AppColors.textSecondary),
                 title: const Text('Ask AI assistant'),
                 onTap: () {
                   Navigator.pop(context);
@@ -602,8 +681,9 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
     final offer = widget.offer;
     final hasPhotos = offer.photos.isNotEmpty;
 
-    final shopDisplayName =
-        offer.shopName?.trim().isNotEmpty == true ? offer.shopName! : 'Local Shop';
+    final shopDisplayName = offer.shopName?.trim().isNotEmpty == true
+        ? offer.shopName!
+        : 'Local Shop';
 
     String discountText;
     final dynamic rawDiscount = offer.discountValue;
@@ -688,8 +768,10 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(
-                    AppTokens.spaceLG, AppTokens.spaceLG,
-                    AppTokens.spaceLG, 0,
+                    AppTokens.spaceLG,
+                    AppTokens.spaceLG,
+                    AppTokens.spaceLG,
+                    0,
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -732,7 +814,8 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                             icon: Icons.local_offer_rounded,
                             label: discountText,
                             foreground: AppColors.accent,
-                            background: AppColors.accent.withValues(alpha: 0.12),
+                            background:
+                                AppColors.accent.withValues(alpha: 0.12),
                           ),
                           if (offer.category.trim().isNotEmpty)
                             _InfoChip(
@@ -744,8 +827,9 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                                 ? Icons.event_busy_rounded
                                 : Icons.verified_rounded,
                             label: isExpired ? 'Expired' : 'Active deal',
-                            foreground:
-                                isExpired ? AppColors.error : AppColors.textPrimary,
+                            foreground: isExpired
+                                ? AppColors.error
+                                : AppColors.textPrimary,
                           ),
                           _InfoChip(
                             icon: Icons.favorite_outline_rounded,
@@ -907,15 +991,16 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                           child: Column(
                             children: [
                               GestureDetector(
-                                onTap: () =>
-                                    setState(() => _termsExpanded = !_termsExpanded),
+                                onTap: () => setState(
+                                    () => _termsExpanded = !_termsExpanded),
                                 behavior: HitTestBehavior.opaque,
                                 child: Row(
                                   children: [
                                     Expanded(
                                       child: Text(
                                         'Read important conditions before visiting the store',
-                                        style: theme.textTheme.bodyMedium?.copyWith(
+                                        style: theme.textTheme.bodyMedium
+                                            ?.copyWith(
                                           color: AppColors.textSecondary,
                                         ),
                                       ),
@@ -986,12 +1071,14 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                                   const SizedBox(width: AppTokens.spaceSM),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           _shopProfile!.shopName.isNotEmpty
                                               ? _shopProfile!.shopName
-                                              : (widget.offer.shopName ?? 'Shop details'),
+                                              : (widget.offer.shopName ??
+                                                  'Shop details'),
                                           style: theme.textTheme.titleMedium
                                               ?.copyWith(
                                             color: AppColors.textPrimary,
@@ -1000,7 +1087,8 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                                         ),
                                         if (_shopProfile!.category.isNotEmpty)
                                           Padding(
-                                            padding: const EdgeInsets.only(top: 2),
+                                            padding:
+                                                const EdgeInsets.only(top: 2),
                                             child: Text(
                                               _shopProfile!.category,
                                               style: theme.textTheme.bodySmall
@@ -1076,20 +1164,23 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                                           child: CachedNetworkImage(
                                             imageUrl: _shopMapPreviewUrl!,
                                             fit: BoxFit.cover,
-                                            placeholder: (_, __) => const ColoredBox(
+                                            placeholder: (_, __) =>
+                                                const ColoredBox(
                                               color: AppColors.cardBackground,
                                               child: Center(
                                                 child: SizedBox(
                                                   width: 22,
                                                   height: 22,
-                                                  child: CircularProgressIndicator(
+                                                  child:
+                                                      CircularProgressIndicator(
                                                     strokeWidth: 2,
                                                     color: AppColors.accentDim,
                                                   ),
                                                 ),
                                               ),
                                             ),
-                                            errorWidget: (_, __, ___) => Container(
+                                            errorWidget: (_, __, ___) =>
+                                                Container(
                                               color: AppColors.cardBackground,
                                               padding: const EdgeInsets.all(
                                                 AppTokens.spaceMD,
@@ -1108,9 +1199,11 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                                                   ),
                                                   Text(
                                                     'Map preview unavailable',
-                                                    style: theme.textTheme.bodyMedium
+                                                    style: theme
+                                                        .textTheme.bodyMedium
                                                         ?.copyWith(
-                                                      color: AppColors.textSecondary,
+                                                      color: AppColors
+                                                          .textSecondary,
                                                     ),
                                                   ),
                                                 ],
@@ -1148,16 +1241,20 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                                                 Expanded(
                                                   child: Text(
                                                     'Tap to open in Maps',
-                                                    style: theme.textTheme.bodySmall
+                                                    style: theme
+                                                        .textTheme.bodySmall
                                                         ?.copyWith(
-                                                      color: AppColors.textPrimary,
-                                                      fontWeight: FontWeight.w600,
+                                                      color:
+                                                          AppColors.textPrimary,
+                                                      fontWeight:
+                                                          FontWeight.w600,
                                                     ),
                                                   ),
                                                 ),
                                                 const Icon(
                                                   Icons.open_in_new_rounded,
-                                                  color: AppColors.textSecondary,
+                                                  color:
+                                                      AppColors.textSecondary,
                                                   size: 16,
                                                 ),
                                               ],
@@ -1197,7 +1294,8 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                                       offer.shopName?.trim().isNotEmpty == true
                                           ? offer.shopName!
                                           : 'Shop details unavailable',
-                                      style: theme.textTheme.titleMedium?.copyWith(
+                                      style:
+                                          theme.textTheme.titleMedium?.copyWith(
                                         color: AppColors.textPrimary,
                                         fontWeight: FontWeight.w600,
                                       ),
@@ -1256,7 +1354,9 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                 children: [
                   ElevatedButton(
                     onPressed: isExpired ? null : _claimOffer,
-                    child: Text(isExpired ? 'This deal has expired' : 'Unlock this deal'),
+                    child: Text(isExpired
+                        ? 'This deal has expired'
+                        : 'Unlock this deal'),
                   ),
                   const SizedBox(height: AppTokens.spaceSM),
                   Row(
@@ -1270,31 +1370,73 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                         child: const Text('Negotiate'),
                       ),
                       // Like button inline
-                      ScaleTransition(
-                        scale: _heartScale,
-                        child: GestureDetector(
-                          onTap: _toggleLike,
-                          child: Row(
-                            children: [
-                              Icon(
-                                _isLiked
-                                    ? Icons.favorite_rounded
-                                    : Icons.favorite_outline_rounded,
-                                color: _isLiked
-                                    ? AppColors.error
-                                    : AppColors.textMuted,
-                                size: AppTokens.iconMD,
-                              ),
-                              const SizedBox(width: AppTokens.spaceXS),
-                              Text(
-                                '$_likesCount',
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: AppColors.textSecondary,
+                      Stack(
+                        clipBehavior: Clip.none,
+                        alignment: Alignment.centerRight,
+                        children: [
+                          if (_showCoinSplash)
+                            Positioned(
+                              top: -18,
+                              right: 0,
+                              child: FadeTransition(
+                                opacity: _coinFade,
+                                child: SlideTransition(
+                                  position: _coinSlide,
+                                  child: ScaleTransition(
+                                    scale: _coinScale,
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.accent
+                                            .withValues(alpha: 0.2),
+                                        borderRadius:
+                                            BorderRadius.circular(999),
+                                        border: Border.all(
+                                          color: AppColors.accent,
+                                          width: 0.8,
+                                        ),
+                                      ),
+                                      child: const Text(
+                                        '+50',
+                                        style: TextStyle(
+                                          color: AppColors.accent,
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 10,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ],
+                            ),
+                          ScaleTransition(
+                            scale: _heartScale,
+                            child: GestureDetector(
+                              onTap: _toggleLike,
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    _isLiked
+                                        ? Icons.favorite_rounded
+                                        : Icons.favorite_outline_rounded,
+                                    color: _isLiked
+                                        ? AppColors.error
+                                        : AppColors.textMuted,
+                                    size: AppTokens.iconMD,
+                                  ),
+                                  const SizedBox(width: AppTokens.spaceXS),
+                                  Text(
+                                    '$_likesCount',
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
-                        ),
+                        ],
                       ),
                     ],
                   ),
@@ -1455,7 +1597,10 @@ class _TypographicHeader extends StatelessWidget {
     return Container(
       color: AppColors.cardBackground,
       padding: const EdgeInsets.fromLTRB(
-        AppTokens.spaceLG, AppTokens.space2XL, AppTokens.spaceLG, AppTokens.spaceMD,
+        AppTokens.spaceLG,
+        AppTokens.space2XL,
+        AppTokens.spaceLG,
+        AppTokens.spaceMD,
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.end,
@@ -1619,9 +1764,8 @@ class _PhotoThumbnailTileState extends State<_PhotoThumbnailTile> {
       final image = info.image;
       if (!mounted || image.height == 0) return;
       final ratio = image.width / image.height;
-      final normalizedRatio = ratio
-          .clamp(_minAspectRatio, _maxAspectRatio)
-          .toDouble();
+      final normalizedRatio =
+          ratio.clamp(_minAspectRatio, _maxAspectRatio).toDouble();
       if ((_aspectRatio - normalizedRatio).abs() > 0.005) {
         setState(() {
           _aspectRatio = normalizedRatio;

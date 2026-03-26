@@ -212,7 +212,7 @@ class _RewardWalletScreenState extends State<RewardWalletScreen> {
                   const SizedBox(height: 2),
                   Text(
                     '$balance',
-                    style: theme.textTheme.headlineSmall?.copyWith(
+                    style: theme.textTheme.displaySmall?.copyWith(
                       fontWeight: FontWeight.w800,
                     ),
                   ),
@@ -272,6 +272,7 @@ class _RewardWalletScreenState extends State<RewardWalletScreen> {
     final direction = entry['direction']?.toString() ?? 'credit';
     final amount = (entry['amount'] as num?)?.toInt() ?? 0;
     final actionType = entry['actionType']?.toString() ?? '-';
+    final sourceRef = entry['sourceRef']?.toString().trim();
     final createdAt = DateTime.tryParse(entry['createdAt']?.toString() ?? '');
     final isCredit = direction == 'credit';
 
@@ -289,8 +290,13 @@ class _RewardWalletScreenState extends State<RewardWalletScreen> {
         title:
             Text(_prettyAction(actionType), style: theme.textTheme.bodyMedium),
         subtitle: Text(
-          createdAt != null ? _formatDateTime(createdAt) : '-',
-          style: theme.textTheme.bodySmall,
+          [
+            if (sourceRef != null && sourceRef.isNotEmpty) 'Ref: $sourceRef',
+            createdAt != null ? _formatDateTime(createdAt) : '-',
+          ].join('  •  '),
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: AppColors.textSecondary,
+          ),
         ),
         trailing: Text(
           '${isCredit ? '+' : '-'}$amount',

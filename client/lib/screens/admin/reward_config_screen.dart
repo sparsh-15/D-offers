@@ -25,10 +25,13 @@ class _RewardConfigScreenState extends State<RewardConfigScreen> {
       TextEditingController();
   final TextEditingController _shopkeeperDailyCoinsController =
       TextEditingController();
+  final TextEditingController _unlikeReversalWindowController =
+      TextEditingController();
 
   bool _loading = true;
   bool _saving = false;
   String? _error;
+  bool _unlikeReversalEnabled = true;
 
   @override
   void initState() {
@@ -46,6 +49,7 @@ class _RewardConfigScreenState extends State<RewardConfigScreen> {
     _likesPerDayController.dispose();
     _customerDailyCoinsController.dispose();
     _shopkeeperDailyCoinsController.dispose();
+    _unlikeReversalWindowController.dispose();
     super.dispose();
   }
 
@@ -66,6 +70,8 @@ class _RewardConfigScreenState extends State<RewardConfigScreen> {
           (rewardRules['configValue'] as Map<String, dynamic>?) ?? const {};
       final amounts = (value['amounts'] as Map<String, dynamic>?) ?? const {};
       final limits = (value['limits'] as Map<String, dynamic>?) ?? const {};
+      final unlikeReversal =
+          (value['unlikeReversal'] as Map<String, dynamic>?) ?? const {};
 
       _expiryDaysController.text =
           _toIntString(value['expiryDays'], fallback: 90);
@@ -83,6 +89,9 @@ class _RewardConfigScreenState extends State<RewardConfigScreen> {
           _toIntString(limits['customerDailyCoins'], fallback: 300);
       _shopkeeperDailyCoinsController.text =
           _toIntString(limits['shopkeeperDailyCoins'], fallback: 1000);
+      _unlikeReversalWindowController.text =
+          _toIntString(unlikeReversal['windowMinutes'], fallback: 30);
+      _unlikeReversalEnabled = unlikeReversal['enabled'] != false;
 
       if (!mounted) return;
       setState(() => _loading = false);
@@ -104,6 +113,8 @@ class _RewardConfigScreenState extends State<RewardConfigScreen> {
     final likesPerDay = _readInt(_likesPerDayController.text);
     final customerDailyCoins = _readInt(_customerDailyCoinsController.text);
     final shopkeeperDailyCoins = _readInt(_shopkeeperDailyCoinsController.text);
+    final unlikeReversalWindowMinutes =
+        _readInt(_unlikeReversalWindowController.text);
 
     if ([
       expiryDays,
@@ -114,6 +125,7 @@ class _RewardConfigScreenState extends State<RewardConfigScreen> {
       likesPerDay,
       customerDailyCoins,
       shopkeeperDailyCoins,
+      unlikeReversalWindowMinutes,
     ].contains(null)) {
       DialogHelper.showErrorSnackBar(
           context, 'Please enter valid numeric values.');
@@ -136,6 +148,10 @@ class _RewardConfigScreenState extends State<RewardConfigScreen> {
             'likesPerDay': likesPerDay,
             'customerDailyCoins': customerDailyCoins,
             'shopkeeperDailyCoins': shopkeeperDailyCoins,
+          },
+          'unlikeReversal': {
+            'enabled': _unlikeReversalEnabled,
+            'windowMinutes': unlikeReversalWindowMinutes,
           },
         },
       );
@@ -208,6 +224,35 @@ class _RewardConfigScreenState extends State<RewardConfigScreen> {
                                     _shopkeeperDailyCoinsController),
                               ],
                             ),
+                            const SizedBox(height: 16),
+                            _buildSectionTitle('Unlike Reversal Policy'),
+                            const SizedBox(height: 8),
+                            SwitchListTile.adaptive(
+                              value: _unlikeReversalEnabled,
+                              onChanged: _saving
+                                  ? null
+                                  : (value) {
+                                      setState(() {
+                                        _unlikeReversalEnabled = value;
+                                      });
+                                    },
+                              title: const Text('Enable Unlike Reversal'),
+                              subtitle: const Text(
+                                'When disabled, unlike will not debit previously credited coins.',
+                              ),
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                            const SizedBox(height: 8),
+                            _buildResponsiveFields(
+                              compact,
+                              [
+                                _buildNumberField(
+                                  'Unlike Reversal Window (minutes)',
+                                  _unlikeReversalWindowController,
+                                  enabled: _unlikeReversalEnabled,
+                                ),
+                              ],
+                            ),
                             const SizedBox(height: 20),
                             SizedBox(
                               width: double.infinity,
@@ -242,12 +287,10 @@ class _RewardConfigScreenState extends State<RewardConfigScreen> {
   }
 
   Widget _buildSectionTitle(String title) {
+    final theme = Theme.of(context);
     return Text(
       title,
-      style: const TextStyle(
-        fontSize: 17,
-        fontWeight: FontWeight.w700,
-      ),
+      style: theme.textTheme.titleLarge,
     );
   }
 
@@ -278,9 +321,14 @@ class _RewardConfigScreenState extends State<RewardConfigScreen> {
     );
   }
 
-  Widget _buildNumberField(String label, TextEditingController controller) {
+  Widget _buildNumberField(
+    String label,
+    TextEditingController controller, {
+    bool enabled = true,
+  }) {
     return TextField(
       controller: controller,
+      enabled: enabled,
       keyboardType: TextInputType.number,
       decoration: InputDecoration(
         labelText: label,

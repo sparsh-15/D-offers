@@ -13,7 +13,12 @@ function requireRole(...allowedRoles) {
       });
     }
 
-    if (!allowedRoles.includes(req.user.role)) {
+    const userRoles = Array.isArray(req.user.roles) && req.user.roles.length > 0
+      ? req.user.roles
+      : [req.user.role];
+    const hasAccess = allowedRoles.some((role) => userRoles.includes(role));
+
+    if (!hasAccess) {
       return res.status(403).json({
         success: false,
         message: 'Access denied. Insufficient permissions.',

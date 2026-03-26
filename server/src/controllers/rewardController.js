@@ -9,6 +9,7 @@ async function awardCustomerLike(req, res, next) {
     const result = await rewardService.awardReward({
       userId: req.user.userId,
       userRole: req.user.role,
+      userRoles: req.user.roles,
       actionType: 'like_offer',
       sourceRef: req.body.sourceRef || req.body.offerId,
       idempotencyKey: getIdempotencyKey(req),
@@ -40,6 +41,7 @@ async function awardCustomerPurchase(req, res, next) {
     const result = await rewardService.awardReward({
       userId: req.user.userId,
       userRole: req.user.role,
+      userRoles: req.user.roles,
       actionType: 'purchase_success',
       sourceRef: sourceRef || purchaseId,
       idempotencyKey: getIdempotencyKey(req),
@@ -57,11 +59,35 @@ async function awardCustomerPurchase(req, res, next) {
   }
 }
 
+async function reverseCustomerUnlike(req, res, next) {
+  try {
+    const result = await rewardService.reverseLikeRewardOnUnlike({
+      userId: req.user.userId,
+      userRole: req.user.role,
+      userRoles: req.user.roles,
+      sourceRef: req.body.sourceRef || req.body.offerId,
+      idempotencyKey: getIdempotencyKey(req),
+    });
+
+    res.status(200).json({
+      success: true,
+      duplicate: result.duplicate === true,
+      reversed: result.reversed === true,
+      reason: result.reason || null,
+      walletBalance: result.wallet?.balance ?? null,
+      ledgerEntry: result.ledgerEntry || null,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 async function awardShopkeeperSale(req, res, next) {
   try {
     const result = await rewardService.awardReward({
       userId: req.user.userId,
       userRole: req.user.role,
+      userRoles: req.user.roles,
       actionType: 'sale_closed',
       sourceRef: req.body.sourceRef || req.body.saleId,
       idempotencyKey: getIdempotencyKey(req),
@@ -84,6 +110,7 @@ async function awardShopkeeperInstall(req, res, next) {
     const result = await rewardService.awardReward({
       userId: req.user.userId,
       userRole: req.user.role,
+      userRoles: req.user.roles,
       actionType: 'install_verified',
       sourceRef: req.body.sourceRef || req.body.installId,
       idempotencyKey: getIdempotencyKey(req),
@@ -218,6 +245,7 @@ async function updateRewardConfig(req, res, next) {
 module.exports = {
   awardCustomerLike,
   awardCustomerPurchase,
+  reverseCustomerUnlike,
   awardShopkeeperSale,
   awardShopkeeperInstall,
   reverseReward,

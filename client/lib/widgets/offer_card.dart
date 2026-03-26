@@ -7,6 +7,7 @@ import '../models/offer_model.dart';
 import '../screens/common/offer_detail_screen.dart';
 import '../screens/customer/customer_chat_bot_screen.dart';
 import '../services/auth_service.dart';
+import '../services/reward_service.dart';
 import '../core/utils/dialog_helper.dart';
 import 'offer_banner_preview.dart';
 import 'shop_logo_widget.dart';
@@ -46,6 +47,11 @@ class _OfferCardState extends State<OfferCard>
   bool _isToggling = false;
   late AnimationController _heartController;
   late Animation<double> _heartScale;
+  late AnimationController _coinController;
+  late Animation<double> _coinFade;
+  late Animation<double> _coinScale;
+  late Animation<Offset> _coinSlide;
+  bool _showCoinSplash = false;
   double _bannerAspectRatio = _defaultBannerAspectRatio;
   ImageStream? _imageStream;
   ImageStreamListener? _imageStreamListener;
@@ -67,6 +73,28 @@ class _OfferCardState extends State<OfferCard>
       CurvedAnimation(parent: _heartController, curve: Curves.easeInOut),
     );
 
+    _coinController = AnimationController(
+      duration: const Duration(milliseconds: 700),
+      vsync: this,
+    );
+    _coinFade = CurvedAnimation(
+      parent: _coinController,
+      curve: const Interval(0.0, 0.75, curve: Curves.easeOut),
+    );
+    _coinScale = Tween<double>(begin: 0.85, end: 1.12).animate(
+      CurvedAnimation(parent: _coinController, curve: Curves.easeOutBack),
+    );
+    _coinSlide = Tween<Offset>(
+      begin: const Offset(0, 0.2),
+      end: const Offset(0, -1.1),
+    ).animate(
+        CurvedAnimation(parent: _coinController, curve: Curves.easeOutCubic));
+    _coinController.addStatusListener((status) {
+      if (status == AnimationStatus.completed && mounted) {
+        setState(() => _showCoinSplash = false);
+      }
+    });
+
     _resolveBannerAspectRatio();
   }
 
@@ -80,12 +108,10 @@ class _OfferCardState extends State<OfferCard>
       _likesCount = widget.offer.likesCount;
     }
 
-    final oldPhoto = oldWidget.offer.photos.isNotEmpty
-        ? oldWidget.offer.photos.first
-        : null;
-    final newPhoto = widget.offer.photos.isNotEmpty
-        ? widget.offer.photos.first
-        : null;
+    final oldPhoto =
+        oldWidget.offer.photos.isNotEmpty ? oldWidget.offer.photos.first : null;
+    final newPhoto =
+        widget.offer.photos.isNotEmpty ? widget.offer.photos.first : null;
     if (oldPhoto != newPhoto) {
       _bannerAspectRatio = _defaultBannerAspectRatio;
       _clearImageListener();
@@ -96,8 +122,15 @@ class _OfferCardState extends State<OfferCard>
   @override
   void dispose() {
     _clearImageListener();
+    _coinController.dispose();
     _heartController.dispose();
     super.dispose();
+  }
+
+  void _playCoinSplash() {
+    if (!mounted) return;
+    setState(() => _showCoinSplash = true);
+    _coinController.forward(from: 0);
   }
 
   void _clearImageListener() {
@@ -147,12 +180,39 @@ class _OfferCardState extends State<OfferCard>
     });
     _heartController.forward(from: 0);
     try {
-      final result = await AuthService.instance.toggleOfferLike(widget.offer.id);
+      final result =
+          await AuthService.instance.toggleOfferLike(widget.offer.id);
+      final isLikedNow = result['isLiked'] as bool;
       setState(() {
-        _isLiked = result['isLiked'] as bool;
+        _isLiked = isLikedNow;
         _likesCount = result['likesCount'] as int;
         _isToggling = false;
       });
+
+      if (isLikedNow) {
+        try {
+          await RewardService.instance.awardLikeReward(widget.offer.id);
+          _playCoinSplash();
+        } catch (rewardError) {
+          debugPrint('Like reward award failed: $rewardError');
+        }
+      } else {
+        try {
+          final reversal =
+              await RewardService.instance.reverseLikeReward(widget.offer.id);
+          final reversed = reversal['reversed'] == true;
+          final reason = reversal['reason']?.toString();
+          final message = !reversed
+              ? RewardService.instance.unlikeReversalReasonMessage(reason)
+              : null;
+          if (mounted && message != null && message.isNotEmpty) {
+            DialogHelper.showErrorSnackBar(context, message);
+          }
+        } catch (reverseError) {
+          debugPrint('Like reward reverse failed: $reverseError');
+        }
+      }
+
       widget.onOfferUpdated?.call(
         widget.offer.copyWith(
           isLiked: _isLiked,
@@ -202,10 +262,9 @@ class _OfferCardState extends State<OfferCard>
     final theme = Theme.of(context);
     final isExpired = widget.offer.status == 'expired';
 
-    final shopDisplayName =
-        widget.offer.shopName?.trim().isNotEmpty == true
-            ? widget.offer.shopName!
-            : 'Shop';
+    final shopDisplayName = widget.offer.shopName?.trim().isNotEmpty == true
+        ? widget.offer.shopName!
+        : 'Shop';
 
     final String? tierLabel = widget.offer.isFeatured
         ? (widget.offer.shopRankingTier == 'top3' ? 'Top Deal' : 'Featured')
@@ -313,11 +372,13 @@ class _OfferCardState extends State<OfferCard>
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color: AppColors.accentDim.withValues(alpha: 0.18),
+                              color:
+                                  AppColors.accentDim.withValues(alpha: 0.18),
                               borderRadius:
                                   BorderRadius.circular(AppTokens.radiusFull),
                               border: Border.all(
-                                color: AppColors.accentDim.withValues(alpha: 0.5),
+                                color:
+                                    AppColors.accentDim.withValues(alpha: 0.5),
                               ),
                             ),
                             child: Text(
@@ -386,23 +447,65 @@ class _OfferCardState extends State<OfferCard>
                     Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        ScaleTransition(
-                          scale: _heartScale,
-                          child: GestureDetector(
-                            onTap: _toggleLike,
-                            child: Padding(
-                              padding: const EdgeInsets.all(AppTokens.spaceSM),
-                              child: Icon(
-                                _isLiked
-                                    ? Icons.favorite_rounded
-                                    : Icons.favorite_outline_rounded,
-                                color: _isLiked
-                                    ? AppColors.error
-                                    : AppColors.textMuted,
-                                size: AppTokens.iconMD,
+                        Stack(
+                          clipBehavior: Clip.none,
+                          alignment: Alignment.center,
+                          children: [
+                            if (_showCoinSplash)
+                              Positioned(
+                                top: -18,
+                                child: FadeTransition(
+                                  opacity: _coinFade,
+                                  child: SlideTransition(
+                                    position: _coinSlide,
+                                    child: ScaleTransition(
+                                      scale: _coinScale,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 8, vertical: 3),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.accent
+                                              .withValues(alpha: 0.2),
+                                          borderRadius:
+                                              BorderRadius.circular(999),
+                                          border: Border.all(
+                                            color: AppColors.accent,
+                                            width: 0.8,
+                                          ),
+                                        ),
+                                        child: const Text(
+                                          '+50',
+                                          style: TextStyle(
+                                            color: AppColors.accent,
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 10,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ScaleTransition(
+                              scale: _heartScale,
+                              child: GestureDetector(
+                                onTap: _toggleLike,
+                                child: Padding(
+                                  padding:
+                                      const EdgeInsets.all(AppTokens.spaceSM),
+                                  child: Icon(
+                                    _isLiked
+                                        ? Icons.favorite_rounded
+                                        : Icons.favorite_outline_rounded,
+                                    color: _isLiked
+                                        ? AppColors.error
+                                        : AppColors.textMuted,
+                                    size: AppTokens.iconMD,
+                                  ),
+                                ),
                               ),
                             ),
-                          ),
+                          ],
                         ),
                         Text(
                           '$_likesCount',

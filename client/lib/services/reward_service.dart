@@ -58,19 +58,20 @@ class RewardService {
     }
 
     var message = data['message']?.toString() ??
-      'Request failed (${response.statusCode})';
+        'Request failed (${response.statusCode})';
 
     if (response.statusCode == 403 &&
-      data['code']?.toString() == 'INSUFFICIENT_PERMISSIONS') {
+        data['code']?.toString() == 'INSUFFICIENT_PERMISSIONS') {
       final userRole = data['userRole']?.toString();
-      final requiredRoles = (data['requiredRoles'] as List<dynamic>? ?? const [])
-        .map((e) => e.toString())
-        .where((e) => e.isNotEmpty)
-        .toList();
+      final requiredRoles =
+          (data['requiredRoles'] as List<dynamic>? ?? const [])
+              .map((e) => e.toString())
+              .where((e) => e.isNotEmpty)
+              .toList();
 
       if (userRole != null && requiredRoles.isNotEmpty) {
-      message =
-        'Insufficient permissions (userRole=$userRole, required=${requiredRoles.join('/')})';
+        message =
+            'Insufficient permissions (userRole=$userRole, required=${requiredRoles.join('/')})';
       }
     }
 
@@ -127,6 +128,46 @@ class RewardService {
         ));
 
     _handle(response);
+  }
+
+  Future<Map<String, dynamic>> reverseLikeReward(String offerId) async {
+    final sourceRef = offerId.trim();
+    if (sourceRef.isEmpty)
+      return const {'reversed': false, 'reason': 'SOURCE_REF_REQUIRED'};
+
+    final response = await _send(() => _client.post(
+          _uri('/customer/unlike'),
+          headers: _authHeaders(
+            idempotencyKey:
+                _buildStableIdempotencyKey('unlike_offer', sourceRef),
+          ),
+          body: jsonEncode({
+            'sourceRef': sourceRef,
+            'offerId': sourceRef,
+          }),
+        ));
+
+    final data = _handle(response) as Map<String, dynamic>;
+    return data;
+  }
+
+  String? unlikeReversalReasonMessage(String? reason) {
+    switch (reason) {
+      case 'INSUFFICIENT_BALANCE':
+        return 'Unlike saved, coin reversal blocked due to low balance.';
+      case 'REVERSAL_WINDOW_EXPIRED':
+        return 'Unlike saved, reversal window has expired.';
+      case 'REVERSAL_DISABLED':
+        return 'Unlike saved, coin reversal is currently disabled.';
+      case 'ALREADY_REVERSED':
+        return null;
+      case 'NO_LIKE_REWARD_FOUND':
+        return null;
+      case 'WALLET_NOT_FOUND':
+        return 'Unlike saved, but wallet was not found for reversal.';
+      default:
+        return 'Unlike saved, but coin reversal could not be completed.';
+    }
   }
 
   Future<void> awardPurchaseReward(String purchaseRef) async {
@@ -239,10 +280,10 @@ class RewardService {
   }
 
   bool get isCustomer {
-    return AuthStore.currentUser?.role == UserRole.customer;
+    return AuthStore.currentUser?.hasRole(UserRole.customer) ?? false;
   }
 
   bool get isShopkeeper {
-    return AuthStore.currentUser?.role == UserRole.shopkeeper;
+    return AuthStore.currentUser?.hasRole(UserRole.shopkeeper) ?? false;
   }
 }

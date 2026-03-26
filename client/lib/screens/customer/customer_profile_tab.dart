@@ -88,7 +88,7 @@ class _CustomerProfileTabState extends State<CustomerProfileTab> {
                     ),
                 ],
                 const SizedBox(height: 24),
-                if (user != null && user.role == UserRole.ssa) ...[
+                if (user != null && user.hasRole(UserRole.ssa)) ...[
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Container(
@@ -213,7 +213,7 @@ class _CustomerProfileTabState extends State<CustomerProfileTab> {
                           );
                         },
                       ),
-                      if (user != null && user.role == UserRole.customer)
+                      if (user != null && user.hasRole(UserRole.customer))
                         ProfileOptionTile(
                           icon: Icons.headset_mic_rounded,
                           title: AppStrings.becomeSsa,

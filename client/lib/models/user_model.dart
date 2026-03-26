@@ -46,6 +46,7 @@ class UserModel {
   final String approvalStatus; // legacy: pending | approved | rejected
   final String statusLabel; // derived: subscribed | active | inactive | setup_pending
   final String category; // optional: from shopkeeperProfile.category for shopkeepers
+  final List<String> permissions; // role-like capabilities, e.g. ['customer'] for dual-role users
   final String? signupCouponCode; // optional referral coupon captured at registration (shopkeeper)
 
   const UserModel({
@@ -60,6 +61,7 @@ class UserModel {
     required this.approvalStatus,
     required this.statusLabel,
     this.category = '',
+    this.permissions = const [],
     this.signupCouponCode,
   });
 
@@ -82,8 +84,17 @@ class UserModel {
               '')
           .toLowerCase(),
       category: categoryFromProfile,
+      permissions: (json['permissions'] as List<dynamic>? ?? const [])
+          .map((e) => e.toString())
+          .where((e) => e.trim().isNotEmpty)
+          .toList(),
       signupCouponCode: json['signupCouponCode']?.toString(),
     );
+  }
+
+  bool hasRole(UserRole targetRole) {
+    final roleValue = roleToString(targetRole);
+    return roleToString(role) == roleValue || permissions.contains(roleValue);
   }
 
   // Get display name for role

@@ -13,6 +13,10 @@ const DEFAULT_REWARD_CONFIG = {
     customerDailyCoins: 300,
     shopkeeperDailyCoins: 1000,
   },
+  unlikeReversal: {
+    enabled: true,
+    windowMinutes: 30,
+  },
 };
 
 function getDayStart(date = new Date()) {
@@ -26,6 +30,44 @@ function buildError(message, statusCode = 400, code) {
     error.code = code;
   }
   return error;
+}
+
+function normalizeUserRoles(userRole, userRoles) {
+  const roles = new Set();
+
+  if (userRole) {
+    roles.add(String(userRole).trim());
+  }
+
+  if (Array.isArray(userRoles)) {
+    for (const role of userRoles) {
+      if (role) {
+        roles.add(String(role).trim());
+      }
+    }
+  }
+
+  return Array.from(roles);
+}
+
+function hasRole(roles, role) {
+  return roles.includes(role);
+}
+
+function resolveRewardCapRole(roles, fallbackRole) {
+  if (hasRole(roles, 'customer')) return 'customer';
+  if (hasRole(roles, 'shopkeeper')) return 'shopkeeper';
+  return fallbackRole;
+}
+
+function isReversalReferenceUniqueViolation(error) {
+  const target = String(error?.meta?.target || '');
+  return error?.code === 'P2002' && target.includes('uq_coin_ledger_reversal_reference_entry');
+}
+
+function isWalletBalanceConstraintViolation(error) {
+  const dbError = String(error?.meta?.database_error || error?.message || '');
+  return dbError.includes('chk_coin_wallets_balance_non_negative');
 }
 
 async function getEffectiveRewardConfig() {
@@ -47,20 +89,24 @@ async function getEffectiveRewardConfig() {
       ...DEFAULT_REWARD_CONFIG.limits,
       ...(row.configValue.limits || {}),
     },
+    unlikeReversal: {
+      ...DEFAULT_REWARD_CONFIG.unlikeReversal,
+      ...(row.configValue.unlikeReversal || {}),
+    },
   };
 }
 
-function getActionPolicy(actionType, userRole, config) {
+function getActionPolicy(actionType, roles, config) {
   const amount = config.amounts[actionType];
 
   if (actionType === 'like_offer' || actionType === 'purchase_success') {
-    if (userRole !== 'customer') {
+    if (!hasRole(roles, 'customer')) {
       throw buildError('Only customers can claim this reward', 403, 'ROLE_MISMATCH');
     }
   }
 
   if (actionType === 'sale_closed' || actionType === 'install_verified') {
-    if (userRole !== 'shopkeeper') {
+    if (!hasRole(roles, 'shopkeeper')) {
       throw buildError('Only shopkeepers can claim this reward', 403, 'ROLE_MISMATCH');
     }
   }
@@ -72,7 +118,7 @@ function getActionPolicy(actionType, userRole, config) {
   return { amount: Number(amount) };
 }
 
-async function enforceDailyFraudLimits(tx, { userId, userRole, actionType, config }) {
+async function enforceDailyFraudLimits(tx, { userId, capRole, actionType, config }) {
   const dayStart = getDayStart();
 
   if (actionType === 'like_offer') {
@@ -100,7 +146,7 @@ async function enforceDailyFraudLimits(tx, { userId, userRole, actionType, confi
   });
 
   const dailyEarned = Number(creditSumToday._sum.amount || 0);
-  const cap = userRole === 'customer'
+  const cap = capRole === 'customer'
     ? Number(config.limits.customerDailyCoins)
     : Number(config.limits.shopkeeperDailyCoins);
 
@@ -149,7 +195,7 @@ async function updateMilestoneProgress(tx, { userId, amount }) {
   return progress;
 }
 
-async function awardReward({ userId, userRole, actionType, sourceRef, idempotencyKey, deviceFingerprint, metadata }) {
+async function awardReward({ userId, userRole, userRoles, actionType, sourceRef, idempotencyKey, deviceFingerprint, metadata }) {
   if (!idempotencyKey) {
     throw buildError('Idempotency-Key header is required', 400, 'IDEMPOTENCY_KEY_REQUIRED');
   }
@@ -159,7 +205,9 @@ async function awardReward({ userId, userRole, actionType, sourceRef, idempotenc
   }
 
   const config = await getEffectiveRewardConfig();
-  const { amount } = getActionPolicy(actionType, userRole, config);
+  const roles = normalizeUserRoles(userRole, userRoles);
+  const capRole = resolveRewardCapRole(roles, userRole);
+  const { amount } = getActionPolicy(actionType, roles, config);
 
   return prisma.$transaction(async (tx) => {
     const existingByIdempotency = await tx.coinLedgerEntry.findUnique({
@@ -205,7 +253,7 @@ async function awardReward({ userId, userRole, actionType, sourceRef, idempotenc
 
     const { dailyEarned, cap } = await enforceDailyFraudLimits(tx, {
       userId,
-      userRole,
+      capRole,
       actionType,
       config,
     });
@@ -271,6 +319,9 @@ async function awardReward({ userId, userRole, actionType, sourceRef, idempotenc
       ledgerEntry,
       wallet: updatedWallet,
     };
+  }, {
+    maxWait: 10000,
+    timeout: 30000,
   });
 }
 
@@ -287,7 +338,8 @@ async function reverseReward({ userId, adminRole, originalEntryId, idempotencyKe
     throw buildError('originalEntryId is required', 400, 'ORIGINAL_ENTRY_ID_REQUIRED');
   }
 
-  return prisma.$transaction(async (tx) => {
+  try {
+    return await prisma.$transaction(async (tx) => {
     const existingByIdempotency = await tx.coinLedgerEntry.findUnique({
       where: { idempotencyKey },
       include: { wallet: true },
@@ -336,19 +388,240 @@ async function reverseReward({ userId, adminRole, originalEntryId, idempotencyKe
       },
     });
 
-    const wallet = await tx.coinWallet.update({
-      where: { id: original.walletId },
+    const walletUpdate = await tx.coinWallet.updateMany({
+      where: {
+        id: original.walletId,
+        balance: { gte: original.amount },
+      },
       data: {
         balance: { decrement: original.amount },
       },
     });
+
+    if (walletUpdate.count === 0) {
+      throw buildError('Insufficient wallet balance for reversal', 409, 'INSUFFICIENT_BALANCE');
+    }
+
+    const wallet = await tx.coinWallet.findUnique({
+      where: { id: original.walletId },
+    });
+
+    if (!wallet) {
+      throw buildError('Wallet not found after reversal', 404, 'WALLET_NOT_FOUND');
+    }
 
     return {
       duplicate: false,
       ledgerEntry,
       wallet,
     };
+    }, {
+      maxWait: 10000,
+      timeout: 30000,
+    });
+  } catch (error) {
+    if (isReversalReferenceUniqueViolation(error)) {
+      throw buildError('Entry already reversed', 409, 'ENTRY_ALREADY_REVERSED');
+    }
+    if (isWalletBalanceConstraintViolation(error)) {
+      throw buildError('Insufficient wallet balance for reversal', 409, 'INSUFFICIENT_BALANCE');
+    }
+    throw error;
+  }
+}
+
+async function reverseLikeRewardOnUnlike({ userId, userRole, userRoles, sourceRef, idempotencyKey }) {
+  if (!idempotencyKey) {
+    throw buildError('Idempotency-Key header is required', 400, 'IDEMPOTENCY_KEY_REQUIRED');
+  }
+
+  if (!sourceRef || typeof sourceRef !== 'string') {
+    throw buildError('sourceRef is required', 400, 'SOURCE_REF_REQUIRED');
+  }
+
+  const roles = normalizeUserRoles(userRole, userRoles);
+  if (!hasRole(roles, 'customer')) {
+    throw buildError('Only customers can reverse like rewards', 403, 'ROLE_MISMATCH');
+  }
+
+  const config = await getEffectiveRewardConfig();
+  const policy = config.unlikeReversal || DEFAULT_REWARD_CONFIG.unlikeReversal;
+
+  if (policy.enabled === false) {
+    return {
+      reversed: false,
+      reason: 'REVERSAL_DISABLED',
+      wallet: null,
+      ledgerEntry: null,
+    };
+  }
+
+  const originalLikeReward = await prisma.coinLedgerEntry.findFirst({
+    where: {
+      userId,
+      actionType: 'like_offer',
+      sourceRef,
+      direction: 'credit',
+    },
+    orderBy: { createdAt: 'desc' },
   });
+
+  if (!originalLikeReward) {
+    return {
+      reversed: false,
+      reason: 'NO_LIKE_REWARD_FOUND',
+      wallet: null,
+      ledgerEntry: null,
+    };
+  }
+
+  const alreadyReversed = await prisma.coinLedgerEntry.count({
+    where: { referenceEntryId: originalLikeReward.id },
+  });
+
+  if (alreadyReversed > 0) {
+    return {
+      reversed: false,
+      reason: 'ALREADY_REVERSED',
+      wallet: null,
+      ledgerEntry: null,
+    };
+  }
+
+  const windowMinutes = Number(policy.windowMinutes || 0);
+  if (windowMinutes > 0) {
+    const ageMs = Date.now() - new Date(originalLikeReward.createdAt).getTime();
+    if (ageMs > windowMinutes * 60 * 1000) {
+      return {
+        reversed: false,
+        reason: 'REVERSAL_WINDOW_EXPIRED',
+        wallet: null,
+        ledgerEntry: null,
+      };
+    }
+  }
+
+  try {
+    return await prisma.$transaction(async (tx) => {
+    const existingByIdempotency = await tx.coinLedgerEntry.findUnique({
+      where: { idempotencyKey },
+      include: { wallet: true },
+    });
+
+    if (existingByIdempotency) {
+      return {
+        duplicate: true,
+        reversed: true,
+        reason: null,
+        ledgerEntry: existingByIdempotency,
+        wallet: existingByIdempotency.wallet,
+      };
+    }
+
+    const wallet = await tx.coinWallet.findUnique({
+      where: { id: originalLikeReward.walletId },
+    });
+
+    if (!wallet) {
+      return {
+        reversed: false,
+        reason: 'WALLET_NOT_FOUND',
+        ledgerEntry: null,
+        wallet: null,
+      };
+    }
+
+    if (wallet.balance < originalLikeReward.amount) {
+      return {
+        reversed: false,
+        reason: 'INSUFFICIENT_BALANCE',
+        ledgerEntry: null,
+        wallet,
+      };
+    }
+
+    const ledgerEntry = await tx.coinLedgerEntry.create({
+      data: {
+        walletId: originalLikeReward.walletId,
+        userId: originalLikeReward.userId,
+        userType: originalLikeReward.userType,
+        direction: 'debit',
+        amount: originalLikeReward.amount,
+        actionType: 'reversal',
+        sourceRef,
+        idempotencyKey,
+        referenceEntryId: originalLikeReward.id,
+        metadata: {
+          trigger: 'unlike_offer',
+        },
+      },
+    });
+
+    const walletUpdate = await tx.coinWallet.updateMany({
+      where: {
+        id: originalLikeReward.walletId,
+        balance: { gte: originalLikeReward.amount },
+      },
+      data: {
+        balance: { decrement: originalLikeReward.amount },
+      },
+    });
+
+    if (walletUpdate.count === 0) {
+      const latestWallet = await tx.coinWallet.findUnique({
+        where: { id: originalLikeReward.walletId },
+      });
+      return {
+        reversed: false,
+        reason: 'INSUFFICIENT_BALANCE',
+        ledgerEntry: null,
+        wallet: latestWallet,
+      };
+    }
+
+    const updatedWallet = await tx.coinWallet.findUnique({
+      where: { id: originalLikeReward.walletId },
+    });
+
+    if (!updatedWallet) {
+      return {
+        reversed: false,
+        reason: 'WALLET_NOT_FOUND',
+        ledgerEntry: null,
+        wallet: null,
+      };
+    }
+
+      return {
+        duplicate: false,
+        reversed: true,
+        reason: null,
+        ledgerEntry,
+        wallet: updatedWallet,
+      };
+    }, {
+      maxWait: 10000,
+      timeout: 30000,
+    });
+  } catch (error) {
+    if (isReversalReferenceUniqueViolation(error)) {
+      return {
+        reversed: false,
+        reason: 'ALREADY_REVERSED',
+        wallet: null,
+        ledgerEntry: null,
+      };
+    }
+    if (isWalletBalanceConstraintViolation(error)) {
+      return {
+        reversed: false,
+        reason: 'INSUFFICIENT_BALANCE',
+        wallet: null,
+        ledgerEntry: null,
+      };
+    }
+    throw error;
+  }
 }
 
 async function getWalletByUser({ userId }) {
@@ -564,6 +837,7 @@ async function updateRewardConfig({ key, value }) {
 
 module.exports = {
   awardReward,
+  reverseLikeRewardOnUnlike,
   reverseReward,
   getWalletByUser,
   getWalletLedger,

@@ -780,6 +780,7 @@ model CoinLedgerEntry {
   @@index([actionType, createdAt(sort: Desc)], map: "idx_coin_ledger_action_created_desc")
   @@index([userId, direction, createdAt(sort: Desc)], map: "idx_coin_ledger_user_direction_created_desc")
   @@index([expiresAt], map: "idx_coin_ledger_expires_at")
+  @@index([referenceEntryId], map: "idx_coin_ledger_reference_entry")
   @@unique([userId, actionType, sourceRef], map: "uq_coin_ledger_user_action_source")
   @@map("coin_ledger_entries")
 }

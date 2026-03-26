@@ -26,6 +26,7 @@ class AuthStore {
       'name': user.name,
       'phone': user.phone,
       'role': roleToString(user.role),
+      'permissions': user.permissions,
       'pincode': user.pincode,
       'city': user.city,
       'state': user.state,

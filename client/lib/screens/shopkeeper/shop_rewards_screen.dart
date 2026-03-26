@@ -196,6 +196,7 @@ class _ShopRewardsScreenState extends State<ShopRewardsScreen> {
                                               ),
                                             ),
                                             _buildStatusChip(
+                                              context,
                                               reached: reached,
                                               redemptionStatus:
                                                   redemptionStatus,
@@ -230,7 +231,8 @@ class _ShopRewardsScreenState extends State<ShopRewardsScreen> {
     );
   }
 
-  Widget _buildStatusChip(
+    Widget _buildStatusChip(
+      BuildContext context,
       {required bool reached, required String? redemptionStatus}) {
     final String text;
     final Color color;
@@ -255,9 +257,8 @@ class _ShopRewardsScreenState extends State<ShopRewardsScreen> {
       ),
       child: Text(
         text,
-        style: TextStyle(
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
           color: color,
-          fontSize: 11,
           fontWeight: FontWeight.w700,
         ),
       ),

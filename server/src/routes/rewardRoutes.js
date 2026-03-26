@@ -8,6 +8,7 @@ const router = express.Router();
 router.use(authMiddleware);
 
 router.post('/customer/like', requireRole('customer'), rewardController.awardCustomerLike);
+router.post('/customer/unlike', requireRole('customer'), rewardController.reverseCustomerUnlike);
 router.post('/customer/purchase-success', requireRole('customer'), rewardController.awardCustomerPurchase);
 
 router.post('/shopkeeper/sale-closed', requireRole('shopkeeper'), rewardController.awardShopkeeperSale);
