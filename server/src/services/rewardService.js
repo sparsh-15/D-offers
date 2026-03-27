@@ -675,25 +675,52 @@ async function getWalletLedger({ userId, limit = 20, skip = 0 }) {
 async function getExpirySummary({ userId }) {
   const now = new Date();
 
-  const grouped = await prisma.coinLot.groupBy({
-    by: ['expiresAt'],
-    where: {
-      wallet: { userId },
-      remainingAmount: { gt: 0 },
-      expiresAt: { gt: now },
-    },
-    _sum: { remainingAmount: true },
-    orderBy: { expiresAt: 'asc' },
-  });
+  const [wallet, grouped] = await Promise.all([
+    prisma.coinWallet.findUnique({
+      where: { userId },
+      select: { balance: true },
+    }),
+    prisma.coinLot.groupBy({
+      by: ['expiresAt'],
+      where: {
+        wallet: { userId },
+        remainingAmount: { gt: 0 },
+        expiresAt: { gt: now },
+      },
+      _sum: { remainingAmount: true },
+      orderBy: { expiresAt: 'asc' },
+    }),
+  ]);
 
-  const totalExpiring = grouped.reduce((sum, row) => sum + Number(row._sum.remainingAmount || 0), 0);
+  const availableBalance = Math.max(Number(wallet?.balance || 0), 0);
+  let remainingCap = availableBalance;
+
+  const upcomingExpiries = [];
+  for (const row of grouped) {
+    if (remainingCap <= 0) {
+      break;
+    }
+
+    const rawAmount = Math.max(Number(row._sum.remainingAmount || 0), 0);
+    const cappedAmount = Math.min(rawAmount, remainingCap);
+
+    if (cappedAmount <= 0) {
+      continue;
+    }
+
+    upcomingExpiries.push({
+      expiresAt: row.expiresAt,
+      amount: cappedAmount,
+    });
+
+    remainingCap -= cappedAmount;
+  }
+
+  const totalExpiring = upcomingExpiries.reduce((sum, row) => sum + row.amount, 0);
 
   return {
     totalExpiring,
-    upcomingExpiries: grouped.map((row) => ({
-      expiresAt: row.expiresAt,
-      amount: Number(row._sum.remainingAmount || 0),
-    })),
+    upcomingExpiries,
   };
 }
 

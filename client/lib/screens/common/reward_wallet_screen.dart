@@ -27,10 +27,31 @@ class _RewardWalletScreenState extends State<RewardWalletScreen> {
   int _total = 0;
   String? _error;
 
+  void _onWalletBalanceChanged() {
+    final balance = RewardService.instance.latestWalletBalance;
+    if (!mounted || balance == null) return;
+
+    setState(() {
+      _wallet = {
+        ...?_wallet,
+        'balance': balance,
+      };
+    });
+  }
+
   @override
   void initState() {
     super.initState();
+    RewardService.instance.walletBalanceNotifier
+        .addListener(_onWalletBalanceChanged);
     _loadInitial();
+  }
+
+  @override
+  void dispose() {
+    RewardService.instance.walletBalanceNotifier
+        .removeListener(_onWalletBalanceChanged);
+    super.dispose();
   }
 
   Future<void> _loadInitial() async {
@@ -56,7 +77,9 @@ class _RewardWalletScreenState extends State<RewardWalletScreen> {
           .cast<Map<String, dynamic>>();
 
       setState(() {
-        _wallet = responses[0];
+        _wallet = {
+          ...((responses[0] as Map<String, dynamic>?) ?? const {}),
+        };
         _expiry = responses[1];
         _entries = entries;
         _skip = entries.length;
@@ -68,7 +91,7 @@ class _RewardWalletScreenState extends State<RewardWalletScreen> {
       final rawError = e.toString();
       final lowerError = rawError.toLowerCase();
 
-        final friendlyError = lowerError.contains('insufficient permissions')
+      final friendlyError = lowerError.contains('insufficient permissions')
           ? 'Wallet access denied for current role. $rawError'
           : rawError;
 

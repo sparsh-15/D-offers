@@ -13,6 +13,7 @@ import '../../models/offer_model.dart';
 import '../../models/shopkeeper_profile_model.dart';
 import '../../services/auth_service.dart';
 import '../../services/reward_service.dart';
+import '../../widgets/coin_splash_burst.dart';
 import '../../widgets/shop_logo_widget.dart';
 
 /// Premium offer detail screen — full-bleed header, bottom-pinned CTA.
@@ -35,7 +36,7 @@ class OfferDetailScreen extends StatefulWidget {
 }
 
 class _OfferDetailScreenState extends State<OfferDetailScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late bool _isLiked;
   late int _likesCount;
   bool _isToggling = false;
@@ -50,11 +51,10 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
 
   late AnimationController _heartController;
   late Animation<double> _heartScale;
-  late AnimationController _coinController;
-  late Animation<double> _coinFade;
-  late Animation<double> _coinScale;
-  late Animation<Offset> _coinSlide;
   bool _showCoinSplash = false;
+  int _coinSplashAmount = 0;
+  bool _coinSplashDebit = false;
+  int _coinSplashKey = 0;
 
   @override
   void initState() {
@@ -73,28 +73,6 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
     ]).animate(
         CurvedAnimation(parent: _heartController, curve: Curves.easeInOut));
 
-    _coinController = AnimationController(
-      duration: const Duration(milliseconds: 700),
-      vsync: this,
-    );
-    _coinFade = CurvedAnimation(
-      parent: _coinController,
-      curve: const Interval(0.0, 0.75, curve: Curves.easeOut),
-    );
-    _coinScale = Tween<double>(begin: 0.85, end: 1.12).animate(
-      CurvedAnimation(parent: _coinController, curve: Curves.easeOutBack),
-    );
-    _coinSlide = Tween<Offset>(
-      begin: const Offset(0, 0.2),
-      end: const Offset(0, -1.1),
-    ).animate(
-        CurvedAnimation(parent: _coinController, curve: Curves.easeOutCubic));
-    _coinController.addStatusListener((status) {
-      if (status == AnimationStatus.completed && mounted) {
-        setState(() => _showCoinSplash = false);
-      }
-    });
-
     _startOfferPhotoAutoPlay();
     _loadShopDetails();
   }
@@ -103,15 +81,29 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
   void dispose() {
     _offerPhotoAutoPlayTimer?.cancel();
     _offerPhotoController.dispose();
-    _coinController.dispose();
     _heartController.dispose();
     super.dispose();
   }
 
-  void _playCoinSplash() {
+  int _extractLedgerAmount(Map<String, dynamic>? payload, {int fallback = 50}) {
+    final ledger = payload?['ledgerEntry'];
+    if (ledger is Map<String, dynamic>) {
+      final amount = ledger['amount'];
+      if (amount is num) return amount.toInt();
+      final parsed = int.tryParse('$amount');
+      if (parsed != null) return parsed;
+    }
+    return fallback;
+  }
+
+  void _playCoinSplash({required int amount, required bool isDebit}) {
     if (!mounted) return;
-    setState(() => _showCoinSplash = true);
-    _coinController.forward(from: 0);
+    setState(() {
+      _coinSplashAmount = amount;
+      _coinSplashDebit = isDebit;
+      _coinSplashKey += 1;
+      _showCoinSplash = true;
+    });
   }
 
   void _startOfferPhotoAutoPlay() {
@@ -167,8 +159,15 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
 
       if (isLikedNow) {
         try {
-          await RewardService.instance.awardLikeReward(widget.offer.id);
-          _playCoinSplash();
+          final reward =
+              await RewardService.instance.awardLikeReward(widget.offer.id);
+          await RewardService.instance.refreshMyWalletBalance();
+          if (reward['duplicate'] != true) {
+            _playCoinSplash(
+              amount: _extractLedgerAmount(reward),
+              isDebit: false,
+            );
+          }
         } catch (rewardError) {
           debugPrint('Like reward award failed: $rewardError');
         }
@@ -176,8 +175,15 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
         try {
           final reversal =
               await RewardService.instance.reverseLikeReward(widget.offer.id);
+          await RewardService.instance.refreshMyWalletBalance();
           final reversed = reversal['reversed'] == true;
           final reason = reversal['reason']?.toString();
+          if (reversed) {
+            _playCoinSplash(
+              amount: _extractLedgerAmount(reversal),
+              isDebit: true,
+            );
+          }
           final message = !reversed
               ? RewardService.instance.unlikeReversalReasonMessage(reason)
               : null;
@@ -1376,38 +1382,18 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                         children: [
                           if (_showCoinSplash)
                             Positioned(
-                              top: -18,
+                              top: -36,
                               right: 0,
-                              child: FadeTransition(
-                                opacity: _coinFade,
-                                child: SlideTransition(
-                                  position: _coinSlide,
-                                  child: ScaleTransition(
-                                    scale: _coinScale,
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 8, vertical: 3),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.accent
-                                            .withValues(alpha: 0.2),
-                                        borderRadius:
-                                            BorderRadius.circular(999),
-                                        border: Border.all(
-                                          color: AppColors.accent,
-                                          width: 0.8,
-                                        ),
-                                      ),
-                                      child: const Text(
-                                        '+50',
-                                        style: TextStyle(
-                                          color: AppColors.accent,
-                                          fontWeight: FontWeight.w800,
-                                          fontSize: 10,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
+                              child: CoinSplashBurst(
+                                key: ValueKey(_coinSplashKey),
+                                amount: _coinSplashAmount,
+                                isDebit: _coinSplashDebit,
+                                onCompleted: () {
+                                  if (!mounted) return;
+                                  setState(() {
+                                    _showCoinSplash = false;
+                                  });
+                                },
                               ),
                             ),
                           ScaleTransition(

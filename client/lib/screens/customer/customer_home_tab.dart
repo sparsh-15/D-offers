@@ -45,9 +45,20 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
   int _walletBalance = 0;
   bool _loadingWallet = false;
 
+  void _onWalletBalanceChanged() {
+    final balance = RewardService.instance.latestWalletBalance;
+    if (!mounted || balance == null) return;
+    if (_walletBalance == balance) return;
+    setState(() {
+      _walletBalance = balance;
+    });
+  }
+
   @override
   void initState() {
     super.initState();
+    RewardService.instance.walletBalanceNotifier
+        .addListener(_onWalletBalanceChanged);
     _loadCategories();
     _loadDeals();
     _loadUnreadInboxCount();
@@ -56,6 +67,8 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
 
   @override
   void dispose() {
+    RewardService.instance.walletBalanceNotifier
+        .removeListener(_onWalletBalanceChanged);
     _searchController.dispose();
     _searchDebounce?.cancel();
     super.dispose();

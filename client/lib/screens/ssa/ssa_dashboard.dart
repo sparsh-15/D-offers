@@ -20,7 +20,20 @@ import '../../models/ssa_lead_model.dart';
 import 'ssa_create_lead_screen.dart';
 
 String _monthName(int month) {
-  const names = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const names = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec'
+  ];
   return names[(month - 1).clamp(0, 11)];
 }
 
@@ -117,37 +130,41 @@ class _SsaHomeTabState extends State<SsaHomeTab> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'SSA Dashboard',
-                        style: theme.textTheme.headlineMedium
-                            ?.copyWith(color: AppColors.textPrimary),
-                      ),
-                      const SizedBox(height: AppTokens.spaceXS),
-                      Text(
-                        'Your assigned shopkeepers and activity at a glance',
-                        style: theme.textTheme.bodyMedium
-                            ?.copyWith(color: AppColors.textSecondary),
-                      ),
-                    ],
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'SSA Dashboard',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.headlineMedium
+                              ?.copyWith(color: AppColors.textPrimary),
+                        ),
+                        const SizedBox(height: AppTokens.spaceXS),
+                        Text(
+                          'Your assigned shopkeepers and activity at a glance',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodyMedium
+                              ?.copyWith(color: AppColors.textSecondary),
+                        ),
+                      ],
+                    ),
                   ),
+                  const SizedBox(width: AppTokens.spaceSM),
                   Theme(
                     data: Theme.of(context).copyWith(
                       switchTheme: SwitchThemeData(
-                        thumbColor:
-                            WidgetStateProperty.resolveWith((states) {
+                        thumbColor: WidgetStateProperty.resolveWith((states) {
                           if (states.contains(WidgetState.selected)) {
                             return AppColors.accent;
                           }
                           return AppColors.textMuted;
                         }),
-                        trackColor:
-                            WidgetStateProperty.resolveWith((states) {
+                        trackColor: WidgetStateProperty.resolveWith((states) {
                           if (states.contains(WidgetState.selected)) {
-                            return AppColors.accent
-                                .withValues(alpha: 0.4);
+                            return AppColors.accent.withValues(alpha: 0.4);
                           }
                           return AppColors.elevated;
                         }),
@@ -251,11 +268,10 @@ class _SsaHomeTabState extends State<SsaHomeTab> {
                           const SizedBox(height: AppTokens.spaceLG),
                           Text(
                             'My coupons',
-                            style: theme.textTheme.titleMedium
-                                ?.copyWith(
-                                  color: AppColors.textPrimary,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              color: AppColors.textPrimary,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                           const SizedBox(height: AppTokens.spaceSM),
                           FutureBuilder<List<Map<String, dynamic>>>(
@@ -277,17 +293,15 @@ class _SsaHomeTabState extends State<SsaHomeTab> {
                                   ),
                                 );
                               }
-                              final coupons =
-                                  couponSnapshot.data ?? [];
+                              final coupons = couponSnapshot.data ?? [];
                               if (coupons.isEmpty) {
                                 return Padding(
                                   padding: const EdgeInsets.all(16),
                                   child: Text(
                                     'No coupons yet.',
-                                    style: theme.textTheme.bodyMedium
-                                        ?.copyWith(
-                                          color: AppColors.textSecondary,
-                                        ),
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      color: AppColors.textSecondary,
+                                    ),
                                   ),
                                 );
                               }
@@ -300,9 +314,9 @@ class _SsaHomeTabState extends State<SsaHomeTab> {
                                                 '0',
                                           ) ??
                                           0;
-                                  final code =
-                                      c['code']?.toString() ?? '';
-                                  final usages = c['usages'] as List<dynamic>? ?? [];
+                                  final code = c['code']?.toString() ?? '';
+                                  final usages =
+                                      c['usages'] as List<dynamic>? ?? [];
                                   String usageLabel = '';
                                   if (usages.isNotEmpty) {
                                     final count = usages.length;
@@ -316,7 +330,9 @@ class _SsaHomeTabState extends State<SsaHomeTab> {
                                         ? '${dt.day} ${_monthName(dt.month)} ${dt.year}'
                                         : '';
                                     usageLabel = count == 1
-                                        ? (dateStr.isNotEmpty ? 'Used: $dateStr' : 'Used once')
+                                        ? (dateStr.isNotEmpty
+                                            ? 'Used: $dateStr'
+                                            : 'Used once')
                                         : 'Used $count times${dateStr.isNotEmpty ? ' • Last: $dateStr' : ''}';
                                   }
                                   return Padding(
@@ -334,8 +350,8 @@ class _SsaHomeTabState extends State<SsaHomeTab> {
                                               content: Text(
                                                 'Copied: $code',
                                               ),
-                                              duration: const Duration(
-                                                  seconds: 2),
+                                              duration:
+                                                  const Duration(seconds: 2),
                                             ),
                                           );
                                         }
@@ -353,33 +369,38 @@ class _SsaHomeTabState extends State<SsaHomeTab> {
                                               AppTokens.radiusMD),
                                         ),
                                         child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
                                             Row(
                                               mainAxisAlignment:
-                                                  MainAxisAlignment.spaceBetween,
+                                                  MainAxisAlignment
+                                                      .spaceBetween,
                                               children: [
                                                 Text(
                                                   '$pct% off',
-                                                  style: theme.textTheme.titleSmall
+                                                  style: theme
+                                                      .textTheme.titleSmall
                                                       ?.copyWith(
-                                                        color: AppColors
-                                                            .textPrimary,
-                                                      ),
+                                                    color:
+                                                        AppColors.textPrimary,
+                                                  ),
                                                 ),
                                                 SelectableText(
                                                   code,
-                                                  style: theme.textTheme.bodyMedium
+                                                  style: theme
+                                                      .textTheme.bodyMedium
                                                       ?.copyWith(
-                                                        fontFamily: 'monospace',
-                                                        color: AppColors.accent,
-                                                      ),
+                                                    fontFamily: 'monospace',
+                                                    color: AppColors.accent,
+                                                  ),
                                                 ),
                                                 Icon(
                                                   Icons.copy_rounded,
                                                   size: 18,
-                                                  color: AppColors.textSecondary,
+                                                  color:
+                                                      AppColors.textSecondary,
                                                 ),
                                               ],
                                             ),
@@ -389,8 +410,9 @@ class _SsaHomeTabState extends State<SsaHomeTab> {
                                                 usageLabel,
                                                 style: theme.textTheme.bodySmall
                                                     ?.copyWith(
-                                                      color: AppColors.textSecondary,
-                                                    ),
+                                                  color:
+                                                      AppColors.textSecondary,
+                                                ),
                                               ),
                                             ],
                                           ],
@@ -538,8 +560,8 @@ class _SsaShopkeepersTabState extends State<SsaShopkeepersTab> {
                 child: SingleChildScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
                   child: Padding(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: AppTokens.spaceMD),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: AppTokens.spaceMD),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -577,8 +599,7 @@ class _SsaShopkeepersTabState extends State<SsaShopkeepersTab> {
                               children: [
                                 Text(
                                   'Leads',
-                                  style:
-                                      theme.textTheme.titleMedium?.copyWith(
+                                  style: theme.textTheme.titleMedium?.copyWith(
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
@@ -613,8 +634,7 @@ class _SsaShopkeepersTabState extends State<SsaShopkeepersTab> {
                                           lead.shopName,
                                           style: theme.textTheme.titleMedium
                                               ?.copyWith(
-                                                  color:
-                                                      AppColors.textPrimary),
+                                                  color: AppColors.textPrimary),
                                         ),
                                         subtitle: Column(
                                           crossAxisAlignment:
@@ -623,8 +643,7 @@ class _SsaShopkeepersTabState extends State<SsaShopkeepersTab> {
                                             if (lead.phone.isNotEmpty)
                                               Text(
                                                 lead.phone,
-                                                style: theme
-                                                    .textTheme.bodySmall
+                                                style: theme.textTheme.bodySmall
                                                     ?.copyWith(
                                                   color:
                                                       AppColors.textSecondary,
@@ -636,8 +655,7 @@ class _SsaShopkeepersTabState extends State<SsaShopkeepersTab> {
                                                     .isNotEmpty)
                                               Text(
                                                 'Coupon: ${lead.couponCode}',
-                                                style: theme
-                                                    .textTheme.bodySmall
+                                                style: theme.textTheme.bodySmall
                                                     ?.copyWith(
                                                   color: AppColors.success,
                                                 ),
@@ -646,8 +664,7 @@ class _SsaShopkeepersTabState extends State<SsaShopkeepersTab> {
                                                 .isNotEmpty)
                                               Text(
                                                 'Invite: ${lead.inviteStatus}',
-                                                style: theme
-                                                    .textTheme.bodySmall
+                                                style: theme.textTheme.bodySmall
                                                     ?.copyWith(
                                                   color: lead.inviteStatus ==
                                                           'failed'
@@ -662,8 +679,7 @@ class _SsaShopkeepersTabState extends State<SsaShopkeepersTab> {
                                                         'lead_created_existing_user_linked'
                                                     ? 'Linked to existing shopkeeper'
                                                     : 'New shopkeeper invited',
-                                                style: theme
-                                                    .textTheme.bodySmall
+                                                style: theme.textTheme.bodySmall
                                                     ?.copyWith(
                                                   color:
                                                       AppColors.textSecondary,
@@ -727,8 +743,7 @@ class _SsaShopkeepersTabState extends State<SsaShopkeepersTab> {
                               children: [
                                 Text(
                                   'Shops',
-                                  style:
-                                      theme.textTheme.titleMedium?.copyWith(
+                                  style: theme.textTheme.titleMedium?.copyWith(
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
@@ -890,9 +905,8 @@ class _SsaProfileTabState extends State<SsaProfileTab> {
           future: _userFuture,
           builder: (context, snapshot) {
             final user = snapshot.data;
-            final displayName = user?.name.isEmpty == true || user == null
-                ? 'SSA'
-                : user.name;
+            final displayName =
+                user?.name.isEmpty == true || user == null ? 'SSA' : user.name;
 
             return Column(
               children: [

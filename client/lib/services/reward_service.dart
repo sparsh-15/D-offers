@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../models/role_enum.dart';
@@ -15,6 +16,7 @@ class RewardService {
 
   final http.Client _client = http.Client();
   static const Duration _timeout = Duration(seconds: 30);
+  final ValueNotifier<int?> walletBalanceNotifier = ValueNotifier<int?>(null);
 
   Uri _uri(String path, [Map<String, String>? query]) {
     return Uri.parse('${ApiConfig.baseUrl}/rewards$path').replace(
@@ -83,13 +85,49 @@ class RewardService {
     return '$action:$userId:$sourceRef';
   }
 
+  int? _parseBalance(dynamic raw) {
+    if (raw is num) return raw.toInt();
+    if (raw is String) return int.tryParse(raw);
+    return null;
+  }
+
+  void _publishBalance(int? balance) {
+    if (balance == null) return;
+    if (walletBalanceNotifier.value != balance) {
+      walletBalanceNotifier.value = balance;
+    }
+  }
+
+  int? _extractLedgerAmount(Map<String, dynamic>? payload) {
+    final ledger = payload?['ledgerEntry'];
+    if (ledger is Map<String, dynamic>) {
+      return _parseBalance(ledger['amount']);
+    }
+    return null;
+  }
+
+  int? get latestWalletBalance => walletBalanceNotifier.value;
+
+  Future<int?> refreshMyWalletBalance() async {
+    try {
+      final wallet = await getMyWallet();
+      final balance = _parseBalance(wallet['balance']);
+      _publishBalance(balance);
+      return balance;
+    } catch (_) {
+      return latestWalletBalance;
+    }
+  }
+
   Future<Map<String, dynamic>> getMyWallet() async {
     final response = await _send(() => _client.get(
           _uri('/wallet/me'),
           headers: _authHeaders(),
         ));
     final data = _handle(response) as Map<String, dynamic>;
-    return (data['wallet'] as Map<String, dynamic>?) ?? const {};
+    final wallet = (data['wallet'] as Map<String, dynamic>?) ?? const {};
+    _publishBalance(_parseBalance(wallet['balance']));
+    return wallet;
   }
 
   Future<Map<String, dynamic>> getMyLedger(
@@ -112,9 +150,9 @@ class RewardService {
     return _handle(response) as Map<String, dynamic>;
   }
 
-  Future<void> awardLikeReward(String offerId) async {
+  Future<Map<String, dynamic>> awardLikeReward(String offerId) async {
     final sourceRef = offerId.trim();
-    if (sourceRef.isEmpty) return;
+    if (sourceRef.isEmpty) return const {'success': false, 'duplicate': false};
 
     final response = await _send(() => _client.post(
           _uri('/customer/like'),
@@ -127,7 +165,19 @@ class RewardService {
           }),
         ));
 
-    _handle(response);
+    final data = _handle(response) as Map<String, dynamic>;
+    final walletBalance = _parseBalance(data['walletBalance']);
+    if (walletBalance != null) {
+      _publishBalance(walletBalance);
+    } else {
+      final amount = _extractLedgerAmount(data);
+      if (amount != null) {
+        _publishBalance((latestWalletBalance ?? 0) + amount);
+      } else {
+        await refreshMyWalletBalance();
+      }
+    }
+    return data;
   }
 
   Future<Map<String, dynamic>> reverseLikeReward(String offerId) async {
@@ -148,6 +198,17 @@ class RewardService {
         ));
 
     final data = _handle(response) as Map<String, dynamic>;
+    final walletBalance = _parseBalance(data['walletBalance']);
+    if (walletBalance != null) {
+      _publishBalance(walletBalance);
+    } else if (data['reversed'] == true) {
+      final amount = _extractLedgerAmount(data);
+      if (amount != null) {
+        _publishBalance((latestWalletBalance ?? 0) - amount);
+      } else {
+        await refreshMyWalletBalance();
+      }
+    }
     return data;
   }
 
@@ -187,7 +248,8 @@ class RewardService {
           }),
         ));
 
-    _handle(response);
+    final data = _handle(response) as Map<String, dynamic>;
+    _publishBalance(_parseBalance(data['walletBalance']));
   }
 
   Future<void> awardShopSaleReward(String saleId) async {
@@ -206,7 +268,8 @@ class RewardService {
           }),
         ));
 
-    _handle(response);
+    final data = _handle(response) as Map<String, dynamic>;
+    _publishBalance(_parseBalance(data['walletBalance']));
   }
 
   Future<void> awardInstallReward(
@@ -227,7 +290,8 @@ class RewardService {
           }),
         ));
 
-    _handle(response);
+    final data = _handle(response) as Map<String, dynamic>;
+    _publishBalance(_parseBalance(data['walletBalance']));
   }
 
   Future<Map<String, dynamic>> getShopkeeperMilestones() async {
