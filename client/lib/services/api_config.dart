@@ -6,7 +6,7 @@ class ApiConfig {
   /// Toggle between environments
   /// Set to false for local development
   /// Set to true for production/deployed backend
-  static const bool useProduction = true;
+  static const bool useProduction = false;
 
   /// Your machine's IP on the local network. Used for physical device & iOS.
   /// - Physical Android/iOS on same Wi‑Fi: use this (e.g. 192.168.29.47).
@@ -35,6 +35,7 @@ class ApiConfig {
   // Endpoints
   static String get authUrl => '$baseUrl/auth';
   static String get shopkeeperUrl => '$baseUrl/shopkeeper';
+  static String get businessUrl => '$baseUrl/business';
   static String get adminUrl => '$baseUrl/admin';
   static String get metaUrl => '$baseUrl/meta';
   static String get companySalesUrl => '$baseUrl/company-sales';

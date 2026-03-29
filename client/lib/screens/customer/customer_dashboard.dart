@@ -3,13 +3,19 @@ import '../../core/constants/app_colors.dart';
 import '../../core/utils/dialog_helper.dart';
 import 'customer_home_tab.dart';
 import 'customer_offers_tab.dart';
+import 'customer_claims_tab.dart';
 import 'customer_loans_tab.dart';
 import 'customer_favorites_tab.dart';
 import 'customer_profile_tab.dart';
 import 'customer_chat_bot_screen.dart';
 
 class CustomerDashboard extends StatefulWidget {
-  const CustomerDashboard({super.key});
+  const CustomerDashboard({
+    super.key,
+    this.initialTabIndex = 0,
+  });
+
+  final int initialTabIndex;
 
   @override
   State<CustomerDashboard> createState() => _CustomerDashboardState();
@@ -30,9 +36,13 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   @override
   void initState() {
     super.initState();
+    _selectedIndex = widget.initialTabIndex < 0
+        ? 0
+        : (widget.initialTabIndex > 5 ? 5 : widget.initialTabIndex);
     _screens = [
       CustomerHomeTab(onViewAllOffers: () => _onNavigateToTab(1)),
       const CustomerOffersTab(),
+      const CustomerClaimsTab(),
       const CustomerLoansTab(),
       CustomerFavoritesTab(
         key: _favoritesKey,
@@ -84,7 +94,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
           child: BottomNavigationBar(
             currentIndex: _selectedIndex,
             onTap: (index) {
-              if (index == 3) {
+              if (index == 4) {
                 // Auto-refresh favorites whenever the tab is opened
                 final state = _favoritesKey.currentState;
                 if (state != null && state.mounted) {
@@ -103,6 +113,10 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
               BottomNavigationBarItem(
                 icon: Icon(Icons.local_offer_rounded),
                 label: 'Offers',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.qr_code_2_rounded),
+                label: 'Claims',
               ),
               BottomNavigationBarItem(
                 icon: Icon(Icons.account_balance_rounded),

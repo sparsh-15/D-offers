@@ -8,6 +8,7 @@ import 'api_config.dart';
 import '../models/user_model.dart';
 import '../models/role_enum.dart';
 import '../models/offer_model.dart';
+import '../models/customer_claim_model.dart';
 import '../models/shopkeeper_profile_model.dart';
 import 'auth_store.dart';
 
@@ -100,8 +101,7 @@ class AuthService {
     }
     if (electricityConsumerNumber != null &&
         electricityConsumerNumber.trim().isNotEmpty) {
-      body['electricityConsumerNumber'] =
-          electricityConsumerNumber.trim();
+      body['electricityConsumerNumber'] = electricityConsumerNumber.trim();
     }
     if (aadhaarNumber != null && aadhaarNumber.trim().isNotEmpty) {
       body['aadhaarNumber'] = aadhaarNumber.trim();
@@ -627,6 +627,58 @@ class AuthService {
     _handleResponse(resp);
   }
 
+  Future<CustomerClaim> claimOffer(String offerId) async {
+    final token = AuthStore.token;
+    if (token == null) throw Exception('Not authenticated');
+
+    final uri =
+        Uri.parse('${ApiConfig.baseUrl}/customer/offers/$offerId/claim');
+    final resp = await _makeRequest(
+      () => _client.post(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      ),
+    );
+
+    final data = _handleResponse(resp) as Map<String, dynamic>;
+    final claim = Map<String, dynamic>.from(data['claim'] as Map? ?? const {});
+    return CustomerClaim.fromJson(claim);
+  }
+
+  Future<CustomerClaimsPage> getMyClaims({
+    int offset = 0,
+    int limit = 20,
+    String? status,
+  }) async {
+    final token = AuthStore.token;
+    if (token == null) throw Exception('Not authenticated');
+
+    final query = {
+      'offset': '$offset',
+      'limit': '$limit',
+      if (status != null && status.trim().isNotEmpty) 'status': status.trim(),
+    };
+
+    final uri = Uri.parse('${ApiConfig.baseUrl}/customer/claims').replace(
+      queryParameters: query,
+    );
+
+    final resp = await _makeRequest(
+      () => _client.get(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      ),
+    );
+
+    final data = _handleResponse(resp) as Map<String, dynamic>;
+    return CustomerClaimsPage.fromJson(data);
+  }
+
   Future<List<OfferModel>> getLikedOffers() async {
     final token = AuthStore.token;
     if (token == null) throw Exception('Not authenticated');
@@ -779,7 +831,10 @@ class AuthService {
     final response = _handleResponse(resp) as Map<String, dynamic>;
     final data = response['data'] as Map<String, dynamic>?;
     final raw = (data?['states'] as List<dynamic>? ?? const []);
-    return raw.map((entry) => entry.toString()).where((entry) => entry.trim().isNotEmpty).toList();
+    return raw
+        .map((entry) => entry.toString())
+        .where((entry) => entry.trim().isNotEmpty)
+        .toList();
   }
 
   Future<List<String>> getTargetCitiesByState(String state) async {
@@ -789,7 +844,10 @@ class AuthService {
     final response = _handleResponse(resp) as Map<String, dynamic>;
     final data = response['data'] as Map<String, dynamic>?;
     final raw = (data?['cities'] as List<dynamic>? ?? const []);
-    return raw.map((entry) => entry.toString()).where((entry) => entry.trim().isNotEmpty).toList();
+    return raw
+        .map((entry) => entry.toString())
+        .where((entry) => entry.trim().isNotEmpty)
+        .toList();
   }
 
   // Admin shopkeepers

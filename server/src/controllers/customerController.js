@@ -1,4 +1,5 @@
 const { prisma } = require('../db/prisma');
+const crypto = require('crypto');
 const offerRepository = require('../repositories/offerRepository');
 const userRepository = require('../repositories/userRepository');
 const { resolvePgId } = require('../repositories/idResolver');
@@ -8,6 +9,13 @@ const MAX_PERCENTAGE_DISCOUNT = 99;
 
 function ci(value) {
   return String(value || '').trim();
+}
+
+function hasEffectiveRole(user, targetRole) {
+  const userRoles = Array.isArray(user?.roles) && user.roles.length > 0
+    ? user.roles
+    : [user?.role];
+  return userRoles.includes(targetRole);
 }
 
 function normalizeCity(value) {
@@ -20,6 +28,61 @@ function normalizeAgentMaxDiscount(value) {
   if (!Number.isFinite(parsed) || !Number.isInteger(parsed)) return null;
   if (parsed < 1 || parsed > MAX_PERCENTAGE_DISCOUNT) return null;
   return parsed;
+}
+
+function buildClaimCouponCode() {
+  const random = crypto.randomBytes(3).toString('hex').toUpperCase();
+  const stamp = Date.now().toString(36).toUpperCase();
+  return `DL${stamp}${random}`;
+}
+
+async function generateUniqueClaimCouponCode() {
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    const code = buildClaimCouponCode();
+    // eslint-disable-next-line no-await-in-loop
+    const existing = await prisma.coupon.findUnique({ where: { code } });
+    if (!existing) return code;
+  }
+  throw new Error('Could not generate unique claim coupon code');
+}
+
+function serializeClaim(claim) {
+  const couponCode = claim.coupon?.code || '';
+  const payload = {
+    claimId: claim.id,
+    offerId: claim.offerId,
+    couponCode,
+  };
+
+  return {
+    id: claim.id,
+    status: claim.status,
+    claimedAt: claim.claimedAt,
+    redeemedAt: claim.redeemedAt,
+    expiresAt: claim.expiresAt,
+    offer: claim.offer
+      ? {
+          id: claim.offer.id,
+          title: claim.offer.title,
+          shopkeeperId: claim.offer.shopkeeperId,
+          validTo: claim.offer.validTo,
+          discountType: claim.offer.discountType,
+          discountValue: Number(claim.offer.discountValue || 0),
+        }
+      : null,
+    coupon: claim.coupon
+      ? {
+          id: claim.coupon.id,
+          code: claim.coupon.code,
+          discountType: claim.coupon.discountType,
+          discountValue: Number(claim.coupon.discountValue || 0),
+          expiryDate: claim.coupon.expiryDate,
+          maxUses: claim.coupon.maxUses,
+          currentUses: claim.coupon.currentUses,
+        }
+      : null,
+    qrPayload: JSON.stringify(payload),
+  };
 }
 
 async function listOffers(req, res, next) {
@@ -420,6 +483,170 @@ async function requestCallback(req, res, next) {
   }
 }
 
+async function claimOffer(req, res, next) {
+  try {
+    if (!hasEffectiveRole(req.user, 'customer')) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only customers can claim offers',
+      });
+    }
+
+    const offerIdInput = ci(req.params.id);
+    if (!offerIdInput) {
+      return res.status(400).json({ success: false, message: 'offerId is required' });
+    }
+
+    const offerId = await resolvePgId('offers', offerIdInput);
+    const customerId = await resolvePgId('users', req.user.userId);
+
+    if (!offerId) {
+      return res.status(404).json({ success: false, message: 'Offer not found' });
+    }
+    if (!customerId) {
+      return res.status(401).json({ success: false, message: 'Invalid authenticated user' });
+    }
+
+    const offer = await prisma.offer.findUnique({ where: { id: offerId } });
+    if (!offer) {
+      return res.status(404).json({ success: false, message: 'Offer not found' });
+    }
+    if (offer.status !== 'active') {
+      return res.status(400).json({ success: false, message: 'Offer is not active' });
+    }
+    if (offer.validTo && new Date(offer.validTo) <= new Date()) {
+      return res.status(400).json({ success: false, message: 'Offer has expired' });
+    }
+
+    const existingClaim = await prisma.customerOfferClaim.findUnique({
+      where: {
+        customerId_offerId: {
+          customerId,
+          offerId,
+        },
+      },
+      include: {
+        offer: true,
+        coupon: true,
+      },
+    });
+
+    if (existingClaim) {
+      return res.status(200).json({
+        success: true,
+        alreadyClaimed: true,
+        message: 'Offer already claimed',
+        claim: serializeClaim(existingClaim),
+      });
+    }
+
+    const code = await generateUniqueClaimCouponCode();
+
+    const claim = await prisma.$transaction(async (tx) => {
+      const coupon = await tx.coupon.create({
+        data: {
+          code,
+          discountType: offer.discountType,
+          discountValue: offer.discountValue || 0,
+          agentId: offer.shopkeeperId,
+          description: `Customer claim coupon for offer ${offer.id}`,
+          expiryDate: offer.validTo || null,
+          maxUses: 1,
+          currentUses: 0,
+          isActive: true,
+        },
+      });
+
+      return tx.customerOfferClaim.create({
+        data: {
+          customerId,
+          offerId: offer.id,
+          couponId: coupon.id,
+          status: 'active',
+          expiresAt: offer.validTo || null,
+          metadata: {
+            source: 'customer-claim-api',
+          },
+        },
+        include: {
+          offer: true,
+          coupon: true,
+        },
+      });
+    });
+
+    return res.status(201).json({
+      success: true,
+      alreadyClaimed: false,
+      message: 'Offer claimed successfully',
+      claim: serializeClaim(claim),
+    });
+  } catch (err) {
+    if (err.code === 'P2002') {
+      return res.status(409).json({
+        success: false,
+        message: 'Offer already claimed',
+      });
+    }
+    next(err);
+  }
+}
+
+async function listMyClaims(req, res, next) {
+  try {
+    if (!hasEffectiveRole(req.user, 'customer')) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only customers can view their claims',
+      });
+    }
+
+    const customerId = await resolvePgId('users', req.user.userId);
+    if (!customerId) {
+      return res.status(401).json({ success: false, message: 'Invalid authenticated user' });
+    }
+
+    const safeLimit = Math.min(Math.max(parseInt(req.query.limit, 10) || 20, 1), 100);
+    const safeOffset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
+    const status = ci(req.query.status).toLowerCase();
+
+    const where = {
+      customerId,
+      ...(status ? { status } : {}),
+    };
+
+    const [claims, total] = await Promise.all([
+      prisma.customerOfferClaim.findMany({
+        where,
+        include: {
+          offer: true,
+          coupon: true,
+        },
+        orderBy: {
+          claimedAt: 'desc',
+        },
+        skip: safeOffset,
+        take: safeLimit,
+      }),
+      prisma.customerOfferClaim.count({ where }),
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      claims: claims.map(serializeClaim),
+      pageInfo: {
+        offset: safeOffset,
+        limit: safeLimit,
+        total,
+        hasMore: safeOffset + claims.length < total,
+        nextOffset: safeOffset + claims.length < total ? safeOffset + claims.length : null,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 async function becomeSSA(req, res, next) {
   try {
     const user = await userRepository.findById(req.user.userId);
@@ -550,4 +777,13 @@ async function getOfferById(req, res, next) {
   }
 }
 
-module.exports = { listOffers, getOfferById, toggleLike, getLikedOffers, requestCallback, becomeSSA };
+module.exports = {
+  listOffers,
+  getOfferById,
+  toggleLike,
+  getLikedOffers,
+  requestCallback,
+  claimOffer,
+  listMyClaims,
+  becomeSSA,
+};

@@ -4,6 +4,7 @@ import '../../core/constants/app_design_tokens.dart';
 import '../../core/constants/app_strings.dart';
 import '../../core/utils/dialog_helper.dart';
 import '../../services/chat_assistant_service.dart';
+import 'customer_dashboard.dart';
 
 /// AI chat assistant screen — premium dark design.
 class CustomerChatBotScreen extends StatefulWidget {
@@ -28,10 +29,13 @@ class _CustomerChatBotScreenState extends State<CustomerChatBotScreen> {
   ];
 
   static final Map<String, String> _localFallback = {
-    'hello': "Hi! I'm your ${AppStrings.appName} assistant. What can I help you with today?",
+    'hello':
+        "Hi! I'm your ${AppStrings.appName} assistant. What can I help you with today?",
     'hi': "Hello! Ask me about deals, favorites, or how to use the app.",
-    'redeem': 'Show the offer to the shopkeeper at their store — they\'ll verify and apply the discount.',
-    'favorites': 'Tap the heart icon on any offer to save it. Find saved offers in the Favorites tab.',
+    'redeem':
+        'Show the offer to the shopkeeper at their store — they\'ll verify and apply the discount.',
+    'favorites':
+        'Tap the heart icon on any offer to save it. Find saved offers in the Favorites tab.',
     'how': 'Try: "What deals are near me?" or "How do I redeem an offer?"',
   };
 
@@ -40,7 +44,8 @@ class _CustomerChatBotScreenState extends State<CustomerChatBotScreen> {
     super.initState();
     _messages.add(
       _ChatMessage(
-        text: "Hi! I'm your ${AppStrings.appName} assistant. Ask me about deals near you, how to redeem offers, or anything else.",
+        text:
+            "Hi! I'm your ${AppStrings.appName} assistant. Ask me about deals near you, how to redeem offers, or anything else.",
         isUser: false,
         actions: const [],
       ),
@@ -80,7 +85,8 @@ class _CustomerChatBotScreenState extends State<CustomerChatBotScreen> {
 
     _inputController.clear();
     setState(() {
-      _messages.add(_ChatMessage(text: trimmed, isUser: true, actions: const []));
+      _messages
+          .add(_ChatMessage(text: trimmed, isUser: true, actions: const []));
       _isSending = true;
     });
     _scrollToEnd();
@@ -124,9 +130,16 @@ class _CustomerChatBotScreenState extends State<CustomerChatBotScreen> {
         break;
       case 'open_offer':
       case 'open_offers_tab':
-      case 'open_coupons_tab':
       case 'open_favorites':
         Navigator.of(context).popUntil((r) => r.isFirst);
+        break;
+      case 'open_coupons_tab':
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(
+            builder: (_) => const CustomerDashboard(initialTabIndex: 2),
+          ),
+          (route) => route.isFirst,
+        );
         break;
       default:
         break;
@@ -142,7 +155,8 @@ class _CustomerChatBotScreenState extends State<CustomerChatBotScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.background,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textSecondary),
+          icon: const Icon(Icons.arrow_back_rounded,
+              color: AppColors.textSecondary),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Row(
@@ -189,8 +203,10 @@ class _CustomerChatBotScreenState extends State<CustomerChatBotScreen> {
             child: ListView.builder(
               controller: _scrollController,
               padding: const EdgeInsets.fromLTRB(
-                AppTokens.spaceMD, AppTokens.spaceSM,
-                AppTokens.spaceMD, AppTokens.spaceMD,
+                AppTokens.spaceMD,
+                AppTokens.spaceSM,
+                AppTokens.spaceMD,
+                AppTokens.spaceMD,
               ),
               itemCount: _messages.length + (_isSending ? 1 : 0),
               itemBuilder: (ctx, i) {
@@ -225,14 +241,16 @@ class _CustomerChatBotScreenState extends State<CustomerChatBotScreen> {
                                     ),
                                     decoration: BoxDecoration(
                                       color: AppColors.elevated,
-                                      borderRadius: BorderRadius.circular(AppTokens.radiusFull),
+                                      borderRadius: BorderRadius.circular(
+                                          AppTokens.radiusFull),
                                       border: Border.all(
                                         color: AppColors.borderMid,
                                       ),
                                     ),
                                     child: Text(
                                       a.label,
-                                      style: theme.textTheme.bodySmall?.copyWith(
+                                      style:
+                                          theme.textTheme.bodySmall?.copyWith(
                                         color: AppColors.accent,
                                         fontWeight: FontWeight.w600,
                                       ),
@@ -305,9 +323,7 @@ class _CustomerChatBotScreenState extends State<CustomerChatBotScreen> {
                 ),
                 const SizedBox(width: AppTokens.spaceSM),
                 GestureDetector(
-                  onTap: _isSending
-                      ? null
-                      : () => _send(_inputController.text),
+                  onTap: _isSending ? null : () => _send(_inputController.text),
                   child: AnimatedContainer(
                     duration: AppTokens.durationFast,
                     width: 40,
@@ -527,7 +543,10 @@ class _SuggestedSection extends StatelessWidget {
         if (expanded)
           Padding(
             padding: const EdgeInsets.fromLTRB(
-              AppTokens.spaceMD, 0, AppTokens.spaceMD, AppTokens.spaceSM,
+              AppTokens.spaceMD,
+              0,
+              AppTokens.spaceMD,
+              AppTokens.spaceSM,
             ),
             child: Wrap(
               spacing: AppTokens.spaceSM,
@@ -543,7 +562,8 @@ class _SuggestedSection extends StatelessWidget {
                         ),
                         decoration: BoxDecoration(
                           color: AppColors.elevated,
-                          borderRadius: BorderRadius.circular(AppTokens.radiusFull),
+                          borderRadius:
+                              BorderRadius.circular(AppTokens.radiusFull),
                           border: Border.all(color: AppColors.borderSubtle),
                         ),
                         child: Text(

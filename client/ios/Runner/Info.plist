@@ -50,6 +50,8 @@
 	<string>We need your location to show offers near you</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>We need your location to show offers near you</string>
+	<key>NSCameraUsageDescription</key>
+	<string>We need camera access to scan customer QR coupon codes</string>
 	<!-- Allow HTTP connections for localhost (development) -->
 	<key>NSAppTransportSecurity</key>
 	<dict>

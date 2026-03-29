@@ -50,6 +50,8 @@ dependencies:
   cross_file: ^0.3.4+2
   flutter_secure_storage: ^10.0.0
   url_launcher: ^6.3.1
+  mobile_scanner: ^5.2.3
+  qr_flutter: ^4.1.0
 
 dev_dependencies:
   flutter_test:

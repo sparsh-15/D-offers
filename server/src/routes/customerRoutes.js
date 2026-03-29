@@ -21,9 +21,11 @@ router.use(
 );
 
 router.get('/offers', customerController.listOffers);
+router.post('/offers/:id/claim', requireRole(['customer', 'ssa']), customerController.claimOffer);
 router.post('/offers/:id/like', customerController.toggleLike);
 router.get('/offers/liked', customerController.getLikedOffers);
 router.get('/offers/:id', customerController.getOfferById);
+router.get('/claims', requireRole(['customer', 'ssa']), customerController.listMyClaims);
 router.post('/callbacks', customerController.requestCallback);
 router.post('/become-ssa', customerController.becomeSSA);
 router.get('/inbox', campaignController.listInbox);

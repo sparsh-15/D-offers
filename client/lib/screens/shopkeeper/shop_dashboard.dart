@@ -19,6 +19,7 @@ import 'campaigns_tab.dart';
 import 'create_campaign_screen.dart';
 import '../customer/customer_loans_tab.dart';
 import 'shop_rewards_screen.dart';
+import '../common/qr_redeem_entry_screen.dart';
 
 class ShopDashboard extends StatefulWidget {
   const ShopDashboard({super.key});
@@ -475,6 +476,16 @@ class _ShopHomeTabState extends State<ShopHomeTab> {
                             AppColors.accent,
                           ),
                         ),
+                        FadeInUp(
+                          delay: const Duration(milliseconds: 180),
+                          child: _buildQuickAction(
+                            context,
+                            'Verify Customer Coupon',
+                            'Scan or manually verify coupon redemptions',
+                            Icons.qr_code_scanner_rounded,
+                            AppColors.info,
+                          ),
+                        ),
                       ],
                     ),
                   );
@@ -592,6 +603,12 @@ class _ShopHomeTabState extends State<ShopHomeTab> {
             dashboardState?.setState(() {
               dashboardState._selectedIndex = 1;
             });
+          } else if (title == 'Verify Customer Coupon') {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const QrRedeemEntryScreen(),
+              ),
+            );
           }
         },
       ),

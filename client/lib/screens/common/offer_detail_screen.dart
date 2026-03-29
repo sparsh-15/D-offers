@@ -10,11 +10,14 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_design_tokens.dart';
 import '../../core/constants/app_strings.dart';
 import '../../models/offer_model.dart';
+import '../../models/role_enum.dart';
 import '../../models/shopkeeper_profile_model.dart';
 import '../../services/auth_service.dart';
+import '../../services/auth_store.dart';
 import '../../services/reward_service.dart';
 import '../../widgets/coin_splash_burst.dart';
 import '../../widgets/shop_logo_widget.dart';
+import '../customer/customer_dashboard.dart';
 
 /// Premium offer detail screen — full-bleed header, bottom-pinned CTA.
 class OfferDetailScreen extends StatefulWidget {
@@ -42,6 +45,7 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
   bool _isToggling = false;
   bool _termsExpanded = false;
   bool _isSubmittingCallback = false;
+  bool _isClaimingDeal = false;
   bool _isLoadingShop = false;
   String? _shopError;
   ShopkeeperProfileModel? _shopProfile;
@@ -299,117 +303,217 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
     );
   }
 
-  void _claimOffer() {
-    final code = widget.offer.id.substring(0, 8).toUpperCase();
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppColors.cardBackground,
-      shape: const RoundedRectangleBorder(
-        borderRadius:
-            BorderRadius.vertical(top: Radius.circular(AppTokens.radiusLG)),
-      ),
-      builder: (_) => Padding(
-        padding: const EdgeInsets.fromLTRB(
-          AppTokens.spaceLG,
-          AppTokens.spaceLG,
-          AppTokens.spaceLG,
-          AppTokens.space2XL,
+  Future<void> _claimOffer() async {
+    if (_isClaimingDeal) return;
+
+    final user = AuthStore.currentUser;
+    final hasClaimCapability = user == null ||
+        user.hasRole(UserRole.customer) ||
+        user.hasRole(UserRole.ssa);
+
+    if (!hasClaimCapability) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content:
+              Text('Your account does not have permission to claim offers'),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+      );
+      return;
+    }
+
+    setState(() => _isClaimingDeal = true);
+
+    try {
+      final claim = await AuthService.instance.claimOffer(widget.offer.id);
+      if (!mounted) return;
+
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: AppColors.cardBackground,
+        shape: const RoundedRectangleBorder(
+          borderRadius:
+              BorderRadius.vertical(top: Radius.circular(AppTokens.radiusLG)),
+        ),
+        builder: (_) => SafeArea(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(
+              AppTokens.spaceLG,
+              AppTokens.spaceLG,
+              AppTokens.spaceLG,
+              MediaQuery.of(context).viewInsets.bottom + AppTokens.space2XL,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: const BoxDecoration(
+                        color: AppColors.accent,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.check_rounded,
+                        color: AppColors.black,
+                        size: 24,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppTokens.spaceMD),
+                Text(
+                  'Congratulations!',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+                const SizedBox(height: AppTokens.spaceXS),
+                Text(
+                  claim.isRedeemed
+                      ? 'This claimed deal is already redeemed.'
+                      : 'Show this coupon code to the shopkeeper and ask them to scan your QR from Claims tab or enter code manually.',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                ),
+                const SizedBox(height: AppTokens.spaceLG),
                 Container(
-                  width: 40,
-                  height: 40,
-                  decoration: const BoxDecoration(
-                    color: AppColors.accent,
-                    shape: BoxShape.circle,
+                  padding: const EdgeInsets.all(AppTokens.spaceMD),
+                  decoration: BoxDecoration(
+                    color: AppColors.elevated,
+                    borderRadius: BorderRadius.circular(AppTokens.radiusMD),
                   ),
-                  child: const Icon(
-                    Icons.check_rounded,
-                    color: AppColors.black,
-                    size: 24,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Your claimed coupon',
+                        style:
+                            Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  color: AppColors.textPrimary,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                      ),
+                      const SizedBox(height: AppTokens.spaceSM),
+                      Text(
+                        claim.coupon.code,
+                        style:
+                            Theme.of(context).textTheme.displaySmall?.copyWith(
+                                  color: AppColors.accent,
+                                  letterSpacing: 2,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                      ),
+                      const SizedBox(height: AppTokens.spaceSM),
+                      Text(
+                        '1. Go to shop and open Claims tab for QR.\n'
+                        '2. Ask shopkeeper to use Verify Customer Coupon.\n'
+                        '3. They can scan QR or enter this code manually.',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: AppColors.textSecondary,
+                              height: 1.5,
+                            ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: AppTokens.spaceMD),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(text: claim.coupon.code));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Coupon code copied')),
+                      );
+                    },
+                    icon: const Icon(Icons.copy_rounded),
+                    label: const Text('Copy Coupon Code'),
+                  ),
+                ),
+                const SizedBox(height: AppTokens.spaceSM),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      Navigator.of(context).pushAndRemoveUntil(
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              const CustomerDashboard(initialTabIndex: 2),
+                        ),
+                        (route) => route.isFirst,
+                      );
+                    },
+                    icon: const Icon(Icons.qr_code_2_rounded),
+                    label: const Text('Open My Claims (QR)'),
+                  ),
+                ),
+                if (widget.offer.validTo != null) ...[
+                  const SizedBox(height: AppTokens.spaceSM),
+                  Text(
+                    'Valid until ${_formatDate(widget.offer.validTo!)}',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppColors.textMuted,
+                          fontWeight: FontWeight.w400,
+                        ),
+                  ),
+                ],
+                const SizedBox(height: AppTokens.spaceMD),
+                // Guided tooltip
+                Container(
+                  padding: const EdgeInsets.all(AppTokens.spaceSM),
+                  decoration: BoxDecoration(
+                    color: AppColors.info.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(AppTokens.radiusSM),
+                    border: Border.all(
+                      color: AppColors.info.withValues(alpha: 0.2),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.info_rounded,
+                        size: 16,
+                        color: AppColors.info,
+                      ),
+                      const SizedBox(width: AppTokens.spaceXS),
+                      Expanded(
+                        child: Text(
+                          'Open Claims tab to show QR to shopkeeper',
+                          style:
+                              Theme.of(context).textTheme.labelSmall?.copyWith(
+                                    color: AppColors.info,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: AppTokens.spaceMD),
-            Text(
-              'Congratulations!',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w700,
-                  ),
-            ),
-            const SizedBox(height: AppTokens.spaceXS),
-            Text(
-              'You’ve unlocked this deal. Show this code at the shop to redeem.',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-            ),
-            const SizedBox(height: AppTokens.spaceLG),
-            Text(
-              'Your deal code',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-            ),
-            const SizedBox(height: AppTokens.spaceSM),
-            Container(
-              padding: const EdgeInsets.symmetric(
-                vertical: AppTokens.spaceMD,
-                horizontal: AppTokens.spaceLG,
-              ),
-              decoration: BoxDecoration(
-                color: AppColors.elevated,
-                borderRadius: BorderRadius.circular(AppTokens.radiusMD),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    code,
-                    style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                          color: AppColors.accent,
-                          letterSpacing: 4,
-                          fontWeight: FontWeight.w700,
-                        ),
-                  ),
-                  GestureDetector(
-                    onTap: () {
-                      Clipboard.setData(ClipboardData(text: code));
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Code copied')),
-                      );
-                    },
-                    child: const Icon(Icons.copy_rounded,
-                        color: AppColors.textSecondary, size: AppTokens.iconMD),
-                  ),
-                ],
-              ),
-            ),
-            if (widget.offer.validTo != null) ...[
-              const SizedBox(height: AppTokens.spaceSM),
-              Text(
-                'Valid until ${_formatDate(widget.offer.validTo!)}',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppColors.textMuted,
-                      fontWeight: FontWeight.w400,
-                    ),
-              ),
-            ],
-          ],
+          ),
         ),
-      ),
-    );
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isClaimingDeal = false);
+      }
+    }
   }
 
   void _negotiateOffer() {
@@ -1354,10 +1458,13 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   ElevatedButton(
-                    onPressed: isExpired ? null : _claimOffer,
+                    onPressed:
+                        (isExpired || _isClaimingDeal) ? null : _claimOffer,
                     child: Text(isExpired
                         ? 'This deal has expired'
-                        : 'Unlock this deal'),
+                        : (_isClaimingDeal
+                            ? 'Claiming...'
+                            : 'Claim this deal')),
                   ),
                   const SizedBox(height: AppTokens.spaceSM),
                   Row(

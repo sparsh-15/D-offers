@@ -133,6 +133,43 @@ enum CallbackStatusEnum {
   @@map("callback_status_enum")
 }
 
+enum VerificationMethodEnum {
+  qr
+  manual
+
+  @@map("verification_method_enum")
+}
+
+enum RedemptionStatusEnum {
+  redeemed
+  reversed
+
+  @@map("redemption_status_enum")
+}
+
+enum ScanAttemptResultEnum {
+  verified
+  invalid
+  expired
+  usage_limit_reached
+  offer_not_found
+  coupon_not_found
+  already_redeemed
+  unauthorized
+  error
+
+  @@map("scan_attempt_result_enum")
+}
+
+enum CustomerClaimStatusEnum {
+  active
+  redeemed
+  expired
+  cancelled
+
+  @@map("customer_claim_status_enum")
+}
+
 enum CoinDirectionEnum {
   credit
   debit
@@ -235,6 +272,9 @@ model User {
   milestoneProgress      CoinMilestoneProgress?
   milestoneRedemptions   CoinMilestoneRedemption[]
   reconciliationRuns     CoinReconciliationRun[]
+  couponRedemptions      CouponRedemption[]
+  couponScanAttempts     CouponScanAttempt[]
+  customerOfferClaims    CustomerOfferClaim[]
 
   @@index([role, approvalStatus, createdAt(sort: Desc)], map: "idx_users_role_approval_created_desc")
   @@index([role, isActive, createdAt(sort: Desc)], map: "idx_users_role_active_created_desc")
@@ -292,6 +332,9 @@ model Offer {
   shopkeeper User        @relation("OfferShopkeeper", fields: [shopkeeperId], references: [id])
   likes      OfferLike[]
   campaigns  Campaign[]  @relation("OfferCampaigns")
+  couponRedemptions CouponRedemption[]
+  couponScanAttempts CouponScanAttempt[]
+  customerClaims CustomerOfferClaim[]
 
   @@index([shopkeeperId, createdAt(sort: Desc)], map: "idx_offers_shopkeeper_created_desc")
   @@index([status, createdAt(sort: Desc)], map: "idx_offers_status_created_desc")
@@ -531,10 +574,85 @@ model Coupon {
   updatedAt     DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   agent User @relation("CouponAgent", fields: [agentId], references: [id])
+  redemptions CouponRedemption[]
+  scanAttempts CouponScanAttempt[]
+  customerClaims CustomerOfferClaim[]
 
   @@index([agentId, createdAt(sort: Desc)], map: "idx_coupons_agent_created_desc")
   @@index([isActive, createdAt(sort: Desc)], map: "idx_coupons_active_created_desc")
   @@map("coupons")
+}
+
+model CouponRedemption {
+  id                 String               @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  couponId           String               @map("coupon_id") @db.Uuid
+  offerId            String               @map("offer_id") @db.Uuid
+  redeemedByUserId   String               @map("redeemed_by_user_id") @db.Uuid
+  verificationMethod VerificationMethodEnum @map("verification_method")
+  status             RedemptionStatusEnum @default(redeemed)
+  idempotencyKey     String?              @unique @map("idempotency_key")
+  metadata           Json                 @default("{}")
+  redeemedAt         DateTime             @default(now()) @map("redeemed_at") @db.Timestamptz(6)
+  createdAt          DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  coupon         Coupon @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  offer          Offer  @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  redeemedByUser User   @relation(fields: [redeemedByUserId], references: [id], onDelete: Cascade)
+
+  @@unique([couponId, offerId], map: "uq_coupon_redemptions_coupon_offer")
+  @@index([couponId, createdAt(sort: Desc)], map: "idx_coupon_redemptions_coupon_created_desc")
+  @@index([offerId, createdAt(sort: Desc)], map: "idx_coupon_redemptions_offer_created_desc")
+  @@index([redeemedByUserId, createdAt(sort: Desc)], map: "idx_coupon_redemptions_actor_created_desc")
+  @@map("coupon_redemptions")
+}
+
+model CouponScanAttempt {
+  id                 String                @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  attemptedCode      String                @map("attempted_code")
+  normalizedCode     String?               @map("normalized_code")
+  couponId           String?               @map("coupon_id") @db.Uuid
+  offerId            String?               @map("offer_id") @db.Uuid
+  actorUserId        String                @map("actor_user_id") @db.Uuid
+  verificationMethod VerificationMethodEnum @map("verification_method")
+  result             ScanAttemptResultEnum
+  reason             String?
+  idempotencyKey     String?               @map("idempotency_key")
+  ipAddress          String?               @map("ip_address")
+  createdAt          DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  coupon    Coupon? @relation(fields: [couponId], references: [id], onDelete: SetNull)
+  offer     Offer?  @relation(fields: [offerId], references: [id], onDelete: SetNull)
+  actorUser User    @relation(fields: [actorUserId], references: [id], onDelete: Cascade)
+
+  @@index([normalizedCode, createdAt(sort: Desc)], map: "idx_coupon_scan_attempts_code_created_desc")
+  @@index([couponId, createdAt(sort: Desc)], map: "idx_coupon_scan_attempts_coupon_created_desc")
+  @@index([offerId, createdAt(sort: Desc)], map: "idx_coupon_scan_attempts_offer_created_desc")
+  @@index([actorUserId, createdAt(sort: Desc)], map: "idx_coupon_scan_attempts_actor_created_desc")
+  @@map("coupon_scan_attempts")
+}
+
+model CustomerOfferClaim {
+  id          String                  @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  customerId  String                  @map("customer_id") @db.Uuid
+  offerId     String                  @map("offer_id") @db.Uuid
+  couponId    String                  @unique @map("coupon_id") @db.Uuid
+  status      CustomerClaimStatusEnum @default(active)
+  claimedAt   DateTime                @default(now()) @map("claimed_at") @db.Timestamptz(6)
+  redeemedAt  DateTime?               @map("redeemed_at") @db.Timestamptz(6)
+  expiresAt   DateTime?               @map("expires_at") @db.Timestamptz(6)
+  metadata    Json                    @default("{}")
+  createdAt   DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime                @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  customer User  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  offer    Offer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  coupon   Coupon @relation(fields: [couponId], references: [id], onDelete: Cascade)
+
+  @@unique([customerId, offerId], map: "uq_customer_offer_claims_customer_offer")
+  @@index([customerId, claimedAt(sort: Desc)], map: "idx_customer_offer_claims_customer_claimed_desc")
+  @@index([offerId, claimedAt(sort: Desc)], map: "idx_customer_offer_claims_offer_claimed_desc")
+  @@index([status, claimedAt(sort: Desc)], map: "idx_customer_offer_claims_status_claimed_desc")
+  @@map("customer_offer_claims")
 }
 
 model OnboardingStatus {

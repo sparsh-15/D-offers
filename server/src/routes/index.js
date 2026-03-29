@@ -16,6 +16,7 @@ const subscriptionGovernanceRoutes = require('./subscriptionGovernanceRoutes');
 const agentGovernanceRoutes = require('./agentGovernanceRoutes');
 const aiRoutes = require('./aiRoutes');
 const rewardRoutes = require('./rewardRoutes');
+const businessRoutes = require('./businessRoutes');
 
 const router = express.Router();
 
@@ -36,5 +37,6 @@ router.use('/subscription-governance', subscriptionGovernanceRoutes);
 router.use('/agent-governance', agentGovernanceRoutes);
 router.use('/ai', aiRoutes);
 router.use('/rewards', rewardRoutes);
+router.use('/business', businessRoutes);
 
 module.exports = router;
