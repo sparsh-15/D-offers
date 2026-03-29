@@ -51,10 +51,6 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
 
   late AnimationController _heartController;
   late Animation<double> _heartScale;
-  bool _showCoinSplash = false;
-  int _coinSplashAmount = 0;
-  bool _coinSplashDebit = false;
-  int _coinSplashKey = 0;
 
   @override
   void initState() {
@@ -98,12 +94,11 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
 
   void _playCoinSplash({required int amount, required bool isDebit}) {
     if (!mounted) return;
-    setState(() {
-      _coinSplashAmount = amount;
-      _coinSplashDebit = isDebit;
-      _coinSplashKey += 1;
-      _showCoinSplash = true;
-    });
+    showCoinSplashFullscreen(
+      context,
+      amount: amount,
+      isDebit: isDebit,
+    );
   }
 
   void _startOfferPhotoAutoPlay() {
@@ -158,19 +153,19 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
       final isLikedNow = result['isLiked'] as bool;
 
       if (isLikedNow) {
+        int splashAmount = 50;
         try {
           final reward =
               await RewardService.instance.awardLikeReward(widget.offer.id);
           await RewardService.instance.refreshMyWalletBalance();
-          if (reward['duplicate'] != true) {
-            _playCoinSplash(
-              amount: _extractLedgerAmount(reward),
-              isDebit: false,
-            );
-          }
+          splashAmount = _extractLedgerAmount(reward);
         } catch (rewardError) {
           debugPrint('Like reward award failed: $rewardError');
         }
+        _playCoinSplash(
+          amount: splashAmount,
+          isDebit: false,
+        );
       } else {
         try {
           final reversal =
@@ -1380,22 +1375,6 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                         clipBehavior: Clip.none,
                         alignment: Alignment.centerRight,
                         children: [
-                          if (_showCoinSplash)
-                            Positioned(
-                              top: -36,
-                              right: 0,
-                              child: CoinSplashBurst(
-                                key: ValueKey(_coinSplashKey),
-                                amount: _coinSplashAmount,
-                                isDebit: _coinSplashDebit,
-                                onCompleted: () {
-                                  if (!mounted) return;
-                                  setState(() {
-                                    _showCoinSplash = false;
-                                  });
-                                },
-                              ),
-                            ),
                           ScaleTransition(
                             scale: _heartScale,
                             child: GestureDetector(

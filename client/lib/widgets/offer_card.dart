@@ -47,10 +47,6 @@ class _OfferCardState extends State<OfferCard> with TickerProviderStateMixin {
   bool _isToggling = false;
   late AnimationController _heartController;
   late Animation<double> _heartScale;
-  bool _showCoinSplash = false;
-  int _coinSplashAmount = 0;
-  bool _coinSplashDebit = false;
-  int _coinSplashKey = 0;
   double _bannerAspectRatio = _defaultBannerAspectRatio;
   ImageStream? _imageStream;
   ImageStreamListener? _imageStreamListener;
@@ -116,12 +112,11 @@ class _OfferCardState extends State<OfferCard> with TickerProviderStateMixin {
 
   void _playCoinSplash({required int amount, required bool isDebit}) {
     if (!mounted) return;
-    setState(() {
-      _coinSplashAmount = amount;
-      _coinSplashDebit = isDebit;
-      _coinSplashKey += 1;
-      _showCoinSplash = true;
-    });
+    showCoinSplashFullscreen(
+      context,
+      amount: amount,
+      isDebit: isDebit,
+    );
   }
 
   void _clearImageListener() {
@@ -181,19 +176,19 @@ class _OfferCardState extends State<OfferCard> with TickerProviderStateMixin {
       });
 
       if (isLikedNow) {
+        int splashAmount = 50;
         try {
           final reward =
               await RewardService.instance.awardLikeReward(widget.offer.id);
           await RewardService.instance.refreshMyWalletBalance();
-          if (reward['duplicate'] != true) {
-            _playCoinSplash(
-              amount: _extractLedgerAmount(reward),
-              isDebit: false,
-            );
-          }
+          splashAmount = _extractLedgerAmount(reward);
         } catch (rewardError) {
           debugPrint('Like reward award failed: $rewardError');
         }
+        _playCoinSplash(
+          amount: splashAmount,
+          isDebit: false,
+        );
       } else {
         try {
           final reversal =
@@ -292,221 +287,213 @@ class _OfferCardState extends State<OfferCard> with TickerProviderStateMixin {
 
     final hasPhoto = widget.offer.photos.isNotEmpty;
 
-    return Material(
-      color: AppColors.cardBackground,
-      borderRadius: BorderRadius.circular(AppTokens.radiusLG),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: _handleTap,
-        splashColor: AppColors.highlight.withValues(alpha: 0.4),
-        highlightColor: AppColors.highlight.withValues(alpha: 0.2),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // ── Banner / image (fixed aspect ratio for consistent thumbnails) ─
-            AspectRatio(
-              aspectRatio: _bannerAspectRatio,
-              child: hasPhoto
-                  ? Container(
-                      color: AppColors.elevated,
-                      child: CachedNetworkImage(
-                        imageUrl: widget.offer.photos.first,
-                        fit: BoxFit.contain,
-                        placeholder: (_, __) => const Center(
-                          child: SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(strokeWidth: 2),
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Material(
+          color: AppColors.cardBackground,
+          borderRadius: BorderRadius.circular(AppTokens.radiusLG),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: _handleTap,
+            splashColor: AppColors.highlight.withValues(alpha: 0.4),
+            highlightColor: AppColors.highlight.withValues(alpha: 0.2),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // ── Banner / image (fixed aspect ratio for consistent thumbnails) ─
+                AspectRatio(
+                  aspectRatio: _bannerAspectRatio,
+                  child: hasPhoto
+                      ? Container(
+                          color: AppColors.elevated,
+                          child: CachedNetworkImage(
+                            imageUrl: widget.offer.photos.first,
+                            fit: BoxFit.contain,
+                            placeholder: (_, __) => const Center(
+                              child: SizedBox(
+                                width: 24,
+                                height: 24,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
+                              ),
+                            ),
+                            errorWidget: (_, __, ___) => const Icon(
+                              Icons.broken_image_outlined,
+                              color: AppColors.textMuted,
+                            ),
                           ),
+                        )
+                      : const OfferBannerPreview(
+                          title: '',
+                          discountType: '',
+                          discountValue: null,
+                          width: double.infinity,
+                          height: double.infinity,
                         ),
-                        errorWidget: (_, __, ___) => const Icon(
-                          Icons.broken_image_outlined,
-                          color: AppColors.textMuted,
-                        ),
-                      ),
-                    )
-                  : const OfferBannerPreview(
-                      title: '',
-                      discountType: '',
-                      discountValue: null,
-                      width: double.infinity,
-                      height: double.infinity,
-                    ),
-            ),
+                ),
 
-            // ── Info strip ─────────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppTokens.spaceMD,
-                AppTokens.spaceSM + 2,
-                AppTokens.spaceSM,
-                AppTokens.spaceSM + 2,
-              ),
-              child: Row(
-                children: [
-                  // Shop name + discount badge
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            ShopLogoWidget(
-                              logoUrl: widget.offer.shopLogoUrl,
-                              radius: 12,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                shopDisplayName,
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  color: AppColors.textPrimary,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                        if (tierLabel != null && tierLabel.isNotEmpty) ...[
-                          const SizedBox(height: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color:
-                                  AppColors.accentDim.withValues(alpha: 0.18),
-                              borderRadius:
-                                  BorderRadius.circular(AppTokens.radiusFull),
-                              border: Border.all(
-                                color:
-                                    AppColors.accentDim.withValues(alpha: 0.5),
-                              ),
-                            ),
-                            child: Text(
-                              tierLabel.toUpperCase(),
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: AppColors.accentDim,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 0.6,
-                                fontSize: 10,
-                              ),
-                            ),
-                          ),
-                        ],
-                        const SizedBox(height: 2),
-                        Row(
-                          children: [
-                            Text(
-                              discountLabel,
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: AppColors.accent,
-                                letterSpacing: 0.5,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            if (widget.offer.discountType == 'percentage')
-                              Text(
-                                ' OFF',
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: AppColors.accent,
-                                  letterSpacing: 0.5,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            if (isExpired) ...[
-                              const SizedBox(width: AppTokens.spaceSM),
-                              Text(
-                                'EXPIRED',
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: AppColors.error,
-                                  letterSpacing: 0.6,
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                        if (widget.offer.validTo != null)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 2),
-                            child: Text(
-                              _formatValidity(widget.offer.validTo!),
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: AppColors.textMuted,
-                                letterSpacing: 0.2,
-                                fontWeight: FontWeight.w400,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
+                // ── Info strip ─────────────────────────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppTokens.spaceMD,
+                    AppTokens.spaceSM + 2,
+                    AppTokens.spaceSM,
+                    AppTokens.spaceSM + 2,
                   ),
-
-                  // Like button
-                  if (widget.trailing != null)
-                    widget.trailing!
-                  else if (widget.showLikes)
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Stack(
-                          clipBehavior: Clip.none,
-                          alignment: Alignment.center,
+                  child: Row(
+                    children: [
+                      // Shop name + discount badge
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            if (_showCoinSplash)
-                              Positioned(
-                                top: -36,
-                                child: CoinSplashBurst(
-                                  key: ValueKey(_coinSplashKey),
-                                  amount: _coinSplashAmount,
-                                  isDebit: _coinSplashDebit,
-                                  onCompleted: () {
-                                    if (!mounted) return;
-                                    setState(() {
-                                      _showCoinSplash = false;
-                                    });
-                                  },
+                            Row(
+                              children: [
+                                ShopLogoWidget(
+                                  logoUrl: widget.offer.shopLogoUrl,
+                                  radius: 12,
                                 ),
-                              ),
-                            ScaleTransition(
-                              scale: _heartScale,
-                              child: GestureDetector(
-                                onTap: _toggleLike,
-                                child: Padding(
-                                  padding:
-                                      const EdgeInsets.all(AppTokens.spaceSM),
-                                  child: Icon(
-                                    _isLiked
-                                        ? Icons.favorite_rounded
-                                        : Icons.favorite_outline_rounded,
-                                    color: _isLiked
-                                        ? AppColors.error
-                                        : AppColors.textMuted,
-                                    size: AppTokens.iconMD,
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    shopDisplayName,
+                                    style:
+                                        theme.textTheme.titleMedium?.copyWith(
+                                      color: AppColors.textPrimary,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (tierLabel != null && tierLabel.isNotEmpty) ...[
+                              const SizedBox(height: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.accentDim
+                                      .withValues(alpha: 0.18),
+                                  borderRadius: BorderRadius.circular(
+                                      AppTokens.radiusFull),
+                                  border: Border.all(
+                                    color: AppColors.accentDim
+                                        .withValues(alpha: 0.5),
+                                  ),
+                                ),
+                                child: Text(
+                                  tierLabel.toUpperCase(),
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: AppColors.accentDim,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 0.6,
+                                    fontSize: 10,
                                   ),
                                 ),
                               ),
+                            ],
+                            const SizedBox(height: 2),
+                            Row(
+                              children: [
+                                Text(
+                                  discountLabel,
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: AppColors.accent,
+                                    letterSpacing: 0.5,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                if (widget.offer.discountType == 'percentage')
+                                  Text(
+                                    ' OFF',
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: AppColors.accent,
+                                      letterSpacing: 0.5,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                if (isExpired) ...[
+                                  const SizedBox(width: AppTokens.spaceSM),
+                                  Text(
+                                    'EXPIRED',
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: AppColors.error,
+                                      letterSpacing: 0.6,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                            if (widget.offer.validTo != null)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 2),
+                                child: Text(
+                                  _formatValidity(widget.offer.validTo!),
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: AppColors.textMuted,
+                                    letterSpacing: 0.2,
+                                    fontWeight: FontWeight.w400,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+
+                      // Like button
+                      if (widget.trailing != null)
+                        widget.trailing!
+                      else if (widget.showLikes)
+                        Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Stack(
+                              clipBehavior: Clip.none,
+                              alignment: Alignment.center,
+                              children: [
+                                ScaleTransition(
+                                  scale: _heartScale,
+                                  child: GestureDetector(
+                                    onTap: _toggleLike,
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(
+                                          AppTokens.spaceSM),
+                                      child: Icon(
+                                        _isLiked
+                                            ? Icons.favorite_rounded
+                                            : Icons.favorite_outline_rounded,
+                                        color: _isLiked
+                                            ? AppColors.error
+                                            : AppColors.textMuted,
+                                        size: AppTokens.iconMD,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Text(
+                              '$_likesCount',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: AppColors.textMuted,
+                                fontWeight: FontWeight.w400,
+                              ),
                             ),
                           ],
                         ),
-                        Text(
-                          '$_likesCount',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: AppColors.textMuted,
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
-                      ],
-                    ),
-                ],
-              ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
 
