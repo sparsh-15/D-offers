@@ -186,21 +186,29 @@ class _RedemptionHistoryScreenState extends State<RedemptionHistoryScreen> {
                     border: Border.all(color: AppColors.borderSubtle),
                   ),
                   child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
+                    child: DropdownButton<String?>(
                       isExpanded: true,
-                      value: _selectedOfferId,
+                      value: _selectedOfferId != null &&
+                              _offers.any((o) => o.id == _selectedOfferId)
+                          ? _selectedOfferId
+                          : null,
                       dropdownColor: AppColors.elevated,
                       hint: Text(
                         'Filter by offer',
                         style: theme.textTheme.bodyMedium,
                       ),
                       items: [
-                        const DropdownMenuItem<String>(
+                        const DropdownMenuItem<String?>(
                           value: null,
                           child: Text('All offers'),
                         ),
-                        ..._offers.map(
-                          (offer) => DropdownMenuItem<String>(
+                        ..._offers.toSet().fold<List<OfferModel>>(
+                          [],
+                          (unique, offer) => unique.any((o) => o.id == offer.id)
+                              ? unique
+                              : [...unique, offer],
+                        ).map(
+                          (offer) => DropdownMenuItem<String?>(
                             value: offer.id,
                             child: Text(
                               offer.title,

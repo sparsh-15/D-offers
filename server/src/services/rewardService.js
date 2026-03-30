@@ -664,8 +664,36 @@ async function getWalletLedger({ userId, limit = 20, skip = 0 }) {
     prisma.coinLedgerEntry.count({ where: { userId } }),
   ]);
 
+  const offerRefEntries = entries.filter((entry) => {
+    if (!entry?.sourceRef) return false;
+    if (entry.actionType === 'like_offer') return true;
+    return entry.actionType === 'reversal' && entry?.metadata?.trigger === 'unlike_offer';
+  });
+
+  const offerIds = Array.from(new Set(offerRefEntries.map((entry) => entry.sourceRef)));
+  const offers = offerIds.length
+    ? await prisma.offer.findMany({
+        where: { id: { in: offerIds } },
+        select: { id: true, title: true },
+      })
+    : [];
+
+  const offerTitleById = offers.reduce((map, offer) => {
+    map[offer.id] = offer.title || 'Offer';
+    return map;
+  }, {});
+
+  const hydratedEntries = entries.map((entry) => {
+    const fallbackTitle = entry?.metadata?.offerTitle;
+    const title = offerTitleById[entry.sourceRef] || fallbackTitle || null;
+    return {
+      ...entry,
+      sourceLabel: title,
+    };
+  });
+
   return {
-    entries,
+    entries: hydratedEntries,
     total,
     limit: safeLimit,
     skip: safeSkip,

@@ -1458,13 +1458,16 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   ElevatedButton(
-                    onPressed:
-                        (isExpired || _isClaimingDeal) ? null : _claimOffer,
-                    child: Text(isExpired
-                        ? 'This deal has expired'
-                        : (_isClaimingDeal
-                            ? 'Claiming...'
-                            : 'Claim this deal')),
+                    onPressed: widget.offer.isClaimed
+                        ? null
+                        : ((isExpired || _isClaimingDeal) ? null : _claimOffer),
+                    child: Text(widget.offer.isClaimed
+                        ? 'Already claimed ✓'
+                        : (isExpired
+                            ? 'This deal has expired'
+                            : (_isClaimingDeal
+                                ? 'Claiming...'
+                                : 'Claim this deal'))),
                   ),
                   const SizedBox(height: AppTokens.spaceSM),
                   Row(

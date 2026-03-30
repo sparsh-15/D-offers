@@ -301,6 +301,19 @@ async function redeemCoupon({
       },
     });
 
+    // Get all customers who claimed this coupon before marking as redeemed
+    const claims = await tx.customerOfferClaim.findMany({
+      where: {
+        couponId: evaluation.coupon.id,
+        status: 'active',
+      },
+      select: {
+        userId: true,
+      },
+    });
+
+    const customerIds = claims.map((c) => c.userId);
+
     await tx.customerOfferClaim.updateMany({
       where: {
         couponId: evaluation.coupon.id,
@@ -312,7 +325,7 @@ async function redeemCoupon({
       },
     });
 
-    return created;
+    return { ...created, customerIds };
   });
 
   await logScanAttempt({
@@ -340,6 +353,7 @@ async function redeemCoupon({
       verificationMethod: redemption.verificationMethod,
       status: redemption.status,
       redeemedAt: redemption.redeemedAt,
+      customerIds: redemption.customerIds || [],
     },
     verification: serializeVerificationPayload(evaluation),
   };

@@ -320,6 +320,15 @@ async function listOffers(req, res, next) {
     });
     const likedOfferIds = new Set(likes.map((l) => l.offerId));
 
+    const claims = await prisma.customerOfferClaim.findMany({
+      where: {
+        customerId: pgUserId,
+        offerId: { in: offersRaw.map((o) => o.id) },
+      },
+      select: { offerId: true },
+    });
+    const claimedOfferIds = new Set(claims.map((c) => c.offerId));
+
     const nextOffset = offsetNum + offersRaw.length;
     const hasMore = nextOffset < total;
 
@@ -342,6 +351,7 @@ async function listOffers(req, res, next) {
         status: o.status || 'active',
         likesCount: o.likesCount || 0,
         isLiked: likedOfferIds.has(o.id),
+        isClaimed: claimedOfferIds.has(o.id),
         createdAt: o.createdAt ? o.createdAt.toISOString() : null,
         updatedAt: o.updatedAt ? o.updatedAt.toISOString() : null,
       })),
@@ -406,6 +416,16 @@ async function getLikedOffers(req, res, next) {
       shopNameByUserId[p.userId] = p.shopName || 'Shop';
       shopLogoByUserId[p.userId] = p.logoUrl || null;
     });
+
+    const claims = await prisma.customerOfferClaim.findMany({
+      where: {
+        customerId: userId,
+        offerId: { in: offerIds },
+      },
+      select: { offerId: true },
+    });
+    const claimedOfferIds = new Set(claims.map((c) => c.offerId));
+
     res.status(200).json({
       success: true,
       offers: offers.map((o) => ({
@@ -425,6 +445,7 @@ async function getLikedOffers(req, res, next) {
         status: o.status || 'active',
         likesCount: o.likesCount || 0,
         isLiked: true,
+        isClaimed: claimedOfferIds.has(o.id),
         createdAt: o.createdAt ? o.createdAt.toISOString() : null,
         updatedAt: o.updatedAt ? o.updatedAt.toISOString() : null,
       })),

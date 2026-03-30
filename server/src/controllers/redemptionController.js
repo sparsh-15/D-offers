@@ -4,6 +4,7 @@ const {
   redeemCoupon,
   getRedemptionHistory,
 } = require('../services/qrRedemptionService');
+const rewardService = require('../services/rewardService');
 
 function ci(value) {
   return String(value || '').trim();
@@ -134,6 +135,51 @@ async function redeem(req, res, next) {
         message: result.message,
         result: result.result,
       });
+    }
+
+    // Award coins to shopkeeper (sale_closed)
+    if (!result.idempotentReplay) {
+      try {
+        await rewardService.awardReward({
+          userId: req.user.userId,
+          userRole: req.user.role,
+          userRoles: req.user.roles,
+          actionType: 'sale_closed',
+          sourceRef: result.redemption.id,
+          idempotencyKey: ci(req.headers['x-idempotency-key']) || null,
+          metadata: {
+            redemptionId: result.redemption.id,
+            offerId: result.redemption.offerId,
+            couponId: result.redemption.couponId,
+          },
+        });
+      } catch (rewardErr) {
+        console.error('[REDEMPTION] Failed to award shopkeeper coins:', rewardErr);
+      }
+
+      // Award coins to all customers who claimed this coupon (purchase_success)
+      if (result.redemption.customerIds && result.redemption.customerIds.length > 0) {
+        for (const customerId of result.redemption.customerIds) {
+          try {
+            await rewardService.awardReward({
+              userId: customerId,
+              userRole: 'customer',
+              userRoles: ['customer'],
+              actionType: 'purchase_success',
+              sourceRef: result.redemption.id,
+              idempotencyKey: null,
+              metadata: {
+                redemptionId: result.redemption.id,
+                offerId: result.redemption.offerId,
+                couponId: result.redemption.couponId,
+                awardedFrom: 'sale_redemption',
+              },
+            });
+          } catch (rewardErr) {
+            console.error('[REDEMPTION] Failed to award customer coins:', rewardErr);
+          }
+        }
+      }
     }
 
     return res.status(200).json({

@@ -15,6 +15,7 @@ class OfferModel {
   final String status;
   final int likesCount;
   final bool isLiked;
+  final bool isClaimed;
   final String shopRankingTier;
   final bool isFeatured;
   final DateTime? createdAt;
@@ -37,6 +38,7 @@ class OfferModel {
     required this.status,
     required this.likesCount,
     this.isLiked = false,
+    this.isClaimed = false,
     this.shopRankingTier = 'normal',
     this.isFeatured = false,
     this.createdAt,
@@ -60,6 +62,7 @@ class OfferModel {
     String? status,
     int? likesCount,
     bool? isLiked,
+    bool? isClaimed,
     String? shopRankingTier,
     bool? isFeatured,
     DateTime? createdAt,
@@ -82,6 +85,7 @@ class OfferModel {
       status: status ?? this.status,
       likesCount: likesCount ?? this.likesCount,
       isLiked: isLiked ?? this.isLiked,
+      isClaimed: isClaimed ?? this.isClaimed,
       shopRankingTier: shopRankingTier ?? this.shopRankingTier,
       isFeatured: isFeatured ?? this.isFeatured,
       createdAt: createdAt ?? this.createdAt,
@@ -94,7 +98,8 @@ class OfferModel {
       id: json['id']?.toString() ?? '',
       shopkeeperId: json['shopkeeperId']?.toString() ?? '',
       shopName: json['shopName']?.toString(),
-      shopLogoUrl: json['shopLogoUrl']?.toString() ?? json['logoUrl']?.toString(),
+      shopLogoUrl:
+          json['shopLogoUrl']?.toString() ?? json['logoUrl']?.toString(),
       title: json['title']?.toString() ?? '',
       description: json['description']?.toString() ?? '',
       photos: json['photos'] != null
@@ -113,6 +118,7 @@ class OfferModel {
       status: json['status']?.toString() ?? '',
       likesCount: int.tryParse(json['likesCount']?.toString() ?? '0') ?? 0,
       isLiked: json['isLiked'] as bool? ?? false,
+      isClaimed: json['isClaimed'] as bool? ?? false,
       shopRankingTier: json['shopRankingTier']?.toString() ?? 'normal',
       isFeatured: json['isFeatured'] as bool? ?? false,
       createdAt: json['createdAt'] != null
