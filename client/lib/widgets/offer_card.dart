@@ -6,8 +6,7 @@ import '../core/constants/app_design_tokens.dart';
 import '../models/offer_model.dart';
 import '../screens/common/offer_detail_screen.dart';
 import '../screens/customer/customer_chat_bot_screen.dart';
-import '../services/auth_service.dart';
-import '../services/reward_service.dart';
+import '../services/offer_like_flow.dart';
 import '../core/utils/dialog_helper.dart';
 import 'coin_splash_burst.dart';
 import 'offer_banner_preview.dart';
@@ -99,32 +98,6 @@ class _OfferCardState extends State<OfferCard> with TickerProviderStateMixin {
     super.dispose();
   }
 
-  int _extractLedgerAmount(Map<String, dynamic>? payload, {int fallback = 50}) {
-    final ledger = payload?['ledgerEntry'];
-    if (ledger is Map<String, dynamic>) {
-      final amount = ledger['amount'];
-      if (amount is num) return amount.toInt();
-      final parsed = int.tryParse('$amount');
-      if (parsed != null) return parsed;
-    }
-    return fallback;
-  }
-
-  String _likeRewardFailureMessage(Object error) {
-    final message = error.toString().replaceFirst('Exception: ', '').trim();
-    final normalized = message.toLowerCase();
-    if (normalized.contains('daily like reward limit')) {
-      return 'Daily like reward limit reached.';
-    }
-    if (normalized.contains('daily coin earning cap exceeded')) {
-      return 'Daily coin earning cap reached for today.';
-    }
-    if (normalized.contains('reward already granted')) {
-      return 'Coins for this offer are already claimed.';
-    }
-    return 'Like saved, but coins were not added.';
-  }
-
   void _playCoinSplash({required int amount, required bool isDebit}) {
     if (!mounted) return;
     showCoinSplashFullscreen(
@@ -174,68 +147,26 @@ class _OfferCardState extends State<OfferCard> with TickerProviderStateMixin {
 
   Future<void> _toggleLike() async {
     if (_isToggling) return;
+    final optimisticLiked = !_isLiked;
     setState(() {
       _isToggling = true;
-      _isLiked = !_isLiked;
-      _likesCount += _isLiked ? 1 : -1;
+      _isLiked = optimisticLiked;
+      _likesCount += optimisticLiked ? 1 : -1;
     });
     _heartController.forward(from: 0);
+    if (optimisticLiked) {
+      _playCoinSplash(
+        amount: OfferLikeFlow.immediateLikeSplashAmount,
+        isDebit: false,
+      );
+    }
     try {
-      final result =
-          await AuthService.instance.toggleOfferLike(widget.offer.id);
-      final isLikedNow = result['isLiked'] as bool;
+      final toggle = await OfferLikeFlow.instance.toggleLike(widget.offer.id);
+      if (!mounted) return;
       setState(() {
-        _isLiked = isLikedNow;
-        _likesCount = result['likesCount'] as int;
-        _isToggling = false;
+        _isLiked = toggle.isLiked;
+        _likesCount = toggle.likesCount;
       });
-
-      if (isLikedNow) {
-        int? splashAmount;
-        try {
-          final reward =
-              await RewardService.instance.awardLikeReward(widget.offer.id);
-          final isDuplicate = reward['duplicate'] == true;
-          if (!isDuplicate) {
-            splashAmount = _extractLedgerAmount(reward);
-          }
-        } catch (rewardError) {
-          debugPrint('Like reward award failed: $rewardError');
-          if (mounted) {
-            DialogHelper.showErrorSnackBar(
-              context,
-              _likeRewardFailureMessage(rewardError),
-            );
-          }
-        }
-        if (splashAmount != null) {
-          _playCoinSplash(
-            amount: splashAmount,
-            isDebit: false,
-          );
-        }
-      } else {
-        try {
-          final reversal =
-              await RewardService.instance.reverseLikeReward(widget.offer.id);
-          final reversed = reversal['reversed'] == true;
-          final reason = reversal['reason']?.toString();
-          if (reversed) {
-            _playCoinSplash(
-              amount: _extractLedgerAmount(reversal),
-              isDebit: true,
-            );
-          }
-          final message = !reversed
-              ? RewardService.instance.unlikeReversalReasonMessage(reason)
-              : null;
-          if (mounted && message != null && message.isNotEmpty) {
-            DialogHelper.showErrorSnackBar(context, message);
-          }
-        } catch (reverseError) {
-          debugPrint('Like reward reverse failed: $reverseError');
-        }
-      }
 
       widget.onOfferUpdated?.call(
         widget.offer.copyWith(
@@ -243,16 +174,37 @@ class _OfferCardState extends State<OfferCard> with TickerProviderStateMixin {
           likesCount: _likesCount,
         ),
       );
+
+      final reward = await OfferLikeFlow.instance.settleReward(
+        offerId: widget.offer.id,
+        isLikedNow: _isLiked,
+      );
+      if (!mounted) return;
+
+      if (!_isLiked && reward.unlikeSplashAmount != null) {
+        _playCoinSplash(
+          amount: reward.unlikeSplashAmount!,
+          isDebit: true,
+        );
+      }
+      if (reward.message != null && reward.message!.isNotEmpty) {
+        DialogHelper.showErrorSnackBar(context, reward.message!);
+      }
       widget.onLikeChanged?.call();
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isLiked = !_isLiked;
         _likesCount += _isLiked ? -1 : 1;
-        _isToggling = false;
       });
       if (mounted) {
         DialogHelper.showErrorSnackBar(context, 'Failed to update like');
       }
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        _isToggling = false;
+      });
     }
   }
 

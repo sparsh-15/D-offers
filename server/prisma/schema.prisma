@@ -899,7 +899,7 @@ model CoinLedgerEntry {
   @@index([userId, direction, createdAt(sort: Desc)], map: "idx_coin_ledger_user_direction_created_desc")
   @@index([expiresAt], map: "idx_coin_ledger_expires_at")
   @@index([referenceEntryId], map: "idx_coin_ledger_reference_entry")
-  @@unique([userId, actionType, sourceRef], map: "uq_coin_ledger_user_action_source")
+  @@index([userId, actionType, sourceRef], map: "idx_coin_ledger_user_action_source")
   @@map("coin_ledger_entries")
 }
 
@@ -921,7 +921,7 @@ model RewardEvent {
   @@index([userId, createdAt(sort: Desc)], map: "idx_reward_events_user_created_desc")
   @@index([actionType, createdAt(sort: Desc)], map: "idx_reward_events_action_created_desc")
   @@index([deviceFingerprint], map: "idx_reward_events_device_fingerprint")
-  @@unique([userId, actionType, sourceRef], map: "uq_reward_events_user_action_source")
+  @@index([userId, actionType, sourceRef], map: "idx_reward_events_user_action_source")
   @@map("reward_events")
 }
 
@@ -1017,5 +1017,4 @@ model CoinReconciliationRun {
   @@index([createdAt(sort: Desc)], map: "idx_coin_reconciliation_created_desc")
   @@map("coin_reconciliation_runs")
 }
-
 

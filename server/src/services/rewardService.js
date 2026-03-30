@@ -282,18 +282,55 @@ async function awardReward({ userId, userRole, userRoles, actionType, sourceRef,
       };
     }
 
-    const existingEvent = await tx.rewardEvent.findUnique({
-      where: {
-        userId_actionType_sourceRef: {
+    if (actionType === 'like_offer') {
+      const latestLikeCredit = await tx.coinLedgerEntry.findFirst({
+        where: {
+          userId,
+          actionType: 'like_offer',
+          sourceRef,
+          direction: 'credit',
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      if (latestLikeCredit) {
+        const latestUnlikeReversal = await tx.coinLedgerEntry.findFirst({
+          where: {
+            referenceEntryId: latestLikeCredit.id,
+            actionType: 'reversal',
+            direction: 'debit',
+            metadata: { path: ['trigger'], equals: 'unlike_offer' },
+          },
+          orderBy: { createdAt: 'desc' },
+        });
+
+        if (!latestUnlikeReversal) {
+          throw buildError('Reward already granted for this action', 409, 'DUPLICATE_ACTION_REWARD');
+        }
+
+        const windowMinutes = Number(config?.unlikeReversal?.windowMinutes || 0);
+        if (windowMinutes > 0) {
+          const reversalAgeMs =
+            Date.now() - new Date(latestUnlikeReversal.createdAt).getTime();
+          if (reversalAgeMs > windowMinutes * 60 * 1000) {
+            throw buildError('Re-like reward window expired', 409, 'RELIKE_WINDOW_EXPIRED');
+          }
+        }
+      }
+    } else {
+      const existingEvent = await tx.rewardEvent.findFirst({
+        where: {
           userId,
           actionType,
           sourceRef,
+          validated: true,
         },
-      },
-    });
+        orderBy: { createdAt: 'desc' },
+      });
 
-    if (existingEvent) {
-      throw buildError('Reward already granted for this action', 409, 'DUPLICATE_ACTION_REWARD');
+      if (existingEvent) {
+        throw buildError('Reward already granted for this action', 409, 'DUPLICATE_ACTION_REWARD');
+      }
     }
 
     if (actionType === 'install_verified' && deviceFingerprint) {
@@ -521,6 +558,13 @@ async function reverseLikeRewardOnUnlike({ userId, userRole, userRoles, sourceRe
       actionType: 'like_offer',
       sourceRef,
       direction: 'credit',
+      reverseEntries: {
+        none: {
+          actionType: 'reversal',
+          direction: 'debit',
+          metadata: { path: ['trigger'], equals: 'unlike_offer' },
+        },
+      },
     },
     orderBy: { createdAt: 'desc' },
   });
@@ -529,19 +573,6 @@ async function reverseLikeRewardOnUnlike({ userId, userRole, userRoles, sourceRe
     return {
       reversed: false,
       reason: 'NO_LIKE_REWARD_FOUND',
-      wallet: null,
-      ledgerEntry: null,
-    };
-  }
-
-  const alreadyReversed = await prisma.coinLedgerEntry.count({
-    where: { referenceEntryId: originalLikeReward.id },
-  });
-
-  if (alreadyReversed > 0) {
-    return {
-      reversed: false,
-      reason: 'ALREADY_REVERSED',
       wallet: null,
       ledgerEntry: null,
     };

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -17,6 +18,7 @@ class RewardService {
   final http.Client _client = http.Client();
   static const Duration _timeout = Duration(seconds: 30);
   final ValueNotifier<int?> walletBalanceNotifier = ValueNotifier<int?>(null);
+  final Random _random = Random();
 
   Uri _uri(String path, [Map<String, String>? query]) {
     return Uri.parse('${ApiConfig.baseUrl}/rewards$path').replace(
@@ -80,6 +82,12 @@ class RewardService {
     throw Exception(message);
   }
 
+  String _buildRequestIdempotencyKey(String action, String sourceRef) {
+    final userId = AuthStore.currentUser?.id ?? 'unknown';
+    final nonce = _random.nextInt(1 << 32).toRadixString(16);
+    return '$action:$userId:$sourceRef:${DateTime.now().microsecondsSinceEpoch}:$nonce';
+  }
+
   String _buildStableIdempotencyKey(String action, String sourceRef) {
     final userId = AuthStore.currentUser?.id ?? 'unknown';
     return '$action:$userId:$sourceRef';
@@ -87,7 +95,13 @@ class RewardService {
 
   int? _parseBalance(dynamic raw) {
     if (raw is num) return raw.toInt();
-    if (raw is String) return int.tryParse(raw);
+    if (raw is String) {
+      final trimmed = raw.trim();
+      final intValue = int.tryParse(trimmed);
+      if (intValue != null) return intValue;
+      final doubleValue = double.tryParse(trimmed);
+      if (doubleValue != null) return doubleValue.toInt();
+    }
     return null;
   }
 
@@ -157,7 +171,8 @@ class RewardService {
     final response = await _send(() => _client.post(
           _uri('/customer/like'),
           headers: _authHeaders(
-            idempotencyKey: _buildStableIdempotencyKey('like_offer', sourceRef),
+            idempotencyKey:
+                _buildRequestIdempotencyKey('like_offer', sourceRef),
           ),
           body: jsonEncode({
             'sourceRef': sourceRef,
@@ -189,7 +204,7 @@ class RewardService {
           _uri('/customer/unlike'),
           headers: _authHeaders(
             idempotencyKey:
-                _buildStableIdempotencyKey('unlike_offer', sourceRef),
+                _buildRequestIdempotencyKey('unlike_offer', sourceRef),
           ),
           body: jsonEncode({
             'sourceRef': sourceRef,
