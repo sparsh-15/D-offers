@@ -1,6 +1,10 @@
 const { prisma } = require('../../db/prisma');
 const { resolvePgId } = require('../../repositories/idResolver');
 const offerRepository = require('../../repositories/offerRepository');
+const {
+  BUSINESS_CATEGORY_LIST,
+  BUSINESS_CATEGORY_LABELS,
+} = require('../../config/businessCategories');
 
 function ci(value) {
   return String(value || '').trim();
@@ -11,6 +15,87 @@ function normalizeDiscount(value) {
   const num = Number(value);
   if (!Number.isFinite(num)) return null;
   return num;
+}
+
+const CATEGORY_ALIAS_MAP = {
+  food: 'food_beverage',
+  dining: 'food_beverage',
+  restaurant: 'restaurant',
+  restaurants: 'restaurant',
+  cafe: 'food_beverage',
+  cafes: 'food_beverage',
+  grocery: 'grocery',
+  groceries: 'grocery',
+  fashion: 'clothing',
+  clothes: 'clothing',
+  clothing: 'clothing',
+  apparel: 'clothing',
+  medical: 'pharmacy',
+  medicine: 'pharmacy',
+  pharma: 'pharmacy',
+  gym: 'gym_fitness',
+  fitness: 'gym_fitness',
+  beauty: 'beauty_salon',
+  salon: 'beauty_salon',
+  spa: 'beauty_salon',
+  electronics: 'electronics',
+  travel: 'travel',
+  education: 'education',
+  healthcare: 'healthcare',
+};
+
+function normalizeCategoryInput(input, allowedCategories = BUSINESS_CATEGORY_LIST) {
+  const raw = ci(input).toLowerCase();
+  if (!raw) {
+    return { category: null, valid: false, source: 'empty' };
+  }
+
+  const normalizedAllowed = new Set(
+    allowedCategories.map((category) => String(category).trim().toLowerCase()),
+  );
+
+  if (normalizedAllowed.has(raw)) {
+    return { category: raw, valid: true, source: 'exact' };
+  }
+
+  const byAlias = CATEGORY_ALIAS_MAP[raw];
+  if (byAlias && normalizedAllowed.has(byAlias)) {
+    return { category: byAlias, valid: true, source: 'alias' };
+  }
+
+  const labelMatch = Object.entries(BUSINESS_CATEGORY_LABELS).find(([, label]) =>
+    ci(label).toLowerCase() === raw,
+  );
+  if (labelMatch && normalizedAllowed.has(labelMatch[0])) {
+    return { category: labelMatch[0], valid: true, source: 'label' };
+  }
+
+  return { category: null, valid: false, source: 'invalid' };
+}
+
+async function getActiveOfferCategories({ limit = 6 } = {}) {
+  const rows = await prisma.offer.groupBy({
+    by: ['category'],
+    where: {
+      status: 'active',
+      category: {
+        not: '',
+      },
+    },
+    _count: {
+      _all: true,
+    },
+    orderBy: {
+      _count: {
+        category: 'desc',
+      },
+    },
+    take: Math.min(Math.max(Number(limit) || 6, 1), 20),
+  });
+
+  return rows
+    .map((row) => String(row.category || '').trim().toLowerCase())
+    .filter((category) => BUSINESS_CATEGORY_LIST.includes(category));
 }
 
 /**
@@ -30,6 +115,23 @@ async function searchOffers({ user, params }) {
   } = params || {};
 
   const limitNum = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 50);
+
+  let normalizedCategory = null;
+  if (ci(category)) {
+    const activeCategories = await getActiveOfferCategories({ limit: 50 });
+    const allowedCategories = activeCategories.length
+      ? activeCategories
+      : BUSINESS_CATEGORY_LIST;
+    const categoryMatch = normalizeCategoryInput(category, allowedCategories);
+    if (!categoryMatch.valid) {
+      return {
+        offers: [],
+        invalidCategory: ci(category),
+        message: 'Invalid category. Please choose a valid category.',
+      };
+    }
+    normalizedCategory = categoryMatch.category;
+  }
 
   // Reuse the same filtering strategy as customerController.listOffers
   const userFilter = { role: 'shopkeeper', approvalStatus: 'approved' };
@@ -51,8 +153,8 @@ async function searchOffers({ user, params }) {
     status: 'active',
   };
 
-  if (ci(category)) {
-    where.category = { equals: ci(category), mode: 'insensitive' };
+  if (normalizedCategory) {
+    where.category = { equals: normalizedCategory, mode: 'insensitive' };
   }
 
   const minDiscountNum = normalizeDiscount(minDiscount);
@@ -195,5 +297,7 @@ module.exports = {
   searchOffers,
   likeOffer,
   unlikeOffer,
+  normalizeCategoryInput,
+  getActiveOfferCategories,
 };
 

@@ -1,11 +1,39 @@
 const PINCODE_REGEX = /^\d{6}$/;
+const PINCODE_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const pincodeCache = new Map();
 
 function normalizePincode(pincode) {
   if (pincode == null) return '';
   return String(pincode).trim();
 }
 
+function isValidPincodeFormat(pincode) {
+  return PINCODE_REGEX.test(normalizePincode(pincode));
+}
+
+function getCachedPincode(pincode) {
+  const cached = pincodeCache.get(pincode);
+  if (!cached) return null;
+  if (Date.now() - cached.updatedAt > PINCODE_CACHE_TTL_MS) {
+    pincodeCache.delete(pincode);
+    return null;
+  }
+  return cached.value;
+}
+
+function setCachedPincode(pincode, value) {
+  pincodeCache.set(pincode, {
+    value,
+    updatedAt: Date.now(),
+  });
+}
+
 async function lookupIndiaPost(pincode) {
+  const cached = getCachedPincode(pincode);
+  if (cached) {
+    return cached;
+  }
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 5000);
   try {
@@ -39,13 +67,16 @@ async function lookupIndiaPost(pincode) {
       new Map(areas.map(area => [area.name, area])).values()
     );
 
-    return {
+    const resolved = {
       state,
       areas: uniqueAreas,
       district: first.PostOffice[0].District || ''
     };
+    setCachedPincode(pincode, resolved);
+    return resolved;
   } catch (e) {
-    return null;
+    // Return stale cache if network fails during lookup.
+    return getCachedPincode(pincode);
   } finally {
     clearTimeout(timeout);
   }
@@ -53,7 +84,7 @@ async function lookupIndiaPost(pincode) {
 
 async function resolveCityStateFromPincode(pincode) {
   const normalized = normalizePincode(pincode);
-  if (!PINCODE_REGEX.test(normalized)) {
+  if (!isValidPincodeFormat(normalized)) {
     const err = new Error('Invalid pincode');
     err.statusCode = 400;
     throw err;
@@ -74,5 +105,7 @@ async function resolveCityStateFromPincode(pincode) {
 
 module.exports = {
   resolveCityStateFromPincode,
+  isValidPincodeFormat,
+  normalizePincode,
 };
 

@@ -2,6 +2,8 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const offerTools = require('../tools/offerTools');
 const couponTools = require('../tools/couponTools');
 const shopTools = require('../tools/shopTools');
+const { BUSINESS_CATEGORY_LABELS } = require('../../config/businessCategories');
+const { isValidPincodeFormat } = require('../../services/pincodeService');
 
 // Keep this list in sync with the intents described in the prompt.
 const INTENTS = {
@@ -14,6 +16,8 @@ const INTENTS = {
 };
 
 let classifierModel;
+const CHAT_CONTEXT_TTL_MS = 10 * 60 * 1000;
+const chatContextStore = new Map();
 
 function getClassifierModel() {
   if (!process.env.GEMINI_API_KEY) {
@@ -44,6 +48,135 @@ function hasMeaningfulValue(value) {
   return value !== undefined && value !== null && String(value).trim().length > 0;
 }
 
+function sanitizeText(value) {
+  return String(value || '').trim();
+}
+
+function getUserContext(userId) {
+  if (!userId) return null;
+  const context = chatContextStore.get(userId);
+  if (!context) return null;
+  if (Date.now() - context.updatedAt > CHAT_CONTEXT_TTL_MS) {
+    chatContextStore.delete(userId);
+    return null;
+  }
+  return context;
+}
+
+function setUserContext(userId, next) {
+  if (!userId) return;
+  chatContextStore.set(userId, {
+    ...next,
+    updatedAt: Date.now(),
+  });
+}
+
+function mergeParamsWithContext(params = {}, context = null) {
+  if (!context || !context.params) {
+    return { ...params };
+  }
+
+  const merged = { ...params };
+  const previous = context.params;
+
+  if (!hasMeaningfulValue(merged.category) && hasMeaningfulValue(previous.category)) {
+    merged.category = previous.category;
+  }
+  if (!hasMeaningfulValue(merged.pincode) && hasMeaningfulValue(previous.pincode)) {
+    merged.pincode = previous.pincode;
+  }
+  if (!hasMeaningfulValue(merged.city) && hasMeaningfulValue(previous.city)) {
+    merged.city = previous.city;
+  }
+  if (!hasMeaningfulValue(merged.state) && hasMeaningfulValue(previous.state)) {
+    merged.state = previous.state;
+  }
+
+  return merged;
+}
+
+function normalizeSearchParams(params = {}) {
+  const normalized = { ...params };
+
+  if (hasMeaningfulValue(normalized.pincode)) {
+    normalized.pincode = sanitizeText(normalized.pincode).replace(/\D/g, '');
+    if (!isValidPincodeFormat(normalized.pincode)) {
+      normalized._validationError = {
+        field: 'pincode',
+        message: 'Please provide a valid 6-digit pincode.',
+      };
+      delete normalized.pincode;
+    }
+  }
+
+  if (hasMeaningfulValue(normalized.city)) {
+    normalized.city = sanitizeText(normalized.city);
+  }
+
+  if (hasMeaningfulValue(normalized.state)) {
+    normalized.state = sanitizeText(normalized.state);
+  }
+
+  if (hasMeaningfulValue(normalized.category)) {
+    const categoryMatch = offerTools.normalizeCategoryInput(normalized.category);
+    if (categoryMatch.valid) {
+      normalized.category = categoryMatch.category;
+    } else {
+      normalized._validationError = {
+        field: 'category',
+        message: 'Please choose a valid category from suggestions.',
+      };
+      delete normalized.category;
+    }
+  }
+
+  return normalized;
+}
+
+function buildClarifyQuestions(params = {}) {
+  const questions = [];
+  const hasCategory = hasMeaningfulValue(params.category);
+  const hasLocation =
+    hasMeaningfulValue(params.pincode) ||
+    hasMeaningfulValue(params.city) ||
+    hasMeaningfulValue(params.state);
+
+  if (!hasCategory) {
+    questions.push('Which category should I search in?');
+  }
+  if (!hasLocation) {
+    questions.push('Share your pincode or city so I can find nearby deals.');
+  }
+  if (!hasMeaningfulValue(params.minDiscount)) {
+    questions.push('Any minimum discount preference?');
+  }
+
+  return questions.slice(0, 2);
+}
+
+async function buildClarifyActions() {
+  const categories = await offerTools.getActiveOfferCategories({ limit: 4 });
+  const categoryActions = categories.map((category) => ({
+    label: `${BUSINESS_CATEGORY_LABELS[category] || category} offers`,
+    type: 'ask_followup',
+    message: `Show me ${BUSINESS_CATEGORY_LABELS[category] || category} offers.`,
+  }));
+
+  return [
+    ...categoryActions,
+    {
+      label: 'Nearby offers by pincode',
+      type: 'ask_followup',
+      message: 'Show me nearby offers for my pincode 560001.',
+    },
+    {
+      label: 'High discount offers',
+      type: 'ask_followup',
+      message: 'Show me offers with at least 30% discount.',
+    },
+  ].slice(0, 4);
+}
+
 function shouldClarifyBeforeOfferSearch(params = {}) {
   const hasQuery = hasMeaningfulValue(params.query);
   const hasCategory = hasMeaningfulValue(params.category);
@@ -59,6 +192,9 @@ function shouldClarifyBeforeOfferSearch(params = {}) {
 
 async function classifyIntent(message) {
   const model = getClassifierModel();
+  const canonicalCategories = Object.keys(BUSINESS_CATEGORY_LABELS)
+    .map((key) => `${key} (${BUSINESS_CATEGORY_LABELS[key]})`)
+    .join(', ');
 
   const prompt = [
     'You are an intent classifier for the D\'Offer mobile app assistant.',
@@ -83,6 +219,9 @@ async function classifyIntent(message) {
     '- Always choose the most specific intent.',
     '- If location is mentioned (pincode, city, state), put it in params.',
     '- For SEARCH_OFFERS, useful params: query, category, pincode, city, state, minDiscount.',
+    `- Canonical categories: ${canonicalCategories}`,
+    '- If user says a natural category (for example food, dining, fashion), still map to closest canonical category in params.category.',
+    '- If pincode is provided, pass digits only in params.pincode.',
     '- For SEARCH_SHOPS_NEARBY, useful params: pincode, city, state, limit.',
     '- For LIST_USER_COUPONS, params can be empty.',
     '- For BEST_COUPONS_FOR_PLAN, params: planId (if mentioned), planName (if textual), limit.',
@@ -135,40 +274,19 @@ async function handleIntent({ user, intent, params }) {
       };
     }
     case INTENTS.SEARCH_OFFERS: {
-      if (shouldClarifyBeforeOfferSearch(params)) {
-        const actions = [
-          {
-            label: 'Food & Dining offers',
-            type: 'ask_followup',
-            message: 'Show me food and dining offers.',
-          },
-          {
-            label: 'Fashion offers',
-            type: 'ask_followup',
-            message: 'Show me fashion offers.',
-          },
-          {
-            label: 'Nearby offers by pincode',
-            type: 'ask_followup',
-            message: 'Show me nearby offers for my pincode.',
-          },
-          {
-            label: 'High discount offers',
-            type: 'ask_followup',
-            message: 'Show me offers with at least 30% discount.',
-          },
-        ];
+      if (params?._validationError || shouldClarifyBeforeOfferSearch(params)) {
+        const actions = await buildClarifyActions();
+        const suggestedQuestions = buildClarifyQuestions(params);
+        if (params?._validationError?.message) {
+          suggestedQuestions.unshift(params._validationError.message);
+        }
         return {
           intent,
           params,
           toolResult: {
             mode: 'clarify',
-            reason: 'broad_search',
-            suggestedQuestions: [
-              'Which category are you looking for?',
-              'Do you want offers near a specific pincode or city?',
-              'Any minimum discount preference?',
-            ],
+            reason: params?._validationError ? 'invalid_params' : 'broad_search',
+            suggestedQuestions,
           },
           actions,
           items: {},
@@ -287,11 +405,35 @@ async function handleIntent({ user, intent, params }) {
  */
 async function routeIntent({ user, message }) {
   const classification = await classifyIntent(message);
+  const context = getUserContext(user?.userId);
+  const mergedParams = mergeParamsWithContext(classification.params, context);
+  const normalizedParams = normalizeSearchParams(mergedParams);
+
   const handled = await handleIntent({
     user,
     intent: classification.intent,
-    params: classification.params,
+    params: normalizedParams,
   });
+
+  if (classification.intent === INTENTS.SEARCH_OFFERS) {
+    const hasUsefulContext =
+      hasMeaningfulValue(normalizedParams.category) ||
+      hasMeaningfulValue(normalizedParams.pincode) ||
+      hasMeaningfulValue(normalizedParams.city) ||
+      hasMeaningfulValue(normalizedParams.state);
+
+    if (hasUsefulContext) {
+    setUserContext(user?.userId, {
+      intent: classification.intent,
+      params: {
+        category: normalizedParams.category,
+        pincode: normalizedParams.pincode,
+        city: normalizedParams.city,
+        state: normalizedParams.state,
+      },
+    });
+    }
+  }
 
   return handled;
 }

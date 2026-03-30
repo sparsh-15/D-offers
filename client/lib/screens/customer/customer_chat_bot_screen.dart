@@ -3,7 +3,9 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_design_tokens.dart';
 import '../../core/constants/app_strings.dart';
 import '../../core/utils/dialog_helper.dart';
+import '../../services/auth_service.dart';
 import '../../services/chat_assistant_service.dart';
+import '../common/offer_detail_screen.dart';
 import 'customer_dashboard.dart';
 
 /// AI chat assistant screen — premium dark design.
@@ -129,6 +131,11 @@ class _CustomerChatBotScreenState extends State<CustomerChatBotScreen> {
         }
         break;
       case 'open_offer':
+        {
+          final offerId = action.payload['offerId']?.toString();
+          _openOfferDetail(offerId);
+        }
+        break;
       case 'open_offers_tab':
       case 'open_favorites':
         Navigator.of(context).popUntil((r) => r.isFirst);
@@ -143,6 +150,31 @@ class _CustomerChatBotScreenState extends State<CustomerChatBotScreen> {
         break;
       default:
         break;
+    }
+  }
+
+  Future<void> _openOfferDetail(String? offerId) async {
+    final id = offerId?.trim();
+    if (id == null || id.isEmpty) {
+      DialogHelper.showErrorSnackBar(context, 'Offer id is missing.');
+      return;
+    }
+
+    try {
+      final offer = await AuthService.instance.getCustomerOffer(id);
+      if (!mounted) return;
+
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => OfferDetailScreen(offer: offer),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      DialogHelper.showErrorSnackBar(
+        context,
+        'Unable to open this offer right now.',
+      );
     }
   }
 
