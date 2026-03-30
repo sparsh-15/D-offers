@@ -159,56 +159,70 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        FadeInDown(
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: _buildStatCard(
-                                  context,
-                                  'Total Users',
-                                  totalUsers,
-                                  Icons.people_rounded,
-                                  AppColors.primaryGradient,
-                                ),
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            final width = constraints.maxWidth;
+                            final crossAxisCount = width >= 1200
+                                ? 4
+                                : width >= 900
+                                    ? 3
+                                    : width >= 600
+                                        ? 2
+                                        : 1;
+                            final compact = width < 380;
+
+                            final cards = [
+                              {
+                                'title': 'Total Users',
+                                'value': totalUsers,
+                                'icon': Icons.people_rounded,
+                              },
+                              {
+                                'title': 'Shopkeepers',
+                                'value': totalShopkeepers,
+                                'icon': Icons.store_rounded,
+                              },
+                              {
+                                'title': 'Active Offers',
+                                'value': activeOffers,
+                                'icon': Icons.local_offer_rounded,
+                              },
+                              {
+                                'title': 'Pending',
+                                'value': pendingShopkeepers,
+                                'icon': Icons.pending_rounded,
+                              },
+                            ];
+
+                            return GridView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: cards.length,
+                              gridDelegate:
+                                  SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: crossAxisCount,
+                                mainAxisSpacing: 12,
+                                crossAxisSpacing: 12,
+                                childAspectRatio: crossAxisCount == 1
+                                    ? (compact ? 3.0 : 3.2)
+                                    : (crossAxisCount >= 3 ? 1.65 : 1.8),
                               ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: _buildStatCard(
-                                  context,
-                                  'Shopkeepers',
-                                  totalShopkeepers,
-                                  Icons.store_rounded,
-                                  AppColors.primaryGradient,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        FadeInUp(
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: _buildStatCard(
-                                  context,
-                                  'Active Offers',
-                                  activeOffers,
-                                  Icons.local_offer_rounded,
-                                  AppColors.primaryGradient,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: _buildStatCard(
-                                  context,
-                                  'Pending',
-                                  pendingShopkeepers,
-                                  Icons.pending_rounded,
-                                  AppColors.primaryGradient,
-                                ),
-                              ),
-                            ],
-                          ),
+                              itemBuilder: (context, index) {
+                                final card = cards[index];
+                                return FadeInUp(
+                                  delay: Duration(milliseconds: 80 * index),
+                                  child: _buildStatCard(
+                                    context,
+                                    card['title'] as String,
+                                    card['value'] as String,
+                                    card['icon'] as IconData,
+                                    AppColors.primaryGradient,
+                                    compact: compact,
+                                  ),
+                                );
+                              },
+                            );
+                          },
                         ),
                         const SizedBox(height: 24),
                         FadeInLeft(
@@ -341,28 +355,31 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
     String title,
     String value,
     IconData icon,
-    Gradient gradient,
-  ) {
+    Gradient gradient, {
+    bool compact = false,
+  }) {
     return GradientCard(
       gradient: gradient,
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(compact ? 12 : 16),
       margin: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: AppColors.white, size: 28),
-          const SizedBox(height: 12),
+          Icon(icon, color: AppColors.white, size: compact ? 24 : 28),
+          SizedBox(height: compact ? 8 : 12),
           Text(
             value,
             style: Theme.of(context).textTheme.displaySmall?.copyWith(
                   color: AppColors.white,
                   fontWeight: FontWeight.bold,
+                  fontSize: compact ? 26 : null,
                 ),
           ),
           Text(
             title,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: AppColors.white.withValues(alpha: 0.9),
+                  fontSize: compact ? 11 : null,
                 ),
           ),
         ],

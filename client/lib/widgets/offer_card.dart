@@ -110,6 +110,21 @@ class _OfferCardState extends State<OfferCard> with TickerProviderStateMixin {
     return fallback;
   }
 
+  String _likeRewardFailureMessage(Object error) {
+    final message = error.toString().replaceFirst('Exception: ', '').trim();
+    final normalized = message.toLowerCase();
+    if (normalized.contains('daily like reward limit')) {
+      return 'Daily like reward limit reached.';
+    }
+    if (normalized.contains('daily coin earning cap exceeded')) {
+      return 'Daily coin earning cap reached for today.';
+    }
+    if (normalized.contains('reward already granted')) {
+      return 'Coins for this offer are already claimed.';
+    }
+    return 'Like saved, but coins were not added.';
+  }
+
   void _playCoinSplash({required int amount, required bool isDebit}) {
     if (!mounted) return;
     showCoinSplashFullscreen(
@@ -176,24 +191,33 @@ class _OfferCardState extends State<OfferCard> with TickerProviderStateMixin {
       });
 
       if (isLikedNow) {
-        int splashAmount = 50;
+        int? splashAmount;
         try {
           final reward =
               await RewardService.instance.awardLikeReward(widget.offer.id);
-          await RewardService.instance.refreshMyWalletBalance();
-          splashAmount = _extractLedgerAmount(reward);
+          final isDuplicate = reward['duplicate'] == true;
+          if (!isDuplicate) {
+            splashAmount = _extractLedgerAmount(reward);
+          }
         } catch (rewardError) {
           debugPrint('Like reward award failed: $rewardError');
+          if (mounted) {
+            DialogHelper.showErrorSnackBar(
+              context,
+              _likeRewardFailureMessage(rewardError),
+            );
+          }
         }
-        _playCoinSplash(
-          amount: splashAmount,
-          isDebit: false,
-        );
+        if (splashAmount != null) {
+          _playCoinSplash(
+            amount: splashAmount,
+            isDebit: false,
+          );
+        }
       } else {
         try {
           final reversal =
               await RewardService.instance.reverseLikeReward(widget.offer.id);
-          await RewardService.instance.refreshMyWalletBalance();
           final reversed = reversal['reversed'] == true;
           final reason = reversal['reason']?.toString();
           if (reversed) {
