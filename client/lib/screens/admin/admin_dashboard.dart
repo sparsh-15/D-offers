@@ -313,23 +313,23 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
                             },
                           ),
                         ),
-                        FadeInUp(
-                          delay: const Duration(milliseconds: 600),
-                          child: _buildQuickAction(
-                            context,
-                            'Reward Configuration',
-                            'Manage coin rewards, limits and expiry rules',
-                            Icons.tune_rounded,
-                            AppColors.accentDim,
-                            onTap: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => const RewardConfigScreen(),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
+                        // FadeInUp(
+                        //   delay: const Duration(milliseconds: 600),
+                        //   child: _buildQuickAction(
+                        //     context,
+                        //     'Reward Configuration',
+                        //     'Manage coin rewards, limits and expiry rules',
+                        //     Icons.tune_rounded,
+                        //     AppColors.accentDim,
+                        //     onTap: () {
+                        //       Navigator.of(context).push(
+                        //         MaterialPageRoute(
+                        //           builder: (_) => const RewardConfigScreen(),
+                        //         ),
+                        //       );
+                        //     },
+                        //   ),
+                        // ),
                       ],
                     ),
                   );

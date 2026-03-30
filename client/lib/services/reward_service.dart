@@ -333,11 +333,15 @@ class RewardService {
   Future<Map<String, dynamic>> updateRewardConfig({
     required String key,
     required Map<String, dynamic> value,
+    int? version,
   }) async {
     final response = await _send(() => _client.put(
           _uri('/admin/config/$key'),
           headers: _authHeaders(),
-          body: jsonEncode({'value': value}),
+          body: jsonEncode({
+            'value': value,
+            if (version != null) 'version': version,
+          }),
         ));
     final data = _handle(response) as Map<String, dynamic>;
     return (data['config'] as Map<String, dynamic>?) ?? const {};

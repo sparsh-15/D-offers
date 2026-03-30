@@ -70,6 +70,65 @@ function isWalletBalanceConstraintViolation(error) {
   return dbError.includes('chk_coin_wallets_balance_non_negative');
 }
 
+function toPositiveInteger(value) {
+  const n = Number(value);
+  if (!Number.isInteger(n) || n <= 0) return null;
+  return n;
+}
+
+function validateRange(name, value, min, max) {
+  const n = toPositiveInteger(value);
+  if (n == null || n < min || n > max) {
+    throw buildError(
+      `${name} must be an integer between ${min} and ${max}`,
+      400,
+      'CONFIG_VALIDATION_FAILED',
+    );
+  }
+  return n;
+}
+
+function normalizeRewardRulesConfig(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw buildError('reward_rules configValue must be an object', 400, 'CONFIG_VALIDATION_FAILED');
+  }
+
+  const amounts = value.amounts;
+  const limits = value.limits;
+  const unlikeReversal = value.unlikeReversal;
+
+  if (!amounts || typeof amounts !== 'object' || Array.isArray(amounts)) {
+    throw buildError('reward_rules.amounts must be an object', 400, 'CONFIG_VALIDATION_FAILED');
+  }
+  if (!limits || typeof limits !== 'object' || Array.isArray(limits)) {
+    throw buildError('reward_rules.limits must be an object', 400, 'CONFIG_VALIDATION_FAILED');
+  }
+  if (!unlikeReversal || typeof unlikeReversal !== 'object' || Array.isArray(unlikeReversal)) {
+    throw buildError('reward_rules.unlikeReversal must be an object', 400, 'CONFIG_VALIDATION_FAILED');
+  }
+
+  const normalized = {
+    expiryDays: validateRange('expiryDays', value.expiryDays, 1, 365),
+    amounts: {
+      like_offer: validateRange('amounts.like_offer', amounts.like_offer, 1, 10000),
+      purchase_success: validateRange('amounts.purchase_success', amounts.purchase_success, 1, 10000),
+      sale_closed: validateRange('amounts.sale_closed', amounts.sale_closed, 1, 10000),
+      install_verified: validateRange('amounts.install_verified', amounts.install_verified, 1, 10000),
+    },
+    limits: {
+      likesPerDay: validateRange('limits.likesPerDay', limits.likesPerDay, 1, 1000),
+      customerDailyCoins: validateRange('limits.customerDailyCoins', limits.customerDailyCoins, 1, 100000),
+      shopkeeperDailyCoins: validateRange('limits.shopkeeperDailyCoins', limits.shopkeeperDailyCoins, 1, 100000),
+    },
+    unlikeReversal: {
+      enabled: unlikeReversal.enabled !== false,
+      windowMinutes: validateRange('unlikeReversal.windowMinutes', unlikeReversal.windowMinutes, 1, 1440),
+    },
+  };
+
+  return normalized;
+}
+
 async function getEffectiveRewardConfig() {
   const row = await prisma.rewardConfig.findUnique({
     where: { key: 'reward_rules' },
@@ -871,20 +930,46 @@ async function listRewardConfig() {
   return rows;
 }
 
-async function updateRewardConfig({ key, value }) {
+async function updateRewardConfig({ key, value, expectedVersion }) {
   if (!key) {
     throw buildError('Config key is required', 400, 'CONFIG_KEY_REQUIRED');
+  }
+
+  const normalizedValue = key === 'reward_rules'
+    ? normalizeRewardRulesConfig(value)
+    : value;
+
+  const expected = expectedVersion == null ? null : Number(expectedVersion);
+  if (expectedVersion != null && !Number.isInteger(expected)) {
+    throw buildError('version must be an integer', 400, 'CONFIG_VALIDATION_FAILED');
+  }
+
+  const existing = await prisma.rewardConfig.findUnique({ where: { key } });
+  if (existing && expected != null && existing.version !== expected) {
+    throw buildError(
+      `Config version mismatch. latest=${existing.version}, provided=${expected}`,
+      409,
+      'CONFIG_VERSION_CONFLICT',
+    );
+  }
+
+  if (!existing && expected != null && expected > 0) {
+    throw buildError(
+      'Config does not exist for provided version',
+      409,
+      'CONFIG_VERSION_CONFLICT',
+    );
   }
 
   return prisma.rewardConfig.upsert({
     where: { key },
     update: {
-      configValue: value,
+      configValue: normalizedValue,
       version: { increment: 1 },
     },
     create: {
       key,
-      configValue: value,
+      configValue: normalizedValue,
       version: 1,
     },
   });

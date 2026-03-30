@@ -234,6 +234,7 @@ async function updateRewardConfig(req, res, next) {
     const config = await rewardService.updateRewardConfig({
       key: req.params.key,
       value: req.body.value,
+      expectedVersion: req.body.version,
     });
 
     res.status(200).json({ success: true, config });
