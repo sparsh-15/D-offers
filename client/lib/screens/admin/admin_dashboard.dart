@@ -162,13 +162,7 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
                         LayoutBuilder(
                           builder: (context, constraints) {
                             final width = constraints.maxWidth;
-                            final crossAxisCount = width >= 1200
-                                ? 4
-                                : width >= 900
-                                    ? 3
-                                    : width >= 600
-                                        ? 2
-                                        : 1;
+                            const crossAxisCount = 2;
                             final compact = width < 380;
 
                             final cards = [
@@ -203,9 +197,7 @@ class _AdminHomeTabState extends State<AdminHomeTab> {
                                 crossAxisCount: crossAxisCount,
                                 mainAxisSpacing: 12,
                                 crossAxisSpacing: 12,
-                                childAspectRatio: crossAxisCount == 1
-                                    ? (compact ? 3.0 : 3.2)
-                                    : (crossAxisCount >= 3 ? 1.65 : 1.8),
+                                childAspectRatio: compact ? 1.55 : 1.8,
                               ),
                               itemBuilder: (context, index) {
                                 final card = cards[index];

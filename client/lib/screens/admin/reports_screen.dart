@@ -263,15 +263,15 @@ class _ReportsScreenState extends State<ReportsScreen>
             loading
                 ? _shimmerGrid()
                 : LayoutBuilder(builder: (ctx, bc) {
-                    final cols = _cols(bc.maxWidth, max: 4);
+                    const cols = 2;
+                    final compact = bc.maxWidth < 380;
                     return GridView.count(
                       crossAxisCount: cols,
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
                       mainAxisSpacing: 10,
                       crossAxisSpacing: 10,
-                      childAspectRatio:
-                          cols == 1 ? 3.2 : (cols >= 3 ? 1.9 : 2.1),
+                      childAspectRatio: compact ? 1.55 : 1.8,
                       children: [
                         FadeInUp(
                             delay: const Duration(milliseconds: 0),

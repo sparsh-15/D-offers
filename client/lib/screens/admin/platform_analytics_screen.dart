@@ -278,21 +278,15 @@ class _PlatformAnalyticsScreenState extends State<PlatformAnalyticsScreen> {
           const SizedBox(height: 12),
           LayoutBuilder(
             builder: (context, constraints) {
-              final width = constraints.maxWidth;
-              final crossAxisCount = width >= 1200
-                  ? 4
-                  : width >= 900
-                      ? 3
-                      : width >= 600
-                          ? 2
-                          : 1;
+              const crossAxisCount = 2;
+              final compact = constraints.maxWidth < 380;
               return GridView.count(
                 crossAxisCount: crossAxisCount,
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 mainAxisSpacing: 10,
                 crossAxisSpacing: 10,
-                childAspectRatio: crossAxisCount == 1 ? 3.1 : 1.7,
+                childAspectRatio: compact ? 1.55 : 1.7,
                 children: List.generate(items.length, (i) {
                   final item = items[i];
                   return FadeInUp(
