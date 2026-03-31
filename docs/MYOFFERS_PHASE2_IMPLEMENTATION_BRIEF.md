@@ -1,8 +1,8 @@
-# D-Offers Phase 2 Implementation Brief
+# MyOffers Phase 2 Implementation Brief
 
 ## 1. Phase 2 Objective
 
-**Phase 2** should move D-Offers from a working hyperlocal commerce platform into a stronger growth-and-operations engine.
+**Phase 2** should move MyOffers from a working hyperlocal commerce platform into a stronger growth-and-operations engine.
 
 The next phase should focus on three business outcomes:
 

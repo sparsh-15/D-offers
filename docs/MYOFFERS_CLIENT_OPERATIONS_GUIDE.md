@@ -1,12 +1,12 @@
-# D-Offers Client Operations Guide
+# MyOffers Client Operations Guide
 
 ## 1. Executive Snapshot
 
-**D-Offers** is a multi-role hyperlocal commerce platform that connects customers, shopkeepers, field agents, and platform operators in one operating system for local offers, lead conversion, subscriptions, campaigns, rewards, and redemptions.
+**MyOffers** is a multi-role hyperlocal commerce platform that connects customers, shopkeepers, field agents, and platform operators in one operating system for local offers, lead conversion, subscriptions, campaigns, rewards, and redemptions.
 
 ### Who it serves
 
-| Group | Why they use D-Offers |
+| Group | Why they use MyOffers |
 |---|---|
 | Customers | Discover nearby offers, claim deals, redeem coupons, earn rewards, access loan flow, get AI help |
 | Shopkeepers | Onboard, subscribe, publish offers, run campaigns, redeem customer claims, buy AI credits |
@@ -257,9 +257,9 @@ flowchart TD
 
 | Area | Operational meaning |
 |---|---|
-| Home and offers | location-first feed, categories, likes, featured paths |
+| Home anMyOffers | location-first feed, categories, likes, featured paths |
 | Claims | active claimed deals with QR payload and coupon code |
-| Favorites | liked offers and saved discovery |
+| Favorites | likeMyOffers and saved discovery |
 | Redemption outcome | redeemed claims update state and trigger reward flow |
 | Wallet visibility | reward balance and history screens |
 | AI help | chatbot for offers, coupons, savings, and support |

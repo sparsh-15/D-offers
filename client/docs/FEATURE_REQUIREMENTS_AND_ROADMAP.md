@@ -188,7 +188,7 @@ sequenceDiagram
 | Role | Use case | Phase | Status | Client screen / API |
 |------|----------|-------|--------|----------------------|
 | Customer | ViewOffers | — | Done | CustomerHomeTab, CustomerOffersTab; getCustomerOffers |
-| Customer | LikeOffer | — | Done | OfferCard; toggleOfferLike, getLikedOffers |
+| Customer | LikeOffer | — | Done | OfferCard; toggleOfferLike, getLikeMyOffers |
 | Customer | RequestCallback | Later | Planned | — |
 | Customer | NegotiateOffer | Later | Planned | — |
 | Shopkeeper | CreateOffer | — | Done | OffersManagementTab; createOffer, updateOffer, deleteOffer |
@@ -218,7 +218,7 @@ For each new feature, document:
 The following are explicitly **out of scope** for the current roadmap (Phases 1–3 as above):
 
 - Featured listings (paid prominence)  
-- Sponsored offers  
+- SponsoreMyOffers  
 - Multi-language / localization  
 - In-app chat (user-to-user or user-to-shop)  
 - Full payment gateway (beyond wallet and pack purchase)  

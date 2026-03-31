@@ -1,4 +1,4 @@
-# D-OFFERS - Complete System Documentation
+# MyOffers - Complete System Documentation
 
 **Version:** 1.0.0  
 **Last Updated:** February 20, 2026  
@@ -29,7 +29,7 @@
 
 ## Executive Summary
 
-D-Offers is a comprehensive digital marketplace platform connecting shopkeepers with customers through location-based offer discovery. The platform implements a sophisticated 6-role RBAC system, subscription-based monetization for shopkeepers, and a complete onboarding workflow.
+MyOffers is a comprehensive digital marketplace platform connecting shopkeepers with customers through location-based offer discovery. The platform implements a sophisticated 6-role RBAC system, subscription-based monetization for shopkeepers, and a complete onboarding workflow.
 
 ### Key Features
 - **Multi-role Access Control**: 6 distinct user roles with granular permissions
@@ -236,7 +236,7 @@ D-Offers is a comprehensive digital marketplace platform connecting shopkeepers 
 
 ### Base URL
 
-- **Production**: `https://d-offers.onrender.com/api`
+- **Production**: `https://MyOffers.onrender.com/api`
 - **Development**: `http://localhost:3000/api`
 - **Android Emulator**: `http://10.0.2.2:3000/api`
 
@@ -329,7 +329,7 @@ POST /api/shopkeeper/offers
 | GET | `/offers` | ✅ | Browse offers (with filters) |
 | GET | `/offers/:id` | ✅ | View offer details |
 | POST | `/offers/:id/like` | ✅ | Like/unlike offer |
-| GET | `/offers/liked` | ✅ | Get liked offers |
+| GET | `/offers/liked` | ✅ | Get likeMyOffers |
 
 **Browse Offers Request:**
 ```
@@ -625,7 +625,7 @@ class OfferService {
           .map((json) => Offer.fromJson(json))
           .toList();
     } else {
-      throw Exception('Failed to load offers');
+      throw Exception('Failed to loaMyOffers');
     }
   }
 }
@@ -799,7 +799,7 @@ mongoose.connect(config.mongodbUri, {
 PORT=3000
 
 # MongoDB
-MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/d-offers
+MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/MyOffers
 
 # JWT
 JWT_SECRET=your-secret-key-change-in-production
@@ -833,7 +833,7 @@ NODE_ENV=development
 ### Collections Overview
 
 ```
-MongoDB Database: d-offers
+MongoDB Database: MyOffers
 ├── users                    # User accounts
 ├── shopkeeperprofiles       # Shop details
 ├── offers                   # Promotional offers
@@ -1121,7 +1121,7 @@ const client = twilio(
 
 **Connection String**:
 ```
-mongodb+srv://user:pass@cluster.mongodb.net/d-offers?retryWrites=true&w=majority
+mongodb+srv://user:pass@cluster.mongodb.net/MyOffers?retryWrites=true&w=majority
 ```
 
 ### 4. Pincode Service
@@ -1153,7 +1153,7 @@ mongodb+srv://user:pass@cluster.mongodb.net/d-offers?retryWrites=true&w=majority
 - Hybrid recommendation system
 
 **Data Points**:
-- User liked offers
+- User likeMyOffers
 - User browsing history
 - Location preferences
 - Category preferences
@@ -1809,8 +1809,8 @@ GET /api/subscription-governance/revenue/analytics
 │  │  • Get directions              │ │
 │  └────────────────────────────────┘ │
 │  ┌────────────────────────────────┐ │
-│  │  Liked Offers                  │ │
-│  │  • View saved offers           │ │
+│  │  LikeMyOffers                  │ │
+│  │  • View saveMyOffers           │ │
 │  │  • Remove from liked           │ │
 │  └────────────────────────────────┘ │
 └─────────────────────────────────────┘
@@ -2055,7 +2055,7 @@ GET /api/subscription-governance/revenue/analytics
 - 🔄 Filter by category
 - 🔄 Search functionality
 - 🔄 Like/unlike offers
-- 🔄 View liked offers
+- 🔄 View likeMyOffers
 - 🔄 Offer detail view
 - 🔄 Share offers
 - 📋 Get directions to shop
@@ -2570,7 +2570,7 @@ Desktop:            > 1024px
 #### Backend (Server)
 
 **Platform**: Render.com  
-**URL**: https://d-offers.onrender.com  
+**URL**: https://MyOffers.onrender.com  
 **Environment**: Production  
 **Region**: Auto (closest to users)
 
@@ -2579,7 +2579,7 @@ Desktop:            > 1024px
 # render.yaml
 services:
   - type: web
-    name: d-offers-api
+    name: MyOffers-api
     env: node
     buildCommand: npm install
     startCommand: npm start
@@ -3086,7 +3086,7 @@ DELETE /api/shopkeeper/offers/:id  Delete offer
 GET    /api/customer/offers        Browse offers
 GET    /api/customer/offers/:id    View offer
 POST   /api/customer/offers/:id/like  Like/unlike
-GET    /api/customer/offers/liked  Liked offers
+GET    /api/customer/offers/liked  LikeMyOffers
 ```
 
 #### Onboarding
@@ -3274,7 +3274,7 @@ print(ApiConfig.baseUrl);
 ### H. License
 
 **Proprietary Software**  
-© 2026 D-Offers. All rights reserved.
+© 2026 MyOffers. All rights reserved.
 
 This software and associated documentation files are proprietary and confidential. Unauthorized copying, distribution, or use is strictly prohibited.
 

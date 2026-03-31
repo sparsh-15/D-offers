@@ -1,10 +1,10 @@
-# D’Offers – Complete Customer Module Documentation
+# MyOffers – Complete Customer Module Documentation
 
 ---
 
 # 1. Module Overview
 
-The Customer Module represents the complete end-to-end lifecycle of a customer inside the D’Offers hyperlocal commerce ecosystem.
+The Customer Module represents the complete end-to-end lifecycle of a customer inside the MyOffers hyperlocal commerce ecosystem.
 
 It includes:
 - Authentication & Identity Management
@@ -55,7 +55,7 @@ This document defines all functional components phase-wise.
 - Search bar with filter
 - Location display & edit
 - Categories scroll
-- Featured offers
+- FeatureMyOffers
 - Flash deals
 - Nearby stores
 - Discover more section
@@ -77,7 +77,7 @@ This document defines all functional components phase-wise.
 - Request callback
 
 ## 2.4 Favorites Tab
-- Saved offers
+- SaveMyOffers
 - Saved stores
 - Recently viewed
 
@@ -222,7 +222,7 @@ Each offer assigned score (0–10) based on:
 
 ## 13. Predictive Notification Timing
 - Analyze active hours
-- Send offers during high-intent window
+- SenMyOffers during high-intent window
 
 ---
 

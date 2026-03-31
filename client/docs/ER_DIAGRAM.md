@@ -1,8 +1,8 @@
-# D-Offers Platform - Entity Relationship Diagram
+# MyOffers Platform - Entity Relationship Diagram
 
 ## Database Schema Overview
 
-This document provides a comprehensive Entity Relationship Diagram (ERD) for the D-Offers platform, showing all entities, their attributes, and relationships.
+This document provides a comprehensive Entity Relationship Diagram (ERD) for the MyOffers platform, showing all entities, their attributes, and relationships.
 
 ## ER Diagram (Mermaid)
 

@@ -95,7 +95,7 @@ flowchart LR
 |--------|--------------|------------------------|
 | **Authentication Service** | OTP verification, JWT token generation, role-based access control | **Implemented:** OTP send/verify, token stored in memory; RBAC via role. No JWT refresh or persistent token yet. |
 | **User Service** | Customer profile, Shopkeeper profile, Admin controls | **Implemented:** `/auth/me`, update profile; shopkeeper profile GET/PUT. |
-| **Offer Service** | Create/Update/Delete offer, scratch card logic, offer pack validation, expiry management | **Partial:** CRUD offers, expiry in model. No scratch card or pack validation in client/backend yet. |
+| **Offer Service** | Create/Update/Delete offer, scratch card logic, offer pack validation, expiry management | **Partial:** CRUMyOffers, expiry in model. No scratch card or pack validation in client/backend yet. |
 | **Campaign Service** | Audience segmentation, cost calculation, campaign scheduler, WhatsApp & in-app integration | **Not implemented.** |
 | **AI Service** | Campaign text generation, banner generation, AI assistant chatbot | **Not implemented.** |
 | **Payment Service** | Subscription pack purchase, campaign billing, wallet management, GST invoice generation | **Not implemented.** |
@@ -291,7 +291,7 @@ flowchart TD
 
 ### 8.4 Monetization (PDF §12)
 
-- **Revenue streams:** Subscription packs, campaign usage billing; future: featured listings, sponsored offers  
+- **Revenue streams:** Subscription packs, campaign usage billing; future: featured listings, sponsoreMyOffers  
 - **Billing model:** Wallet-based deduction, auto-invoice generation, recurring subscription engine  
 
 ---

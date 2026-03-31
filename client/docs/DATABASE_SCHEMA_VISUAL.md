@@ -1,10 +1,10 @@
-# D-Offers Database Schema - Visual Reference
+# MyOffers Database Schema - Visual Reference
 
 ## Quick Reference Diagram
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                           D-OFFERS DATABASE SCHEMA                           │
+│                           MyOffers DATABASE SCHEMA                           │
 └─────────────────────────────────────────────────────────────────────────────┘
 
 ┌──────────────────┐         ┌──────────────────┐         ┌──────────────────┐

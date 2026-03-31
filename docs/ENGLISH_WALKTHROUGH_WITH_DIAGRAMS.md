@@ -1,4 +1,4 @@
-# D-OFFERS End-to-End Walkthrough (English)
+# MyOffers End-to-End Walkthrough (English)
 
 Purpose: This document explains how the application behaves from a user-flow perspective across all roles. It is focused on practical app usage (screens and journeys), not deep implementation internals.
 
@@ -17,7 +17,7 @@ Purpose: This document explains how the application behaves from a user-flow per
 
 ## 1) Product at a glance
 
-D-OFFERS is a multi-role platform where:
+MyOffers is a multi-role platform where:
 - Customers discover local offers.
 - Shopkeepers subscribe and publish offers.
 - SSA/CSA drive lead acquisition and conversion.

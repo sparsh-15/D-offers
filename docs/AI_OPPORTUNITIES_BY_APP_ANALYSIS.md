@@ -1,4 +1,4 @@
-# D-Offers AI Opportunities (App Analysis)
+# MyOffers AI Opportunities (App Analysis)
 
 ## 1. What Exists Today
 

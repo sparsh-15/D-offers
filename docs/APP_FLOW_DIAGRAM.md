@@ -1,4 +1,4 @@
-# D-Offers App — Flow Diagram (All 6 Roles)
+# MyOffers App — Flow Diagram (All 6 Roles)
 
 This document describes the end-to-end app flow **role-wise** so you can see how each role enters the app, what they can do, and how flows connect (e.g. leads → shopkeeper registration → payment with coupons).
 
