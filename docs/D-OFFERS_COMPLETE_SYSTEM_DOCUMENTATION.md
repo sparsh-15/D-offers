@@ -2660,7 +2660,7 @@ services:
 ```bash
 NODE_ENV=development
 PORT=3000
-MONGODB_URI=mongodb://localhost:27017/doffers
+MONGODB_URI=mongodb://localhost:27017/MyOffers
 JWT_SECRET=dev-secret-change-in-production
 MASTER_OTP=999999
 SEND_OTP_VIA_SMS=false

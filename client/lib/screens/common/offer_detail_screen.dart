@@ -571,7 +571,7 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
       discountText = 'Exclusive offer';
     }
 
-    const appLink = 'https://doffers.app/download';
+    const appLink = 'https://MyOffers.app/download';
 
     final text = StringBuffer()
       ..writeln('${offer.title} — $discountText')

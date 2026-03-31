@@ -199,7 +199,7 @@ migrate();
 
 1. **Backup your database first!**
    ```bash
-   mongodump --uri="mongodb://localhost:27017/doffers" --out=./backup
+   mongodump --uri="mongodb://localhost:27017/MyOffers" --out=./backup
    ```
 
 2. **Run the migration script:**
@@ -319,7 +319,7 @@ If you need to rollback:
 
 1. **Restore database from backup:**
    ```bash
-   mongorestore --uri="mongodb://localhost:27017/doffers" ./backup/doffers
+   mongorestore --uri="mongodb://localhost:27017/MyOffers" ./backup/MyOffers
    ```
 
 2. **Revert code changes:**

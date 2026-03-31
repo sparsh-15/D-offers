@@ -156,7 +156,7 @@ async function generateBannerImageUrl(params) {
   const uploadResult = await new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
       {
-        folder: "doffers/ai-banners",
+        folder: "MyOffers/ai-banners",
         resource_type: "image",
         format: "png",
       },

@@ -31,7 +31,7 @@ void main() {
 
     test('falls back to path segment when no coupon query param', () {
       final result = QrPayloadParser.parse(
-        'doffers://redeem/coupon/CODE777',
+        'MyOffers://redeem/coupon/CODE777',
       );
 
       expect(result.couponCode, 'CODE777');

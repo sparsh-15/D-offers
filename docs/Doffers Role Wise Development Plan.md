@@ -1,7 +1,7 @@
-# Doffers Role Wise Development Plan
+# MyOffers Role Wise Development Plan
 
 This markdown file is the editable source for updates.
-Keep this in sync with `docs/Doffers Role Wise Development Plan.pdf`.
+Keep this in sync with `docs/MyOffers Role Wise Development Plan.pdf`.
 
 ## Latest Updates (2026-02-24)
 
