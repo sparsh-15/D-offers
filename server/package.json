@@ -8,7 +8,6 @@
     "postinstall": "npm run prisma:generate",
     "dev": "nodemon index.js",
     "seed:admin": "node scripts/create-super-admin.js",
-    "create:superadmin": "node scripts/create-super-admin.js",
     "seed:plans": "node scripts/seed-subscription-plans.js",
     "seed:monetization": "node scripts/seed-monetization.js",
     "seed:category-pricing-draft": "node scripts/seed-category-pricing-draft.js",

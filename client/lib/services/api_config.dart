@@ -16,7 +16,8 @@ class ApiConfig {
 
   static String get baseUrl {
     if (useProduction) {
-      return 'https://d-offers-azrc.onrender.com/api';
+      // return 'https://d-offers-azrc.onrender.com/api';
+      return 'https://d-offers-97ny.onrender.com/api';
     } else {
       if (kIsWeb) return 'http://localhost:3000/api';
       try {

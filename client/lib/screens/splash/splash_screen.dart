@@ -117,42 +117,50 @@ class _SplashScreenState extends State<SplashScreen>
               padding: const EdgeInsets.symmetric(horizontal: AppTokens.spaceLG),
               child: Column(
                 children: [
-                  const Spacer(flex: 3),
-                  // Logo
-                  Container(
-                    width: 96,
-                    height: 96,
-                    decoration: BoxDecoration(
-                      // color: AppColors.cardBackground,
-                      borderRadius: BorderRadius.circular(AppTokens.radiusXL),
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    child: Image.asset(
-                      'assets/Dofferlogo.png',
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => const Icon(
-                        Icons.local_offer_rounded,
-                        color: AppColors.accent,
-                        size: 48,
+                  Expanded(
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Logo
+                          Container(
+                            width: 96,
+                            height: 96,
+                            decoration: BoxDecoration(
+                              // color: AppColors.cardBackground,
+                              borderRadius: BorderRadius.circular(AppTokens.radiusXL),
+                            ),
+                            clipBehavior: Clip.antiAlias,
+                            child: Image.asset(
+                              'assets/Dofferlogo.png',
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => const Icon(
+                                Icons.local_offer_rounded,
+                                color: AppColors.accent,
+                                size: 48,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: AppTokens.spaceLG),
+                          Text(
+                            AppStrings.appName,
+                            style: theme.textTheme.displayMedium?.copyWith(
+                              color: AppColors.textPrimary,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: AppTokens.spaceSM),
+                          Text(
+                            AppStrings.appTagline,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                  const SizedBox(height: AppTokens.spaceLG),
-                  Text(
-                    AppStrings.appName,
-                    style: theme.textTheme.displayMedium?.copyWith(
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: AppTokens.spaceSM),
-                  Text(
-                    AppStrings.appTagline,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const Spacer(flex: 4),
                   // Minimal loader
                   SizedBox(
                     width: 40,
