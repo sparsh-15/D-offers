@@ -1,4 +1,4 @@
-# MyOffers Phase 2 Backlog and Next Additions (Robust)
+# MyOffers Phase 2 Backlog, Maintenance, and Pricing Template
 
 ## 1) Phase 2 Goal
 
@@ -193,3 +193,39 @@ Phase 2 will convert the current stable platform into a measurable growth engine
 - pending AI capabilities are live with measurable time-to-launch improvement
 - backend supports scalable load with optimized queries and cache-backed reads
 - dispatch, analytics, and AI flows have observability, auditability, and rollback safety
+
+## 10) Maintenance and Monthly Pricing
+
+This section can be used as the base service template for ongoing support after Phase 2 rollout.
+
+### Maintenance Scope (What We Do)
+
+- production support and issue resolution for live campaigns, analytics, AI, and payments
+- production monitoring for campaign, analytics, AI, and payment flows
+- bug fixing for reported issues with priority-based turnaround
+- minor enhancements for forms, dashboards, and operator usability
+- API and database health checks, query optimization, and cache tuning
+- periodic index review and slow-query cleanup for high-traffic endpoints
+- pagination and filter optimization for campaign and analytics screens
+- queue and dispatch reliability checks including retry and failure handling
+- proactive error handling hardening (API, validation, and async job failures)
+- log review and alert tuning to reduce repeat production incidents
+- security patching, dependency updates, and access/audit review
+- release support for hotfixes and scheduled updates
+- controlled rollout support with rollback checks for risky deployments
+- small feature additions and low-complexity change requests as part of monthly maintenance cycle
+- monthly performance and stability report with action items
+
+### Maintenance Notes
+
+- maintenance covers routine support, fixes, and small improvements only
+- new modules, large redesigns, and major feature builds are handled as separate estimates
+- priority and turnaround can be aligned with the operational severity of the issue
+
+### Commercial
+
+- combined monthly pricing for both implementation support and maintenance: INR 60,000 per month
+- pricing includes routine maintenance, bug fixes, monitoring, performance tuning, and minor feature additions
+- payment terms: monthly billing, invoiced at the start of each month
+- pricing basis: one combined support plan for implementation assistance plus maintenance coverage
+- exclusions: major new modules, large feature rebuilds, and scope-heavy changes are estimated separately
