@@ -829,6 +829,7 @@ async function bulkCreateOffers(req, res, next) {
           ? new Date(row.validTo)
           : new Date(Date.now() + 15 * 24 * 60 * 60 * 1000);
 
+        const profile = await prisma.shopkeeperProfile.findUnique({ where: { userId: shopkeeper.id } });
         const existing = await prisma.offer.findFirst({
           where: {
             shopkeeperId: shopkeeper.id,
@@ -857,7 +858,7 @@ async function bulkCreateOffers(req, res, next) {
             description: row.description ? String(row.description).trim() : null,
             photos: Array.isArray(row.photos) ? row.photos.map((p) => String(p).trim()).filter(Boolean) : [],
             termsAndConditions: row.termsAndConditions ? String(row.termsAndConditions).trim() : null,
-            category: row.category ? String(row.category).trim() : 'all',
+            category: profile?.category?.trim() || 'all',
             discountType,
             discountValue,
             validFrom,
@@ -889,7 +890,7 @@ async function bulkCreateOffers(req, res, next) {
       success: true,
       message: 'Bulk offers processed',
       bodyFormat: {
-        offers: '[{ shopkeeperId? | shopkeeperPhone?, title, description?, category?, discountType?(percentage|fixed), discountValue, photos?, termsAndConditions?, validFrom?, validTo?, status?, forceNew? }]'
+        offers: '[{ shopkeeperId? | shopkeeperPhone?, title, description?, discountType?(percentage|fixed), discountValue, photos?, termsAndConditions?, validFrom?, validTo?, status?, forceNew? }]'
       },
       data: summary,
     });

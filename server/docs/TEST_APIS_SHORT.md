@@ -201,7 +201,6 @@
       "shopkeeperPhone": "9500005001",
       "title": "Flat 20% Off on Grocery",
       "description": "Weekend special",
-      "category": "grocery",
       "discountType": "percentage",
       "discountValue": 20,
       "photos": [
@@ -215,7 +214,6 @@
       "shopkeeperPhone": "9500005002",
       "title": "Rs 200 Off on Electronics",
       "description": "Limited stock",
-      "category": "electronics",
       "discountType": "fixed",
       "discountValue": 200,
       "validTo": "2026-04-25T00:00:00.000Z"
@@ -231,7 +229,7 @@
   "success": true,
   "message": "Bulk offers processed",
   "bodyFormat": {
-    "offers": "[{ shopkeeperId? | shopkeeperPhone?, title, description?, category?, discountType?(percentage|fixed), discountValue, photos?, termsAndConditions?, validFrom?, validTo?, status?, forceNew? }]"
+    "offers": "[{ shopkeeperId? | shopkeeperPhone?, title, description?, discountType?(percentage|fixed), discountValue, photos?, termsAndConditions?, validFrom?, validTo?, status?, forceNew? }]"
   },
   "data": {
     "requested": 2,
@@ -257,8 +255,11 @@
 ```bash
 curl.exe -X POST "http://localhost:3000/api/subscription-governance/test-data/offers/bulk" ^
   -H "Content-Type: application/json" ^
-  -d "{\"offers\":[{\"shopkeeperPhone\":\"9500005001\",\"title\":\"Flat 20% Off on Grocery\",\"category\":\"grocery\",\"discountType\":\"percentage\",\"discountValue\":20},{\"shopkeeperPhone\":\"9500005002\",\"title\":\"Rs 200 Off on Electronics\",\"category\":\"electronics\",\"discountType\":\"fixed\",\"discountValue\":200}]}"
+  -d "{\"offers\":[{\"shopkeeperPhone\":\"9500005001\",\"title\":\"Flat 20% Off on Grocery\",\"discountType\":\"percentage\",\"discountValue\":20},{\"shopkeeperPhone\":\"9500005002\",\"title\":\"Rs 200 Off on Electronics\",\"discountType\":\"fixed\",\"discountValue\":200}]}"
 ```
+
+- Category is taken from each shopkeeper's profile automatically.
+- Do not pass `category` in this payload.
 
 ### Response (sample)
 

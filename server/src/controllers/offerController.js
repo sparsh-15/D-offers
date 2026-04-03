@@ -4,19 +4,21 @@ const { resolvePgId } = require('../repositories/idResolver');
 
 async function create(req, res, next) {
   try {
-    const { title, description, discountType, discountValue, validFrom, validTo, photos, termsAndConditions, category } = req.body;
+    const { title, description, discountType, discountValue, validFrom, validTo, photos, termsAndConditions } = req.body;
     if (!title || typeof title !== 'string' || !title.trim()) {
       const err = new Error('title is required');
       err.statusCode = 400;
       return next(err);
     }
+    const shopkeeperId = (await resolvePgId('users', req.user.userId)) || req.user.userId;
+    const profile = await prisma.shopkeeperProfile.findUnique({ where: { userId: shopkeeperId } });
     const offer = await offerRepository.createOffer({
-      shopkeeperId: req.user.userId,
+      shopkeeperId,
       title: title.trim(),
       description: description != null ? String(description).trim() : '',
       photos: Array.isArray(photos) ? photos.filter((p) => p && typeof p === 'string') : [],
       termsAndConditions: termsAndConditions != null ? String(termsAndConditions).trim() : '',
-      category: category != null ? String(category).trim() : '',
+      category: profile?.category?.trim() || 'all',
       discountType: discountType || 'percentage',
       discountValue: discountValue != null ? discountValue : null,
       validFrom: validFrom ? new Date(validFrom) : null,
@@ -132,18 +134,21 @@ async function update(req, res, next) {
       }
     }
 
-    const { title, description, discountType, discountValue, validFrom, validTo, status, photos, termsAndConditions, category } = req.body;
+    const { title, description, discountType, discountValue, validFrom, validTo, status, photos, termsAndConditions } = req.body;
     const changes = {};
     if (title !== undefined) changes.title = String(title).trim();
     if (description !== undefined) changes.description = String(description).trim();
     if (photos !== undefined) changes.photos = Array.isArray(photos) ? photos.filter((p) => p && typeof p === 'string') : [];
     if (termsAndConditions !== undefined) changes.termsAndConditions = String(termsAndConditions).trim();
-    if (category !== undefined) changes.category = String(category).trim();
     if (discountType !== undefined) changes.discountType = discountType;
     if (discountValue !== undefined) changes.discountValue = discountValue;
     if (validFrom !== undefined) changes.validFrom = validFrom ? new Date(validFrom) : null;
     if (validTo !== undefined) changes.validTo = validTo ? new Date(validTo) : null;
     if (status !== undefined) changes.status = status;
+
+    const shopkeeperId = (await resolvePgId('users', req.user.userId)) || req.user.userId;
+    const profile = await prisma.shopkeeperProfile.findUnique({ where: { userId: shopkeeperId } });
+    changes.category = profile?.category?.trim() || existing.category || 'all';
 
     const offer = await offerRepository.updateOffer(pgOfferId, changes);
     res.status(200).json({ success: true, offer: { ...offer, id: offer.id } });

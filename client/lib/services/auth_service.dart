@@ -705,7 +705,6 @@ class AuthService {
     DateTime? validTo,
     List<String>? photos,
     String? termsAndConditions,
-    String? category,
   }) async {
     final token = AuthStore.token;
     if (token == null) throw Exception('Not authenticated');
@@ -726,7 +725,6 @@ class AuthService {
         if (photos != null) 'photos': photos,
         if (termsAndConditions != null)
           'termsAndConditions': termsAndConditions,
-        if (category != null) 'category': category,
       }),
     );
     final data = _handleResponse(resp) as Map<String, dynamic>;
@@ -744,7 +742,6 @@ class AuthService {
     String? status,
     List<String>? photos,
     String? termsAndConditions,
-    String? category,
   }) async {
     final token = AuthStore.token;
     if (token == null) throw Exception('Not authenticated');
@@ -766,7 +763,6 @@ class AuthService {
         if (photos != null) 'photos': photos,
         if (termsAndConditions != null)
           'termsAndConditions': termsAndConditions,
-        if (category != null) 'category': category,
       }),
     );
     final data = _handleResponse(resp) as Map<String, dynamic>;

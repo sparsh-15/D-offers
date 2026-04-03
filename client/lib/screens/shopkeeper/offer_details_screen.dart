@@ -30,7 +30,6 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _termsController = TextEditingController();
-  final _categoryController = TextEditingController();
   final _discountValueController = TextEditingController();
   final _photoUrlController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
@@ -45,14 +44,12 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
   Map<String, dynamic>? _subscription;
   int? _currentOfferCount;
   bool _loadingSubscription = false;
-  bool _loadingCategories = false;
-  List<Map<String, dynamic>> _categories = [];
-  String? _selectedCategory;
   bool _isGeneratingBanner = false;
   Map<String, dynamic>? _aiWallet;
   bool _loadingAiWallet = false;
   String? _shopName;
   String? _shopLocation;
+  String? _shopCategory;
 
   @override
   void initState() {
@@ -61,9 +58,6 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
       _titleController.text = widget.offer!.title;
       _descriptionController.text = widget.offer!.description;
       _termsController.text = widget.offer!.termsAndConditions;
-      _categoryController.text = widget.offer!.category;
-      _selectedCategory =
-          widget.offer!.category.isNotEmpty ? widget.offer!.category : null;
       _discountType = widget.offer!.discountType;
       _discountValueController.text =
           widget.offer!.discountValue?.toString() ?? '';
@@ -74,7 +68,6 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
     }
     _loadSubscriptionDetails();
     _loadAiWallet();
-    _loadCategories();
     _loadShopProfile();
   }
 
@@ -83,7 +76,6 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
     _titleController.dispose();
     _descriptionController.dispose();
     _termsController.dispose();
-    _categoryController.dispose();
     _discountValueController.dispose();
     _photoUrlController.dispose();
     super.dispose();
@@ -134,27 +126,13 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
       if (!mounted || profile == null) return;
       setState(() {
         _shopName = profile.shopName;
+        _shopCategory = profile.category.isNotEmpty ? profile.category : 'all';
         final parts = [profile.city, profile.pincode]
             .where((s) => s.isNotEmpty)
             .toList();
         _shopLocation = parts.isNotEmpty ? parts.join(', ') : null;
       });
     } catch (_) {}
-  }
-
-  Future<void> _loadCategories() async {
-    setState(() => _loadingCategories = true);
-    try {
-      final response = await SubscriptionService.instance.getCategories();
-      if (!mounted) return;
-      setState(() {
-        _categories = response;
-        _loadingCategories = false;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() => _loadingCategories = false);
-    }
   }
 
   String _formatDate(dynamic value) {
@@ -169,6 +147,7 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
 
   Future<void> _showUpgradeDialog(String title, String message) async {
     if (!mounted) return;
+    final category = (_shopCategory ?? widget.offer?.category ?? 'all').trim();
     await showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
@@ -181,15 +160,11 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
           ),
           FilledButton(
             onPressed: () {
-              final shopCategory = (_selectedCategory ??
-                      _categoryController.text.trim())
-                  .trim();
               Navigator.of(context).pop();
               Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (_) => SubscriptionPlansScreen(
-                    shopCategory:
-                        shopCategory.isEmpty ? 'all' : shopCategory,
+                    shopCategory: category.isEmpty ? 'all' : category,
                   ),
                 ),
               );
@@ -677,7 +652,6 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
           validTo: _validTo,
           photos: allPhotos,
           termsAndConditions: _termsController.text.trim(),
-          category: _categoryController.text.trim(),
         );
       } else {
         await AuthService.instance.updateOffer(
@@ -691,7 +665,6 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
           status: _status,
           photos: allPhotos,
           termsAndConditions: _termsController.text.trim(),
-          category: _categoryController.text.trim(),
         );
       }
 
@@ -770,33 +743,50 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
                   maxLines: 3,
                 ),
                 const SizedBox(height: 16),
-                if (_loadingCategories)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 8),
-                    child: LinearProgressIndicator(),
-                  )
-                else
-                  DropdownButtonFormField<String>(
-                    initialValue: _selectedCategory,
-                    decoration: const InputDecoration(
-                      labelText: 'Category',
-                      border: OutlineInputBorder(),
-                      hintText: 'Select a category',
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.14),
                     ),
-                    isExpanded: true,
-                    items: _categories.map((category) {
-                      return DropdownMenuItem<String>(
-                        value: category['value'],
-                        child: Text(category['label']),
-                      );
-                    }).toList(),
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedCategory = value;
-                        _categoryController.text = value ?? '';
-                      });
-                    },
                   ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.category_outlined,
+                          color: AppColors.primary),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Shop category',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelMedium
+                                  ?.copyWith(color: AppColors.textSecondary),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              (_shopCategory ?? widget.offer?.category ?? 'all')
+                                      .trim()
+                                      .isEmpty
+                                  ? 'all'
+                                  : (_shopCategory ?? widget.offer?.category ?? 'all')
+                                      .trim(),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.w700),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
                 const SizedBox(height: 16),
                 Row(
                   children: [
@@ -976,7 +966,9 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
                                     title: _titleController.text.trim(),
                                     description:
                                         _descriptionController.text.trim(),
-                                    category: _categoryController.text.trim(),
+                                    category: _shopCategory ??
+                                      widget.offer?.category ??
+                                      'all',
                                     discountType: _discountType,
                                     discountValue: discountValue,
                                     shopName: _shopName,
