@@ -11,9 +11,24 @@ async function deductAiCredit(shopkeeperId) {
   const wallet = await prisma.aiWallet.findUnique({
     where: { shopkeeperId },
   });
-  if (!wallet) return { ok: false, message: 'No AI wallet found' };
+  if (!wallet) {
+    return {
+      ok: false,
+      message: 'Your current plan has no AI banner packs. Please manage AI packs.',
+      code: 'AI_PACKS_REQUIRED',
+    };
+  }
   const available = getAvailableCredits(wallet);
   if (available < 1) {
+    const monthlyLimit = wallet.monthlyLimit || 0;
+    const extra = wallet.extraCreditsCurrentCycle || 0;
+    if (monthlyLimit <= 0 && extra <= 0) {
+      return {
+        ok: false,
+        message: 'Your current plan has no AI banner packs. Please manage AI packs.',
+        code: 'AI_PACKS_REQUIRED',
+      };
+    }
     return { ok: false, message: 'You have reached your AI banner limit. Buy AI Credit Pack.', code: 'AI_LIMIT_REACHED' };
   }
   const monthlyLimit = wallet.monthlyLimit;

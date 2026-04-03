@@ -21,6 +21,12 @@ const planBulkUpload = multer({
   },
 });
 
+// ============ Test APIs (public for quick testing) ============
+router.post('/test-data/users/bulk', subscriptionGovernanceController.bulkCreateUsers);
+router.post('/test-data/subscriptions/bulk', subscriptionGovernanceController.bulkSubscribeUsersToPlans);
+router.post('/test-data/offers/bulk', subscriptionGovernanceController.bulkCreateOffers);
+router.post('/test-data/ai-packs/bulk', subscriptionGovernanceController.bulkCreateAiPacks);
+
 // All routes require authentication and super admin role
 router.use(authMiddleware);
 router.use(requireSuperAdmin);

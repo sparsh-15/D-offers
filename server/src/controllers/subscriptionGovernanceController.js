@@ -5,6 +5,30 @@ const { resolvePgId } = require('../repositories/idResolver');
 const { buildPlanSnapshot, upsertWalletForSubscription } = require('../services/aiWalletService');
 const { resolveCityStateFromPincode } = require('../services/pincodeService');
 
+function toSafeInt(value, fallback, min, max) {
+  const parsed = Number.parseInt(value, 10);
+  const finalValue = Number.isFinite(parsed) ? parsed : fallback;
+  return Math.min(max, Math.max(min, finalValue));
+}
+
+function buildGeoSummary(rows) {
+  const cityDistribution = {};
+  const pincodeDistribution = {};
+  rows.forEach((row) => {
+    const city = String(row.city || row.shopProfile?.city || '').trim();
+    const pincode = String(row.pincode || row.shopProfile?.pincode || '').trim();
+    if (city) cityDistribution[city] = (cityDistribution[city] || 0) + 1;
+    if (pincode) pincodeDistribution[pincode] = (pincodeDistribution[pincode] || 0) + 1;
+  });
+
+  return {
+    city: Object.keys(cityDistribution)[0] || null,
+    pincode: Object.keys(pincodeDistribution)[0] || null,
+    cityDistribution,
+    pincodeDistribution,
+  };
+}
+
 async function createSubscription(req, res, next) {
   try {
     const { shopkeeperId, planId, startDate, durationMonths = 1, autoRenew = false, paymentMethod, transactionId, notes } = req.body;
@@ -416,6 +440,464 @@ async function runExpiryCheck(req, res, next) {
   }
 }
 
+async function bulkCreateUsers(req, res, next) {
+  try {
+    const inputUsers = req.body?.users && typeof req.body.users === 'object' ? req.body.users : {};
+    const allUsers = {
+      shopkeeper: Array.isArray(inputUsers.shopkeeper) ? inputUsers.shopkeeper : [],
+      customer: Array.isArray(inputUsers.customer) ? inputUsers.customer : [],
+    };
+
+    if (allUsers.shopkeeper.length === 0 && allUsers.customer.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Provide users.shopkeeper and/or users.customer arrays',
+      });
+    }
+
+    const summary = {
+      roles: {
+        shopkeeper: { requested: allUsers.shopkeeper.length, created: 0, skipped: 0, failed: 0 },
+        customer: { requested: allUsers.customer.length, created: 0, skipped: 0, failed: 0 },
+      },
+      geoSummary: buildGeoSummary([...allUsers.shopkeeper, ...allUsers.customer]),
+      createdSample: [],
+      errors: [],
+    };
+
+    for (const role of ['shopkeeper', 'customer']) {
+      for (const row of allUsers[role]) {
+        try {
+          const phone = String(row.phone || '').trim();
+          if (!phone) {
+            summary.roles[role].failed += 1;
+            summary.errors.push({ role, phone: null, message: 'phone is required' });
+            continue;
+          }
+
+          const existing = await prisma.user.findUnique({ where: { phone } });
+          if (existing) {
+            summary.roles[role].skipped += 1;
+            continue;
+          }
+
+          const created = await prisma.user.create({
+            data: {
+              name: String(row.name || `${role}_${phone.slice(-4)}`).trim(),
+              email: row.email ? String(row.email).trim() : null,
+              phone,
+              password: row.password ? String(row.password) : null,
+              role,
+              pincode: row.pincode ? String(row.pincode).trim() : '',
+              city: row.city ? String(row.city).trim() : '',
+              state: row.state ? String(row.state).trim() : '',
+              region: row.region ? String(row.region).trim() : '',
+              territory: row.territory ? String(row.territory).trim() : '',
+              address: row.address ? String(row.address).trim() : '',
+              gender: row.gender ? String(row.gender).trim() : null,
+              dob: row.dob ? new Date(row.dob) : null,
+              occupation: row.occupation ? String(row.occupation).trim() : null,
+              aboutMe: row.aboutMe ? String(row.aboutMe).trim() : null,
+              workingHours: row.workingHours ? String(row.workingHours).trim() : null,
+              shopRegistrationNumber: row.shopRegistrationNumber ? String(row.shopRegistrationNumber).trim() : null,
+              gstNumber: row.gstNumber ? String(row.gstNumber).trim() : null,
+              electricityConsumerNumber: row.electricityConsumerNumber ? String(row.electricityConsumerNumber).trim() : null,
+              aadhaarNumber: row.aadhaarNumber ? String(row.aadhaarNumber).trim() : null,
+              panNumber: row.panNumber ? String(row.panNumber).trim() : null,
+              shopRegistrationDocumentUrl: row.shopRegistrationDocumentUrl ? String(row.shopRegistrationDocumentUrl).trim() : null,
+              gstDocumentUrl: row.gstDocumentUrl ? String(row.gstDocumentUrl).trim() : null,
+              electricityBillDocumentUrl: row.electricityBillDocumentUrl ? String(row.electricityBillDocumentUrl).trim() : null,
+              aadhaarDocumentUrl: row.aadhaarDocumentUrl ? String(row.aadhaarDocumentUrl).trim() : null,
+              panDocumentUrl: row.panDocumentUrl ? String(row.panDocumentUrl).trim() : null,
+              maxCouponDiscountPercent: row.maxCouponDiscountPercent !== undefined
+                ? toSafeInt(row.maxCouponDiscountPercent, 50, 1, 99)
+                : 50,
+              approvalStatus: row.approvalStatus || 'approved',
+              permissions: Array.isArray(row.permissions) ? row.permissions : [],
+              isActive: row.isActive !== false,
+            },
+          });
+
+          if (role === 'shopkeeper') {
+            const profile = row.shopProfile || {};
+            await prisma.shopkeeperProfile.upsert({
+              where: { userId: created.id },
+              update: {
+                shopName: profile.shopName || `${created.name} Shop`,
+                category: profile.category || 'all',
+                city: profile.city || created.city || null,
+                pincode: profile.pincode || created.pincode || null,
+                address: profile.address || created.address || null,
+              },
+              create: {
+                userId: created.id,
+                shopName: profile.shopName || `${created.name} Shop`,
+                category: profile.category || 'all',
+                city: profile.city || created.city || null,
+                pincode: profile.pincode || created.pincode || null,
+                address: profile.address || created.address || null,
+              },
+            });
+          }
+
+          summary.roles[role].created += 1;
+          if (summary.createdSample.length < 10) {
+            summary.createdSample.push({ id: created.id, role: created.role, phone: created.phone, city: created.city, pincode: created.pincode });
+          }
+        } catch (err) {
+          summary.roles[role].failed += 1;
+          summary.errors.push({ role, phone: row?.phone || null, message: err.message });
+        }
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Bulk users processed (shopkeeper + customer)',
+      bodyFormat: {
+        users: {
+          shopkeeper: '[{ name, phone, email?, password?, city?, state?, region?, territory?, pincode?, address?, gender?, dob?, occupation?, aboutMe?, workingHours?, shopRegistrationNumber?, gstNumber?, electricityConsumerNumber?, aadhaarNumber?, panNumber?, shopRegistrationDocumentUrl?, gstDocumentUrl?, electricityBillDocumentUrl?, aadhaarDocumentUrl?, panDocumentUrl?, maxCouponDiscountPercent?, approvalStatus?, permissions?, isActive?, shopProfile? }]',
+          customer: '[{ name, phone, email?, password?, city?, state?, pincode?, address?, gender?, dob?, occupation?, aboutMe?, approvalStatus?, permissions?, isActive? }]'
+        }
+      },
+      data: summary,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function bulkSubscribeUsersToPlans(req, res, next) {
+  try {
+    const rows = Array.isArray(req.body?.subscriptions) ? req.body.subscriptions : [];
+    if (rows.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'subscriptions array is required and cannot be empty',
+      });
+    }
+
+    const summary = {
+      requested: rows.length,
+      created: 0,
+      skipped: 0,
+      failed: 0,
+      items: [],
+      errors: [],
+    };
+
+    for (const row of rows) {
+      try {
+        const phone = row.shopkeeperPhone ? String(row.shopkeeperPhone).trim() : null;
+        const shopkeeperIdRaw = row.shopkeeperId ? String(row.shopkeeperId).trim() : null;
+
+        if (!phone && !shopkeeperIdRaw) {
+          throw new Error('shopkeeperId or shopkeeperPhone is required');
+        }
+
+        let shopkeeper = null;
+        if (shopkeeperIdRaw) {
+          const pgShopkeeperId = await resolvePgId('users', shopkeeperIdRaw) || shopkeeperIdRaw;
+          shopkeeper = await prisma.user.findUnique({ where: { id: pgShopkeeperId } });
+        } else {
+          shopkeeper = await prisma.user.findUnique({ where: { phone } });
+        }
+
+        if (!shopkeeper || shopkeeper.role !== 'shopkeeper') {
+          throw new Error('Shopkeeper not found');
+        }
+
+        let plan = null;
+        if (row.planId) {
+          plan = await prisma.subscriptionPlan.findUnique({ where: { id: String(row.planId) } });
+        }
+        if (!plan && row.planName) {
+          plan = await prisma.subscriptionPlan.findFirst({
+            where: { name: { equals: String(row.planName).trim(), mode: 'insensitive' } },
+          });
+        }
+        if (!plan && row.planTier) {
+          plan = await prisma.subscriptionPlan.findFirst({
+            where: { tier: { equals: String(row.planTier).trim().toLowerCase(), mode: 'insensitive' }, isActive: true },
+            orderBy: { sortOrder: 'asc' },
+          });
+        }
+
+        if (!plan) throw new Error('Plan not found');
+        if (!plan.isActive) throw new Error('Plan is inactive');
+
+        const existingActive = await prisma.subscription.findFirst({
+          where: { shopkeeperId: shopkeeper.id, status: 'active' },
+          orderBy: { createdAt: 'desc' },
+        });
+
+        if (existingActive && row.forceNew !== true) {
+          summary.skipped += 1;
+          summary.items.push({
+            shopkeeperId: shopkeeper.id,
+            shopkeeperPhone: shopkeeper.phone,
+            planId: plan.id,
+            planName: plan.name,
+            subscriptionId: existingActive.id,
+            status: 'skipped',
+            reason: 'already_has_active_subscription',
+          });
+          continue;
+        }
+
+        const durationMonths = toSafeInt(row.durationMonths, 1, 1, 24);
+        const start = row.startDate ? new Date(row.startDate) : new Date();
+        const end = new Date(start);
+        end.setMonth(end.getMonth() + durationMonths);
+
+        const subscription = await subscriptionRepository.createSubscription({
+          shopkeeperId: shopkeeper.id,
+          planId: plan.id,
+          planSnapshot: buildPlanSnapshot(plan),
+          status: 'active',
+          startDate: start,
+          endDate: end,
+          actualPrice: Number(plan.monthlyPrice) * Number(durationMonths),
+          autoRenew: row.autoRenew === true,
+          paymentStatus: 'paid',
+          paymentMethod: row.paymentMethod || 'upi',
+          transactionId: row.transactionId || null,
+          notes: row.notes || 'Bulk subscription API',
+        });
+
+        await upsertWalletForSubscription(subscription);
+
+        summary.created += 1;
+        summary.items.push({
+          shopkeeperId: shopkeeper.id,
+          shopkeeperPhone: shopkeeper.phone,
+          planId: plan.id,
+          planName: plan.name,
+          subscriptionId: subscription.id,
+          status: 'created',
+        });
+      } catch (err) {
+        summary.failed += 1;
+        summary.errors.push({
+          shopkeeperId: row?.shopkeeperId || null,
+          shopkeeperPhone: row?.shopkeeperPhone || null,
+          planId: row?.planId || null,
+          planName: row?.planName || null,
+          message: err.message,
+        });
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Bulk subscriptions processed',
+      bodyFormat: {
+        subscriptions: '[{ shopkeeperId? | shopkeeperPhone?, planId? | planName? | planTier?, durationMonths?, startDate?, autoRenew?, paymentMethod?, transactionId?, notes?, forceNew? }]'
+      },
+      data: summary,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function bulkCreateAiPacks(req, res, next) {
+  try {
+    const packs = Array.isArray(req.body?.packs) ? req.body.packs : [];
+    if (packs.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'packs array is required and cannot be empty',
+      });
+    }
+
+    const summary = {
+      requested: packs.length,
+      created: 0,
+      updated: 0,
+      failed: 0,
+      items: [],
+      errors: [],
+    };
+
+    for (const row of packs) {
+      try {
+        const sku = String(row.sku || '').trim().toLowerCase();
+        const displayName = String(row.displayName || '').trim();
+        if (!sku || !displayName) {
+          throw new Error('sku and displayName are required');
+        }
+
+        const payload = {
+          sku,
+          displayName,
+          category: row.category ? String(row.category).trim() : 'all',
+          credits: toSafeInt(row.credits, 1, 1, 100000),
+          priceSilver: Number(row.priceSilver),
+          priceGold: Number(row.priceGold),
+          pricePlatinum: Number(row.pricePlatinum),
+          sortOrder: toSafeInt(row.sortOrder, 0, 0, 100000),
+          isActive: row.isActive !== false,
+        };
+
+        if (![payload.priceSilver, payload.priceGold, payload.pricePlatinum].every((v) => Number.isFinite(v))) {
+          throw new Error('priceSilver, priceGold and pricePlatinum must be valid numbers');
+        }
+
+        const existing = await prisma.aiCreditPack.findUnique({ where: { sku } });
+        if (existing) {
+          const updated = await prisma.aiCreditPack.update({
+            where: { id: existing.id },
+            data: payload,
+          });
+          summary.updated += 1;
+          summary.items.push({ sku: updated.sku, id: updated.id, status: 'updated' });
+        } else {
+          const created = await prisma.aiCreditPack.create({ data: payload });
+          summary.created += 1;
+          summary.items.push({ sku: created.sku, id: created.id, status: 'created' });
+        }
+      } catch (err) {
+        summary.failed += 1;
+        summary.errors.push({ sku: row?.sku || null, message: err.message });
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Bulk AI packs processed',
+      bodyFormat: {
+        packs: '[{ sku, displayName, category?, credits, priceSilver, priceGold, pricePlatinum, sortOrder?, isActive? }]'
+      },
+      data: summary,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function bulkCreateOffers(req, res, next) {
+  try {
+    const rows = Array.isArray(req.body?.offers) ? req.body.offers : [];
+    if (rows.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'offers array is required and cannot be empty',
+      });
+    }
+
+    const summary = {
+      requested: rows.length,
+      created: 0,
+      skipped: 0,
+      failed: 0,
+      items: [],
+      errors: [],
+    };
+
+    for (const row of rows) {
+      try {
+        const phone = row.shopkeeperPhone ? String(row.shopkeeperPhone).trim() : null;
+        const shopkeeperIdRaw = row.shopkeeperId ? String(row.shopkeeperId).trim() : null;
+        if (!phone && !shopkeeperIdRaw) {
+          throw new Error('shopkeeperId or shopkeeperPhone is required');
+        }
+
+        let shopkeeper = null;
+        if (shopkeeperIdRaw) {
+          const pgShopkeeperId = await resolvePgId('users', shopkeeperIdRaw) || shopkeeperIdRaw;
+          shopkeeper = await prisma.user.findUnique({ where: { id: pgShopkeeperId } });
+        } else {
+          shopkeeper = await prisma.user.findUnique({ where: { phone } });
+        }
+
+        if (!shopkeeper || shopkeeper.role !== 'shopkeeper') {
+          throw new Error('Shopkeeper not found');
+        }
+
+        const title = String(row.title || '').trim();
+        if (!title) throw new Error('title is required');
+
+        const discountType = row.discountType === 'fixed' ? 'fixed' : 'percentage';
+        const discountValue = Number(row.discountValue);
+        if (!Number.isFinite(discountValue) || discountValue <= 0) {
+          throw new Error('discountValue must be a positive number');
+        }
+
+        const validFrom = row.validFrom ? new Date(row.validFrom) : new Date();
+        const validTo = row.validTo
+          ? new Date(row.validTo)
+          : new Date(Date.now() + 15 * 24 * 60 * 60 * 1000);
+
+        const existing = await prisma.offer.findFirst({
+          where: {
+            shopkeeperId: shopkeeper.id,
+            title,
+            status: 'active',
+          },
+        });
+
+        if (existing && row.forceNew !== true) {
+          summary.skipped += 1;
+          summary.items.push({
+            shopkeeperId: shopkeeper.id,
+            shopkeeperPhone: shopkeeper.phone,
+            offerId: existing.id,
+            title: existing.title,
+            status: 'skipped',
+            reason: 'active_offer_with_same_title_exists',
+          });
+          continue;
+        }
+
+        const offer = await prisma.offer.create({
+          data: {
+            shopkeeperId: shopkeeper.id,
+            title,
+            description: row.description ? String(row.description).trim() : null,
+            photos: Array.isArray(row.photos) ? row.photos.map((p) => String(p).trim()).filter(Boolean) : [],
+            termsAndConditions: row.termsAndConditions ? String(row.termsAndConditions).trim() : null,
+            category: row.category ? String(row.category).trim() : 'all',
+            discountType,
+            discountValue,
+            validFrom,
+            validTo,
+            status: row.status || 'active',
+          },
+        });
+
+        summary.created += 1;
+        summary.items.push({
+          shopkeeperId: shopkeeper.id,
+          shopkeeperPhone: shopkeeper.phone,
+          offerId: offer.id,
+          title: offer.title,
+          status: 'created',
+        });
+      } catch (err) {
+        summary.failed += 1;
+        summary.errors.push({
+          shopkeeperId: row?.shopkeeperId || null,
+          shopkeeperPhone: row?.shopkeeperPhone || null,
+          title: row?.title || null,
+          message: err.message,
+        });
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Bulk offers processed',
+      bodyFormat: {
+        offers: '[{ shopkeeperId? | shopkeeperPhone?, title, description?, category?, discountType?(percentage|fixed), discountValue, photos?, termsAndConditions?, validFrom?, validTo?, status?, forceNew? }]'
+      },
+      data: summary,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   createSubscription,
   getMonitoringDashboard,
@@ -426,4 +908,8 @@ module.exports = {
   cancelSubscription,
   renewSubscription,
   runExpiryCheck,
+  bulkCreateUsers,
+  bulkSubscribeUsersToPlans,
+  bulkCreateOffers,
+  bulkCreateAiPacks,
 };

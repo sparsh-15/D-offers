@@ -8,6 +8,7 @@ import '../../services/upload_service.dart';
 import '../../services/shopkeeper_ai_service.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/dialog_helper.dart';
+import 'ai_credit_packs_screen.dart';
 import 'subscription_plans_screen.dart';
 
 class OfferDetailsScreen extends StatefulWidget {
@@ -994,9 +995,18 @@ class _OfferDetailsScreenState extends State<OfferDetailsScreen> {
                                   );
                                 } catch (e) {
                                   if (!mounted) return;
-                                  final message = e
-                                      .toString()
-                                      .replaceFirst('Exception: ', '');
+                                  final message = e.toString().replaceFirst('Exception: ', '');
+
+                                  if (e is AiBannerGenerationException &&
+                                      e.code == 'AI_PACKS_REQUIRED') {
+                                    await Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (_) => const AiCreditPacksScreen(),
+                                      ),
+                                    );
+                                    return;
+                                  }
+
                                   final lower = message.toLowerCase();
                                   if (lower.contains('limit') ||
                                       lower.contains('credit')) {

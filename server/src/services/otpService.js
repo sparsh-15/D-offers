@@ -7,7 +7,7 @@ const { resolveCityStateFromPincode } = require('./pincodeService');
 
 const PHONE_REGEX = /^\+?[1-9]\d{1,14}$|^\d{10}$/;
 
-function generateOtp(length = 6) {
+function generateOtp(length = 4) {
   const digits = '0123456789';
   let otp = '';
   const bytes = crypto.randomBytes(length);
@@ -95,7 +95,7 @@ async function sendOtp(phone, role, signupData = {}) {
     }
 
     // Generate and send OTP for existing user
-    const otp = generateOtp(6);
+    const otp = generateOtp(4);
     const expiresAt = new Date(Date.now() + config.otp.expiryMinutes * 60 * 1000);
 
     await otpRepository.deleteByPhone(phone);
@@ -198,7 +198,7 @@ async function sendOtp(phone, role, signupData = {}) {
 
   const resolved = await resolveCityStateFromPincode(pincode);
 
-  const otp = generateOtp(6);
+  const otp = generateOtp(4);
   const expiresAt = new Date(Date.now() + config.otp.expiryMinutes * 60 * 1000);
 
   await otpRepository.deleteByPhone(phone);

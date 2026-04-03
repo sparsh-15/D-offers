@@ -28,7 +28,7 @@ module.exports = {
     expiry: process.env.JWT_EXPIRY || '7d',
   },
   otp: {
-    masterOtp: process.env.MASTER_OTP || '999999',
+    masterOtp: process.env.MASTER_OTP || '9999',
     expiryMinutes: parseInt(process.env.OTP_EXPIRY_MINUTES, 10) || 10,
     sendViaSms: process.env.SEND_OTP_VIA_SMS === 'true',
   },

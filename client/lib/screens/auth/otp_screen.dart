@@ -34,11 +34,16 @@ class OtpScreen extends StatefulWidget {
 }
 
 class _OtpScreenState extends State<OtpScreen> {
+  static const int _otpLength = 4;
+
   final List<TextEditingController> _otpControllers = List.generate(
-    6,
+    _otpLength,
     (index) => TextEditingController(),
   );
-  final List<FocusNode> _focusNodes = List.generate(6, (index) => FocusNode());
+  final List<FocusNode> _focusNodes = List.generate(
+    _otpLength,
+    (index) => FocusNode(),
+  );
   bool _isLoading = false;
   int _resendTimer = 30;
 
@@ -145,7 +150,7 @@ class _OtpScreenState extends State<OtpScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: List.generate(
-                      6,
+                      _otpLength,
                       (index) => _buildOtpField(index),
                     ),
                   ),
@@ -229,7 +234,7 @@ class _OtpScreenState extends State<OtpScreen> {
         ),
         inputFormatters: [FilteringTextInputFormatter.digitsOnly],
         onChanged: (value) {
-          if (value.isNotEmpty && index < 5) {
+          if (value.isNotEmpty && index < _otpLength - 1) {
             _focusNodes[index + 1].requestFocus();
           } else if (value.isEmpty && index > 0) {
             _focusNodes[index - 1].requestFocus();
@@ -242,7 +247,7 @@ class _OtpScreenState extends State<OtpScreen> {
 
   Future<void> _handleVerifyOtp() async {
     final otp = _otpControllers.map((c) => c.text).join();
-    if (otp.length != 6) {
+    if (otp.length != _otpLength) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter complete OTP')),
       );

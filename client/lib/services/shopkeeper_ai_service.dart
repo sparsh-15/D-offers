@@ -5,6 +5,16 @@ import 'package:http/http.dart' as http;
 import '../services/api_config.dart';
 import 'auth_store.dart';
 
+class AiBannerGenerationException implements Exception {
+  final String message;
+  final String code;
+
+  AiBannerGenerationException(this.message, this.code);
+
+  @override
+  String toString() => message;
+}
+
 class ShopkeeperAiService {
   ShopkeeperAiService._();
 
@@ -59,8 +69,10 @@ class ShopkeeperAiService {
         final code = data['code']?.toString() ?? '';
         final message = data['message']?.toString() ??
             'You have reached your AI banner limit. Buy AI Credit Pack.';
-        if (code == 'AI_NO_CREDITS' || code == 'AI_LIMIT_REACHED') {
-          throw Exception(message);
+        if (code == 'AI_NO_CREDITS' ||
+            code == 'AI_LIMIT_REACHED' ||
+            code == 'AI_PACKS_REQUIRED') {
+          throw AiBannerGenerationException(message, code);
         }
       } catch (_) {
         // fall through to generic handler

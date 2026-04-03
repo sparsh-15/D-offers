@@ -266,7 +266,7 @@ curl -X POST http://localhost:3000/api/auth/send-otp \
 # Verify OTP and get token
 curl -X POST http://localhost:3000/api/auth/verify-otp \
   -H "Content-Type: application/json" \
-  -d '{"phone":"ADMIN_PHONE","otp":"123456","role":"super_admin"}'
+  -d '{"phone":"ADMIN_PHONE","otp":"1234","role":"super_admin"}'
 
 # Test admin endpoints
 curl -X GET http://localhost:3000/api/admin/stats \

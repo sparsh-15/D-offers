@@ -274,7 +274,7 @@ POST /api/auth/send-otp
 POST /api/auth/verify-otp
 {
   "phone": "9876543210",
-  "otp": "123456",
+  "otp": "1234",
   "role": "customer"
 }
 ```
@@ -806,7 +806,7 @@ JWT_SECRET=your-secret-key-change-in-production
 JWT_EXPIRY=7d
 
 # OTP
-MASTER_OTP=999999
+MASTER_OTP=9999
 OTP_EXPIRY_MINUTES=10
 SEND_OTP_VIA_SMS=false
 
@@ -1107,7 +1107,7 @@ const client = twilio(
 - Send subscription reminders (planned)
 - Send offer notifications (planned)
 
-**Current Status**: Configured but using master OTP (999999) in development
+**Current Status**: Configured but using master OTP (9999) in development
 
 ### 3. MongoDB Atlas
 
@@ -1343,7 +1343,7 @@ User Action → Event Tracking → Data Pipeline → Feature Engineering
                           ↓
 ┌─────────────────────────────────────────────────────────┐
 │                    2. Generate OTP                       │
-│  • Generate 6-digit OTP                                  │
+│  • Generate 4-digit OTP                                  │
 │  • Store in database with expiry (10 min)               │
 │  • Send via SMS (or use master OTP in dev)              │
 └─────────────────────────────────────────────────────────┘
@@ -1351,7 +1351,7 @@ User Action → Event Tracking → Data Pipeline → Feature Engineering
 ┌─────────────────────────────────────────────────────────┐
 │                    3. Verify OTP                         │
 │  POST /api/auth/verify-otp                               │
-│  { phone: "9876543210", otp: "123456", role: "..." }   │
+│  { phone: "9876543210", otp: "1234", role: "..." }     │
 └─────────────────────────────────────────────────────────┘
                           ↓
 ┌─────────────────────────────────────────────────────────┐
@@ -2662,7 +2662,7 @@ NODE_ENV=development
 PORT=3000
 MONGODB_URI=mongodb://localhost:27017/MyOffers
 JWT_SECRET=dev-secret-change-in-production
-MASTER_OTP=999999
+MASTER_OTP=9999
 SEND_OTP_VIA_SMS=false
 ```
 

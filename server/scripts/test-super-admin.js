@@ -18,7 +18,7 @@ if (!token) {
   console.log('Usage: node scripts/test-super-admin.js <token>');
   console.log('\nTo get a token:');
   console.log('1. POST /api/auth/sendOtp with { "phone": "your-phone", "role": "super_admin" }');
-  console.log('2. POST /api/auth/verifyOtp with { "phone": "your-phone", "otp": "999999", "role": "super_admin" }');
+  console.log('2. POST /api/auth/verifyOtp with { "phone": "your-phone", "otp": "9999", "role": "super_admin" }');
   console.log('3. Copy the token from response');
   process.exit(1);
 }
