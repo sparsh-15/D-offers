@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/dialog_helper.dart';
-import '../../core/utils/theme_helper.dart';
 import '../../models/user_model.dart';
 import '../../services/auth_service.dart';
 import '../../services/auth_store.dart';
-import '../../widgets/pincode_location_section.dart';
+import 'package:flutter/services.dart';
+import 'package:iconsax/iconsax.dart';
 
 /// Shared Edit Profile page for Customer and Admin (user name, pincode, address).
 class EditProfilePage extends StatefulWidget {
@@ -145,67 +145,312 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: ThemeHelper.getBackgroundGradient(context),
-      ),
-      child: Scaffold(
-        backgroundColor: AppColors.transparent,
-        appBar: AppBar(
-          backgroundColor: AppColors.transparent,
-          elevation: 0,
-          title: const Text('Edit Profile'),
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back_rounded),
-            onPressed: () => Navigator.of(context).pop(),
+    return Scaffold(
+      backgroundColor: const Color(0xFFF3F4F6),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFF3F4F6),
+        elevation: 0,
+        title: const Text(
+          'Edit Profile',
+          style: TextStyle(
+            color: Color(0xFF1F2A3D),
+            fontWeight: FontWeight.w700,
           ),
         ),
-        body: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                TextField(
-                  controller: _nameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Full Name',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.person_rounded),
-                  ),
-                  textCapitalization: TextCapitalization.words,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF334155)),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(14, 8, 14, 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildSectionCard(
+                title: 'PERSONAL INFO',
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildFieldLabel('Full Name'),
+                    TextField(
+                      controller: _nameController,
+                      textCapitalization: TextCapitalization.words,
+                      style: const TextStyle(
+                        fontSize: 17,
+                        color: Color(0xFF1F2A3D),
+                      ),
+                      decoration: _inputDecoration(
+                        hintText: 'Enter full name',
+                        prefixIcon: Iconsax.user,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 16),
-                PincodeLocationSection(
-                  pincodeController: _pincodeController,
-                  cityController: _cityController,
-                  stateController: _stateController,
-                  addressController: _addressController,
-                  isLoadingPincode: _isLoadingPincode,
-                  availableAreas: _availableAreas,
-                  selectedArea: _selectedArea,
-                  onAreaChanged: _onAreaSelected,
+              ),
+              const SizedBox(height: 14),
+              _buildSectionCard(
+                title: 'LOCATION',
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildFieldLabel('Pincode'),
+                    TextField(
+                      controller: _pincodeController,
+                      keyboardType: TextInputType.number,
+                      maxLength: 6,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      style: const TextStyle(
+                        fontSize: 17,
+                        color: Color(0xFF1F2A3D),
+                      ),
+                      decoration: _inputDecoration(
+                        hintText: '6-digit pincode',
+                        prefixIcon: Iconsax.location,
+                        counterText: '',
+                      ),
+                    ),
+                    if (_isLoadingPincode)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 2, bottom: 8),
+                        child: Row(
+                          children: [
+                            SizedBox(
+                              width: 15,
+                              height: 15,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                            SizedBox(width: 8),
+                            Text(
+                              'Looking up pincode...',
+                              style: TextStyle(
+                                color: Color(0xFF64748B),
+                                fontSize: 12.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Text(
+                          '${_pincodeController.text.length}/6',
+                          style: const TextStyle(
+                            color: Color(0xFF64748B),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildFieldLabel('City'),
+                              TextField(
+                                controller: _cityController,
+                                enabled: false,
+                                style: const TextStyle(
+                                  fontSize: 17,
+                                  color: Color(0xFF475569),
+                                ),
+                                decoration: _inputDecoration(
+                                  hintText: 'City',
+                                  prefixIcon: Iconsax.building_3,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildFieldLabel('State'),
+                              TextField(
+                                controller: _stateController,
+                                enabled: false,
+                                style: const TextStyle(
+                                  fontSize: 17,
+                                  color: Color(0xFF475569),
+                                ),
+                                decoration: _inputDecoration(
+                                  hintText: 'State',
+                                  prefixIcon: Iconsax.global,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    _buildFieldLabel('Area'),
+                    DropdownButtonFormField<String>(
+                      value: _selectedArea,
+                      isExpanded: true,
+                      style: const TextStyle(
+                        color: Color(0xFF1F2A3D),
+                        fontSize: 16,
+                      ),
+                      decoration: _inputDecoration(
+                        hintText: 'Select area',
+                        prefixIcon: Iconsax.location,
+                      ),
+                      icon: const Icon(Icons.keyboard_arrow_down_rounded,
+                          color: Color(0xFF6B7280)),
+                      items: _availableAreas.map((area) {
+                        final areaName = area['name']?.toString() ?? '';
+                        return DropdownMenuItem<String>(
+                          value: areaName,
+                          child: Text(
+                            areaName,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: _isLoadingPincode || _availableAreas.isEmpty
+                          ? null
+                          : _onAreaSelected,
+                    ),
+                    const SizedBox(height: 12),
+                    _buildFieldLabel('Address'),
+                    TextField(
+                      controller: _addressController,
+                      maxLines: 3,
+                      textCapitalization: TextCapitalization.sentences,
+                      style: const TextStyle(
+                        fontSize: 17,
+                        color: Color(0xFF1F2A3D),
+                      ),
+                      decoration: _inputDecoration(
+                        hintText: 'Enter full address',
+                        prefixIcon: Iconsax.home_2,
+                        alignLabelWithHint: true,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 32),
-                FilledButton.icon(
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                height: 70,
+                child: FilledButton.icon(
                   onPressed: _saving ? null : _save,
                   icon: _saving
                       ? const SizedBox(
                           width: 20,
                           height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
                         )
-                      : const Icon(Icons.check_rounded),
-                  label: Text(_saving ? 'Saving...' : 'Save changes'),
+                      : const Icon(Icons.check_rounded, size: 20),
+                  label: Text(
+                    _saving ? 'Saving...' : 'Save changes',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                   style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: AppColors.primary,
+                    backgroundColor: const Color(0xFFF5A623),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(34),
+                    ),
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildSectionCard({required String title, required Widget child}) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF3F4F6),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFD6DAE2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              color: Color(0xFF5D6F8A),
+              fontSize: 23,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.1,
+            ),
+          ),
+          const SizedBox(height: 14),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFieldLabel(String label) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Color(0xFF5D6F8A),
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  InputDecoration _inputDecoration({
+    required String hintText,
+    required IconData prefixIcon,
+    String? counterText,
+    bool alignLabelWithHint = false,
+  }) {
+    return InputDecoration(
+      hintText: hintText,
+      counterText: counterText,
+      alignLabelWithHint: alignLabelWithHint,
+      hintStyle: const TextStyle(
+        color: Color(0xFF6B7280),
+        fontSize: 17,
+      ),
+      prefixIcon: Padding(
+        padding: const EdgeInsets.only(left: 8, right: 6),
+        child: Icon(prefixIcon, color: const Color(0xFF697386), size: 20),
+      ),
+      prefixIconConstraints: const BoxConstraints(minWidth: 44),
+      filled: true,
+      fillColor: const Color(0xFFF0F1F3),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: Color(0xFFD2D8E1)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: Color(0xFF94A3B8), width: 1.3),
+      ),
+      disabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: Color(0xFFD2D8E1)),
       ),
     );
   }

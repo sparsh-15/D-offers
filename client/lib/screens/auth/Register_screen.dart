@@ -444,24 +444,42 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
-                                Container(
-                                  width: 60,
-                                  height: 60,
-                                  decoration: BoxDecoration(
-                                    color: AppColors.cardBackground,
-                                    borderRadius: BorderRadius.circular(AppTokens.radiusMD),
-                                    border: Border.all(color: AppColors.borderMid),
-                                  ),
-                                  clipBehavior: Clip.antiAlias,
-                                  child: Image.asset(
-                                    'assets/Dofferlogo.png',
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => Icon(
-                                      _roleIcon(),
-                                      color: AppColors.accent,
-                                      size: AppTokens.iconXL,
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      width: 40,
+                                      height: 40,
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(12),
+                                        gradient: const LinearGradient(
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                          colors: [
+                                            Color(0xFFFAB53D),
+                                            Color(0xFFF8991D),
+                                          ],
+                                        ),
+                                      ),
+                                      child: const RotatedBox(
+                                        quarterTurns: 1,
+                                        child: Icon(
+                                          Icons.local_offer_outlined,
+                                          color: Colors.white,
+                                          size: 18,
+                                        ),
+                                      ),
                                     ),
-                                  ),
+                                    const SizedBox(width: 10),
+                                    Text(
+                                      AppStrings.appName,
+                                      style: theme.textTheme.labelMedium?.copyWith(
+                                        color: AppColors.accent,
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: 0.3,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                                 const SizedBox(height: AppTokens.spaceSM),
                                 Text(
