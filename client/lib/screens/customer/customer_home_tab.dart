@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_design_tokens.dart';
 import '../../services/auth_service.dart';
@@ -12,6 +14,7 @@ import '../../core/utils/dialog_helper.dart';
 import '../../services/subscription_service.dart';
 import 'dart:async';
 import 'customer_inbox_screen.dart';
+import '../common/offer_detail_screen.dart';
 import '../common/reward_wallet_screen.dart';
 
 class CustomerHomeTab extends StatefulWidget {
@@ -24,6 +27,16 @@ class CustomerHomeTab extends StatefulWidget {
 }
 
 class _CustomerHomeTabState extends State<CustomerHomeTab> {
+  static const _canvasColor = _HomePalette.canvas;
+  static const _surfaceColor = _HomePalette.surface;
+  static const _borderColor = _HomePalette.border;
+  static const _accentColor = _HomePalette.accent;
+  static const _accentSoftColor = _HomePalette.accentSoft;
+  static const _textPrimaryColor = _HomePalette.textPrimary;
+  static const _textSecondaryColor = _HomePalette.textSecondary;
+  static const _textMutedColor = _HomePalette.textMuted;
+  static const _errorColor = _HomePalette.error;
+
   bool _isLoadingDeals = true;
   String? _dealsError;
   List<OfferModel> _featuredDeals = const [];
@@ -152,7 +165,6 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
       // Ignore failures; category chips are optional.
     }
   }
-
   Future<_HomeDeals> _fetchDeals() async {
     String? pincode;
     String? city;
@@ -315,11 +327,11 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
     }
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: _canvasColor,
       body: RefreshIndicator(
         onRefresh: _refresh,
-        color: AppColors.accent,
-        backgroundColor: AppColors.elevated,
+        color: _accentColor,
+        backgroundColor: _surfaceColor,
         child: CustomScrollView(
           physics: const BouncingScrollPhysics(
             parent: AlwaysScrollableScrollPhysics(),
@@ -327,10 +339,14 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
           slivers: [
             // ── App bar (compact) ────────────────────────────────────────────
             SliverAppBar(
-              floating: true,
-              snap: true,
-              backgroundColor: AppColors.background,
-              surfaceTintColor: AppColors.transparent,
+              floating: false,
+              snap: false,
+              pinned: true,
+              toolbarHeight: 72,
+              elevation: 0,
+              scrolledUnderElevation: 0,
+              backgroundColor: _canvasColor,
+              surfaceTintColor: Colors.transparent,
               titleSpacing: AppTokens.spaceMD,
               title: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -338,13 +354,19 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                 children: [
                   Text(
                     '${_greeting()}, $displayName',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: AppColors.textSecondary,
+                    style: GoogleFonts.dmSans(
+                      color: _textSecondaryColor,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                   Text(
                     'Explore deals',
-                    style: theme.textTheme.titleLarge,
+                    style: GoogleFonts.dmSans(
+                      color: _textPrimaryColor,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ],
               ),
@@ -355,11 +377,11 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                     style: TextButton.styleFrom(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 8),
-                      backgroundColor: AppColors.elevated,
+                      backgroundColor: _surfaceColor,
                       shape: RoundedRectangleBorder(
                         borderRadius:
                             BorderRadius.circular(AppTokens.radiusFull),
-                        side: const BorderSide(color: AppColors.borderSubtle),
+                        side: const BorderSide(color: _borderColor),
                       ),
                     ),
                     onPressed: () {
@@ -379,116 +401,103 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                         : const Icon(
                             Icons.monetization_on_rounded,
                             size: 16,
-                            color: AppColors.accent,
+                            color: _accentColor,
                           ),
                     label: Text(
                       _loadingWallet ? '...' : '$_walletBalance',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: AppColors.textPrimary,
+                      style: GoogleFonts.dmSans(
+                        color: _textPrimaryColor,
+                        fontSize: 13,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
                 ),
-                IconButton(
-                  onPressed: _openInbox,
-                  tooltip: 'Inbox',
-                  icon: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      const Icon(Icons.inbox_rounded),
-                      if (_loadingInboxCount)
-                        const Positioned(
-                          right: -2,
-                          top: -2,
-                          child: SizedBox(
-                            width: 10,
-                            height: 10,
-                            child: CircularProgressIndicator(strokeWidth: 1.8),
-                          ),
-                        )
-                      else if (_unreadInboxCount > 0)
-                        Positioned(
-                          right: -6,
-                          top: -6,
-                          child: Container(
-                            width: 18,
-                            height: 18,
+                Padding(
+                  padding: const EdgeInsets.only(
+                    right: AppTokens.spaceMD,
+                    left: 2,
+                  ),
+                  child: Tooltip(
+                    message: 'Campaigns',
+                    child: Material(
+                      color: _surfaceColor,
+                      shape: RoundedRectangleBorder(
+                        borderRadius:
+                            BorderRadius.circular(AppTokens.radiusFull),
+                        side: const BorderSide(color: _borderColor),
+                      ),
+                      child: InkWell(
+                        onTap: _openInbox,
+                        borderRadius:
+                            BorderRadius.circular(AppTokens.radiusFull),
+                        child: SizedBox(
+                          width: 42,
+                          height: 42,
+                          child: Stack(
+                            clipBehavior: Clip.none,
                             alignment: Alignment.center,
-                            decoration: const BoxDecoration(
-                              color: AppColors.accent,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Text(
-                              _unreadInboxCount > 9
-                                  ? '9+'
-                                  : '$_unreadInboxCount',
-                              style: const TextStyle(
-                                color: AppColors.black,
-                                fontSize: 9,
-                                fontWeight: FontWeight.bold,
+                            children: [
+                              Icon(
+                                Icons.campaign_rounded,
+                                size: 20,
+                                color: _textPrimaryColor.withValues(alpha: 0.9),
                               ),
-                            ),
+                              if (_loadingInboxCount)
+                                const Positioned(
+                                  right: 6,
+                                  top: 6,
+                                  child: SizedBox(
+                                    width: 12,
+                                    height: 12,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: _accentColor,
+                                    ),
+                                  ),
+                                )
+                              else if (_unreadInboxCount > 0)
+                                Positioned(
+                                  right: 3,
+                                  top: 3,
+                                  child: Container(
+                                    constraints: const BoxConstraints(
+                                      minWidth: 18,
+                                      minHeight: 18,
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 4,
+                                      vertical: 1,
+                                    ),
+                                    alignment: Alignment.center,
+                                    decoration: BoxDecoration(
+                                      color: _accentColor,
+                                      borderRadius: BorderRadius.circular(30),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: _accentColor
+                                              .withValues(alpha: 0.35),
+                                          blurRadius: 6,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Text(
+                                      _unreadInboxCount > 9
+                                          ? '9+'
+                                          : '$_unreadInboxCount',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
-                    ],
-                  ),
-                ),
-                GestureDetector(
-                  onTap: _toggleLocation,
-                  child: Container(
-                    margin: const EdgeInsets.only(right: AppTokens.spaceMD),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppTokens.spaceSM + 2,
-                      vertical: AppTokens.spaceXS + 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: _useCurrentLocation
-                          ? AppColors.accentDim.withValues(alpha: 0.25)
-                          : AppColors.elevated,
-                      borderRadius: BorderRadius.circular(AppTokens.radiusFull),
-                      border: Border.all(
-                        color: _useCurrentLocation
-                            ? AppColors.accentDim
-                            : AppColors.borderSubtle,
-                        width: 1,
                       ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (_isLoadingLocation)
-                          const SizedBox(
-                            width: 14,
-                            height: 14,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: AppColors.accent,
-                            ),
-                          )
-                        else
-                          Icon(
-                            _useCurrentLocation
-                                ? Icons.location_on_rounded
-                                : Icons.location_off_outlined,
-                            size: 14,
-                            color: _useCurrentLocation
-                                ? AppColors.accent
-                                : AppColors.textMuted,
-                          ),
-                        if (_useCurrentLocation &&
-                            _currentLocationText != null) ...[
-                          const SizedBox(width: 4),
-                          Text(
-                            _currentLocationText!,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: AppColors.accent,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 10,
-                            ),
-                          ),
-                        ],
-                      ],
                     ),
                   ),
                 ),
@@ -510,10 +519,10 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                     child: Container(
                       padding: const EdgeInsets.all(AppTokens.spaceSM),
                       decoration: BoxDecoration(
-                        color: AppColors.elevated,
+                        color: _surfaceColor,
                         borderRadius: BorderRadius.circular(AppTokens.radiusLG),
                         border: Border.all(
-                          color: AppColors.borderSubtle,
+                          color: _borderColor,
                         ),
                       ),
                       child: Row(
@@ -521,7 +530,7 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                           const Icon(
                             Icons.place_rounded,
                             size: AppTokens.iconMD,
-                            color: AppColors.accentDim,
+                            color: _accentColor,
                           ),
                           const SizedBox(width: AppTokens.spaceSM),
                           Expanded(
@@ -532,9 +541,10 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                                   locationLine,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: AppColors.textSecondary,
-                                    fontWeight: FontWeight.w500,
+                                  style: GoogleFonts.dmSans(
+                                    color: _textSecondaryColor,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
                                   ),
                                 ),
                                 const SizedBox(height: 2),
@@ -542,41 +552,72 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                                   dealsLine,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: AppColors.textMuted,
+                                  style: GoogleFonts.dmSans(
+                                    color: _textMutedColor,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
                               ],
                             ),
                           ),
                           const SizedBox(width: AppTokens.spaceSM),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: AppTokens.spaceSM,
-                              vertical: AppTokens.spaceXS,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.accent.withValues(alpha: 0.14),
-                              borderRadius:
-                                  BorderRadius.circular(AppTokens.radiusFull),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  Icons.monetization_on_rounded,
-                                  size: 14,
-                                  color: AppColors.accent,
+                          GestureDetector(
+                            onTap: _toggleLocation,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: AppTokens.spaceSM + 2,
+                                vertical: AppTokens.spaceXS + 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: _useCurrentLocation
+                                    ? _accentSoftColor.withValues(alpha: 0.5)
+                                    : _surfaceColor,
+                                borderRadius:
+                                    BorderRadius.circular(AppTokens.radiusFull),
+                                border: Border.all(
+                                  color: _useCurrentLocation
+                                      ? _accentSoftColor
+                                      : _borderColor,
+                                  width: 1,
                                 ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  '$_walletBalance',
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: AppColors.accent,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ],
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (_isLoadingLocation)
+                                    const SizedBox(
+                                      width: 14,
+                                      height: 14,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: _accentColor,
+                                      ),
+                                    )
+                                  else
+                                    Icon(
+                                      _useCurrentLocation
+                                          ? Icons.location_on_rounded
+                                          : Icons.location_off_outlined,
+                                      size: 14,
+                                      color: _useCurrentLocation
+                                          ? _accentColor
+                                          : _textMutedColor,
+                                    ),
+                                  if (_useCurrentLocation &&
+                                      _currentLocationText != null) ...[
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      _currentLocationText!,
+                                      style: GoogleFonts.dmSans(
+                                        color: _accentColor,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
                             ),
                           ),
                         ],
@@ -592,39 +633,105 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                       AppTokens.spaceMD,
                       0,
                     ),
-                    child: TextField(
-                      controller: _searchController,
-                      decoration: InputDecoration(
-                        hintText: 'Search',
-                        prefixIcon: const Icon(
-                          Icons.search_rounded,
-                          size: AppTokens.iconMD,
-                          color: AppColors.textMuted,
-                        ),
-                        suffixIcon: _searchQuery.isNotEmpty
-                            ? GestureDetector(
-                                onTap: () {
-                                  _searchDebounce?.cancel();
-                                  setState(() {
-                                    _searchController.clear();
-                                    _searchQuery = '';
-                                  });
-                                  _refresh();
-                                },
-                                child: const Icon(Icons.close_rounded,
-                                    color: AppColors.textMuted,
-                                    size: AppTokens.iconMD),
-                              )
-                            : null,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: _surfaceColor,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: _borderColor),
+                        boxShadow: [
+                          BoxShadow(
+                            color: _textPrimaryColor.withValues(alpha: 0.05),
+                            blurRadius: 14,
+                            offset: const Offset(0, 6),
+                          ),
+                        ],
                       ),
-                      onChanged: (v) {
-                        setState(() => _searchQuery = v);
-                        _searchDebounce?.cancel();
-                        _searchDebounce = Timer(
-                          const Duration(milliseconds: 350),
-                          _refresh,
-                        );
-                      },
+                      child: TextField(
+                        controller: _searchController,
+                        style: GoogleFonts.dmSans(
+                          color: _textPrimaryColor,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        decoration: InputDecoration(
+                          hintText: 'Search deals, shops, categories...',
+                          hintStyle: GoogleFonts.dmSans(
+                            color: _textMutedColor,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 14,
+                          ),
+                          prefixIcon: Padding(
+                            padding: const EdgeInsets.fromLTRB(12, 9, 8, 9),
+                            child: Container(
+                              width: 34,
+                              height: 34,
+                              decoration: BoxDecoration(
+                                color: _accentSoftColor.withValues(alpha: 0.55),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.search_rounded,
+                                size: 18,
+                                color: _accentColor,
+                              ),
+                            ),
+                          ),
+                          prefixIconConstraints: const BoxConstraints(
+                            minHeight: 44,
+                            minWidth: 54,
+                          ),
+                          suffixIcon: _searchQuery.isNotEmpty
+                              ? Padding(
+                                  padding: const EdgeInsets.only(right: 6),
+                                  child: IconButton(
+                                    onPressed: () {
+                                      _searchDebounce?.cancel();
+                                      setState(() {
+                                        _searchController.clear();
+                                        _searchQuery = '';
+                                      });
+                                      _refresh();
+                                    },
+                                    icon: const Icon(
+                                      Icons.close_rounded,
+                                      color: _textMutedColor,
+                                      size: AppTokens.iconMD,
+                                    ),
+                                  ),
+                                )
+                              : null,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(18),
+                            borderSide: BorderSide.none,
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(18),
+                            borderSide: BorderSide.none,
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(18),
+                            borderSide: BorderSide(
+                              color: _accentColor.withValues(alpha: 0.45),
+                              width: 1.2,
+                            ),
+                          ),
+                          filled: true,
+                          fillColor: _surfaceColor,
+                        ),
+                        onChanged: (v) {
+                          setState(() => _searchQuery = v);
+                          _searchDebounce?.cancel();
+                          _searchDebounce = Timer(
+                            const Duration(milliseconds: 350),
+                            _refresh,
+                          );
+                        },
+                      ),
                     ),
                   ),
 
@@ -659,23 +766,23 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                                 ),
                                 decoration: BoxDecoration(
                                   color: isSelected
-                                      ? AppColors.accentDim
-                                          .withValues(alpha: 0.25)
-                                      : AppColors.elevated,
+                                      ? _accentSoftColor.withValues(alpha: 0.5)
+                                      : _surfaceColor,
                                   borderRadius: BorderRadius.circular(
                                       AppTokens.radiusFull),
                                   border: Border.all(
                                     color: isSelected
-                                        ? AppColors.accentDim
-                                        : AppColors.borderSubtle,
+                                        ? _accentSoftColor
+                                        : _borderColor,
                                   ),
                                 ),
                                 child: Text(
                                   'All',
-                                  style: theme.textTheme.bodySmall?.copyWith(
+                                  style: GoogleFonts.dmSans(
                                     color: isSelected
-                                        ? AppColors.accent
-                                        : AppColors.textSecondary,
+                                        ? _accentColor
+                                        : _textSecondaryColor,
+                                    fontSize: 12,
                                     fontWeight: isSelected
                                         ? FontWeight.w600
                                         : FontWeight.w500,
@@ -704,23 +811,23 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                               ),
                               decoration: BoxDecoration(
                                 color: isSelected
-                                    ? AppColors.accentDim
-                                        .withValues(alpha: 0.25)
-                                    : AppColors.elevated,
+                                    ? _accentSoftColor.withValues(alpha: 0.5)
+                                    : _surfaceColor,
                                 borderRadius:
                                     BorderRadius.circular(AppTokens.radiusFull),
                                 border: Border.all(
                                   color: isSelected
-                                      ? AppColors.accentDim
-                                      : AppColors.borderSubtle,
+                                      ? _accentSoftColor
+                                      : _borderColor,
                                 ),
                               ),
                               child: Text(
                                 label,
-                                style: theme.textTheme.bodySmall?.copyWith(
+                                style: GoogleFonts.dmSans(
                                   color: isSelected
-                                      ? AppColors.accent
-                                      : AppColors.textSecondary,
+                                      ? _accentColor
+                                      : _textSecondaryColor,
+                                  fontSize: 12,
                                   fontWeight: isSelected
                                       ? FontWeight.w600
                                       : FontWeight.w500,
@@ -744,14 +851,20 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                       children: [
                         Text(
                           'Featured',
-                          style: theme.textTheme.headlineMedium,
+                          style: GoogleFonts.dmSans(
+                            color: _textPrimaryColor,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
                         GestureDetector(
                           onTap: widget.onViewAllOffers,
                           child: Text(
                             'See all',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: AppColors.accentDim,
+                            style: GoogleFonts.dmSans(
+                              color: _accentColor,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
                         ),
@@ -769,7 +882,7 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                           height: 240,
                           child: Center(
                             child: CircularProgressIndicator(
-                              color: AppColors.accentDim,
+                              color: _accentColor,
                               strokeWidth: 2,
                             ),
                           ),
@@ -782,17 +895,23 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                           child: Column(
                             children: [
                               const Icon(Icons.error_outline_rounded,
-                                  color: AppColors.error, size: 40),
+                                  color: _errorColor, size: 40),
                               const SizedBox(height: AppTokens.spaceSM),
                               Text(
                                 'Could not load deals',
-                                style: theme.textTheme.titleMedium,
+                                style: GoogleFonts.dmSans(
+                                  color: _textPrimaryColor,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
                               const SizedBox(height: AppTokens.spaceXS),
                               Text(
                                 _dealsError!,
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: AppColors.textMuted,
+                                style: GoogleFonts.dmSans(
+                                  color: _textMutedColor,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
                                 ),
                                 textAlign: TextAlign.center,
                               ),
@@ -865,7 +984,7 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                     },
                   ),
 
-                  // ── All offers section ─────────────────────────────────────
+                  // ── Near You section ───────────────────────────────────────
                   const SizedBox(height: AppTokens.spaceLG),
                   Padding(
                     padding: const EdgeInsets.symmetric(
@@ -880,16 +999,11 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                _sortBy == 'most_liked'
-                                    ? 'Trending deals near you'
-                                    : 'All deals near you',
-                                style: theme.textTheme.headlineMedium,
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                'Based on your location and category filters',
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: AppColors.textMuted,
+                                'Near You',
+                                style: GoogleFonts.dmSans(
+                                  color: _textPrimaryColor,
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w800,
                                 ),
                               ),
                             ],
@@ -899,12 +1013,12 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                         Container(
                           padding: const EdgeInsets.all(2),
                           decoration: BoxDecoration(
-                            color: AppColors.elevated.withValues(alpha: 0.9),
+                            color: _surfaceColor.withValues(alpha: 0.95),
                             borderRadius: BorderRadius.circular(
                               AppTokens.radiusFull,
                             ),
                             border: Border.all(
-                              color: AppColors.borderSubtle,
+                              color: _borderColor,
                             ),
                           ),
                           child: Row(
@@ -943,7 +1057,7 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                           height: 120,
                           child: Center(
                             child: CircularProgressIndicator(
-                              color: AppColors.accentDim,
+                              color: _accentColor,
                               strokeWidth: 2,
                             ),
                           ),
@@ -968,7 +1082,7 @@ class _CustomerHomeTabState extends State<CustomerHomeTab> {
                         itemCount: preview.length,
                         separatorBuilder: (_, __) =>
                             const SizedBox(height: AppTokens.spaceSM),
-                        itemBuilder: (ctx2, i) => OfferCard(
+                        itemBuilder: (ctx2, i) => _NearYouDealCard(
                           offer: preview[i],
                           onOfferUpdated: (updated) {
                             final idx = _allPreviewDeals
@@ -1025,20 +1139,23 @@ class _SortPill extends StatelessWidget {
       child: AnimatedContainer(
         duration: AppTokens.durationFast,
         padding: const EdgeInsets.symmetric(
-          horizontal: AppTokens.spaceSM,
-          vertical: 4,
+          horizontal: AppTokens.spaceMD,
+          vertical: 7,
         ),
         decoration: BoxDecoration(
           color: isSelected
-              ? AppColors.accentDim.withValues(alpha: 0.25)
-              : Colors.transparent,
+              ? const Color(0xFF1F2A3C)
+              : const Color(0xFFEBEEF2),
           borderRadius: BorderRadius.circular(AppTokens.radiusFull),
         ),
         child: Text(
           label,
-          style: theme.textTheme.labelSmall?.copyWith(
-            color: isSelected ? AppColors.accent : AppColors.textSecondary,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+          style: GoogleFonts.dmSans(
+            color: isSelected
+                ? Colors.white
+                : const Color(0xFF6B7280),
+            fontSize: 12,
+            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
           ),
         ),
       ),
@@ -1064,14 +1181,16 @@ class _EmptyState extends StatelessWidget {
         children: [
           const Icon(
             Icons.storefront_outlined,
-            color: AppColors.textMuted,
+            color: _HomePalette.textMuted,
             size: 48,
           ),
           const SizedBox(height: AppTokens.spaceSM),
           Text(
             message,
-            style: theme.textTheme.titleMedium?.copyWith(
-              color: AppColors.textSecondary,
+            style: GoogleFonts.dmSans(
+              color: _HomePalette.textSecondary,
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
             ),
             textAlign: TextAlign.center,
           ),
@@ -1081,12 +1200,228 @@ class _EmptyState extends StatelessWidget {
               onPressed: onBrowseAll,
               icon: const Icon(
                 Icons.local_offer_outlined,
-                color: AppColors.accentDim,
+                color: _HomePalette.accent,
               ),
               label: const Text('Browse all offers'),
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+class _HomePalette {
+  static const canvas = Color(0xFFF3F5F8);
+  static const surface = Color(0xFFFFFFFF);
+  static const border = Color(0xFFDCE3EC);
+  static const accent = Color(0xFFE88428);
+  static const accentSoft = Color(0xFFFBE7D6);
+  static const textPrimary = Color(0xFF1E2433);
+  static const textSecondary = Color(0xFF334155);
+  static const textMuted = Color(0xFF667085);
+  static const error = Color(0xFFE24D69);
+}
+
+class _NearYouDealCard extends StatelessWidget {
+  const _NearYouDealCard({
+    required this.offer,
+    required this.onOfferUpdated,
+  });
+
+  final OfferModel offer;
+  final ValueChanged<OfferModel> onOfferUpdated;
+
+  String _discountText() {
+    final dynamic rawDiscount = offer.discountValue;
+    final num? value = rawDiscount is num
+        ? rawDiscount
+        : num.tryParse(rawDiscount?.toString() ?? '');
+    if (value == null) return 'SPECIAL OFFER';
+    if (offer.discountType == 'percentage') {
+      return '${value.toStringAsFixed(value % 1 == 0 ? 0 : 1)}% OFF';
+    }
+    return '₹${value.toStringAsFixed(value % 1 == 0 ? 0 : 1)} OFF';
+  }
+
+  String _categoryText() {
+    if (offer.category.trim().isEmpty) return 'Retail';
+    final category = offer.category.trim();
+    return '${category[0].toUpperCase()}${category.substring(1).toLowerCase()}';
+  }
+
+  String _statusText() {
+    final status = offer.status.trim();
+    if (status.isEmpty) return 'Active';
+    return '${status[0].toUpperCase()}${status.substring(1).toLowerCase()}';
+  }
+
+  void _openDetails(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => OfferDetailScreen(
+          offer: offer,
+          onOfferUpdated: onOfferUpdated,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hasPhoto = offer.photos.isNotEmpty;
+
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: () => _openDetails(context),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFFDCE3EC)),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AspectRatio(
+                  aspectRatio: 16 / 9,
+                  child: hasPhoto
+                      ? CachedNetworkImage(
+                          imageUrl: offer.photos.first,
+                          fit: BoxFit.cover,
+                          placeholder: (_, __) => Container(
+                            color: const Color(0xFFF4F7FB),
+                            alignment: Alignment.center,
+                            child: const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          ),
+                          errorWidget: (_, __, ___) => Container(
+                            color: const Color(0xFFF4F7FB),
+                            alignment: Alignment.center,
+                            child: Icon(
+                              Icons.local_offer_rounded,
+                              size: 42,
+                              color: const Color(0xFFB8C2D0),
+                            ),
+                          ),
+                        )
+                      : Container(
+                          color: const Color(0xFFF4F7FB),
+                          alignment: Alignment.center,
+                          child: Icon(
+                            Icons.local_offer_rounded,
+                            size: 42,
+                            color: const Color(0xFFB8C2D0),
+                          ),
+                        ),
+                ),
+                Container(
+                  color: const Color(0xFFF8FAFC),
+                  padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              offer.shopName?.trim().isNotEmpty == true
+                                  ? offer.shopName!.trim()
+                                  : 'Saved Deal',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.dmSans(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFF1E2433),
+                              ),
+                            ),
+                          ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.favorite_rounded,
+                                color: Color(0xFFE53935),
+                                size: 19,
+                              ),
+                              const SizedBox(width: 3),
+                              Text(
+                                '${offer.likesCount}',
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 13,
+                                  color: const Color(0xFFE53935),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          _NearChip(
+                            label: _discountText().replaceAll(' OFF', ''),
+                            bg: const Color(0xFFE4F6EC),
+                            fg: const Color(0xFF1F9D65),
+                          ),
+                          _NearChip(
+                            label: _categoryText(),
+                            bg: const Color(0xFFEDEFF3),
+                            fg: const Color(0xFF6B7280),
+                          ),
+                          _NearChip(
+                            label: _statusText(),
+                            bg: const Color(0xFFFDEBEC),
+                            fg: const Color(0xFFE24D69),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NearChip extends StatelessWidget {
+  const _NearChip({required this.label, required this.bg, required this.fg});
+
+  final String label;
+  final Color bg;
+  final Color fg;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: fg.withValues(alpha: 0.22)),
+      ),
+      child: Text(
+        label,
+        style: GoogleFonts.dmSans(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: fg,
+        ),
       ),
     );
   }

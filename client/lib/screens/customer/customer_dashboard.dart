@@ -127,19 +127,22 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
             children: _screens,
           ),
         ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => const CustomerChatBotScreen(),
-              ),
-            );
-          },
-          elevation: 4,
-          backgroundColor: const Color(0xFF1E2536),
-          child: const Icon(Icons.chat_bubble_rounded, color: AppColors.white),
-          tooltip: 'Help',
-        ),
+        floatingActionButton: _selectedIndex == 0
+            ? FloatingActionButton(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const CustomerChatBotScreen(),
+                    ),
+                  );
+                },
+                elevation: 4,
+                backgroundColor: const Color(0xFF1E2536),
+                child: const Icon(Icons.chat_bubble_rounded,
+                    color: AppColors.white),
+                tooltip: 'Help',
+              )
+            : null,
         bottomNavigationBar: _buildBottomDock(),
       ),
     );
