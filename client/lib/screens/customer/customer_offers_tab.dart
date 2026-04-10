@@ -1,26 +1,38 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax/iconsax.dart';
-import '../../core/constants/app_colors.dart';
 import '../../services/auth_service.dart';
 import '../../services/auth_store.dart';
 import '../../services/location_service.dart';
 import '../../services/subscription_service.dart';
 import '../../models/offer_model.dart';
 import '../../widgets/offer_card.dart';
-import '../../core/utils/theme_helper.dart';
 import '../../core/utils/dialog_helper.dart';
 import 'dart:async';
+
+// ── Light palette (consistent with home/profile/loans/offer_detail) ──────────
+class _OP {
+  static const canvas        = Color(0xFFF3F5F8);
+  static const surface       = Color(0xFFFFFFFF);
+  static const elevated      = Color(0xFFF4F7FB);
+  static const border        = Color(0xFFDCE3EC);
+  static const accent        = Color(0xFFE88428);
+  static const accentSoft    = Color(0xFFFBE7D6);
+  static const textPrimary   = Color(0xFF1E2433);
+  static const textSecondary = Color(0xFF334155);
+  static const textMuted     = Color(0xFF667085);
+  static const error         = Color(0xFFE24D69);
+  static const white         = Color(0xFFFFFFFF);
+}
 
 class CustomerOffersTab extends StatelessWidget {
   const CustomerOffersTab({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: ThemeHelper.getBackgroundGradient(context),
-      ),
-      child: const SafeArea(
+    return const ColoredBox(
+      color: _OP.canvas,
+      child: SafeArea(
         child: CustomerOffersBody(),
       ),
     );
@@ -379,27 +391,31 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        AppBar(
-          backgroundColor: AppColors.transparent,
-          elevation: 0,
-          title: Text(
-            'Offers Near You',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+        // ── App bar ──────────────────────────────────────────────────────────
+        Container(
+          color: _OP.canvas,
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Text(
+                'Offers Near You',
+                style: GoogleFonts.dmSans(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: _OP.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 12),
+              // ── Search bar ────────────────────────────────────────────────
               Container(
                 decoration: BoxDecoration(
-                  color: ThemeHelper.getSurfaceColor(context),
-                  borderRadius: BorderRadius.circular(12),
+                  color: _OP.surface,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: _OP.border),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.black.withValues(alpha: 0.1),
+                      color: _OP.textPrimary.withValues(alpha: 0.04),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
@@ -407,18 +423,34 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
                 ),
                 child: TextField(
                   controller: _searchController,
+                  style: GoogleFonts.dmSans(
+                    color: _OP.textPrimary,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                  ),
                   decoration: InputDecoration(
                     hintText: 'Search offers...',
+                    hintStyle: GoogleFonts.dmSans(
+                      color: _OP.textMuted,
+                      fontSize: 15,
+                    ),
                     border: InputBorder.none,
-                    prefixIcon: const Icon(Icons.search_rounded),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 14),
+                    prefixIcon: const Icon(Icons.search_rounded,
+                        color: _OP.textMuted, size: 20),
+                    filled: true,
+                    fillColor: _OP.surface,
                     suffixIcon: _searchQuery.isNotEmpty
                         ? IconButton(
-                            icon: const Icon(Icons.clear_rounded),
+                            icon: const Icon(Icons.clear_rounded,
+                                color: _OP.textMuted, size: 18),
                             onPressed: () {
                               setState(() {
                                 _searchController.clear();
                                 _searchQuery = '';
                               });
+                              _loadInitial();
                             },
                           )
                         : null,
@@ -433,7 +465,8 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
                   },
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
+              // ── Sort + Filter row ─────────────────────────────────────────
               Row(
                 children: [
                   Expanded(
@@ -441,30 +474,39 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       decoration: BoxDecoration(
-                        color: ThemeHelper.getSurfaceColor(context),
+                        color: _OP.surface,
                         borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: _OP.border),
                       ),
                       child: DropdownButtonHideUnderline(
                         child: DropdownButton<String>(
                           value: _sortBy,
                           isExpanded: true,
+                          dropdownColor: _OP.surface,
+                          style: GoogleFonts.dmSans(
+                            color: _OP.textPrimary,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          icon: const Icon(Icons.keyboard_arrow_down_rounded,
+                              color: _OP.textMuted),
                           items: const [
                             DropdownMenuItem(
-                                value: 'newest', child: Text('Newest First')),
+                                value: 'newest',
+                                child: Text('Newest First')),
                             DropdownMenuItem(
-                                value: 'most_liked', child: Text('Most Liked')),
+                                value: 'most_liked',
+                                child: Text('Most Liked')),
                             DropdownMenuItem(
                                 value: 'discount_high_to_low',
-                                child: Text('Discount High to Low')),
+                                child: Text('Discount ↓')),
                             DropdownMenuItem(
                                 value: 'discount_low_to_high',
-                                child: Text('Discount Low to High')),
+                                child: Text('Discount ↑')),
                           ],
                           onChanged: (value) {
                             if (value != null) {
-                              setState(() {
-                                _sortBy = value;
-                              });
+                              setState(() => _sortBy = value);
                               _loadInitial();
                             }
                           },
@@ -475,92 +517,121 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
                   const SizedBox(width: 8),
                   Expanded(
                     flex: 2,
-                    child: OutlinedButton.icon(
-                      onPressed: () => _showFilterDialog(context),
-                      icon: Icon(
-                        Icons.tune_rounded,
-                        color: _hasActiveFilters
-                            ? AppColors.primary
-                            : Theme.of(context).iconTheme.color,
-                      ),
-                      label: Text(
-                        'Filters',
-                        style: TextStyle(
+                    child: GestureDetector(
+                      onTap: () => _showFilterDialog(context),
+                      child: Container(
+                        height: 48,
+                        decoration: BoxDecoration(
                           color: _hasActiveFilters
-                              ? AppColors.primary
-                              : Theme.of(context).textTheme.labelLarge?.color,
-                          fontWeight:
-                              _hasActiveFilters ? FontWeight.w600 : null,
+                              ? _OP.accentSoft
+                              : _OP.surface,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: _hasActiveFilters
+                                ? _OP.accent
+                                : _OP.border,
+                            width: _hasActiveFilters ? 1.5 : 1,
+                          ),
                         ),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        minimumSize: const Size(0, 40),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 10,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.tune_rounded,
+                              size: 18,
+                              color: _hasActiveFilters
+                                  ? _OP.accent
+                                  : _OP.textMuted,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Filters',
+                              style: GoogleFonts.dmSans(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: _hasActiveFilters
+                                    ? _OP.accent
+                                    : _OP.textSecondary,
+                              ),
+                            ),
+                          ],
                         ),
-                        side: BorderSide(
-                          color: _hasActiveFilters
-                              ? AppColors.primary
-                              : AppColors.grey400,
-                          width: _hasActiveFilters ? 1.5 : 1,
-                        ),
-                        backgroundColor: _hasActiveFilters
-                            ? AppColors.primary.withValues(alpha: 0.06)
-                            : null,
                       ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
-              // Current Location Button
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: SizedBox(
+              const SizedBox(height: 10),
+              // ── Location button ───────────────────────────────────────────
+              GestureDetector(
+                onTap: _isLoadingLocation ? null : _toggleCurrentLocation,
+                child: Container(
                   width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed:
-                        _isLoadingLocation ? null : _toggleCurrentLocation,
-                    icon: _isLoadingLocation
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : Icon(
-                            _useCurrentLocation
-                                ? Iconsax.gps
-                                : Iconsax.location,
-                          ),
-                    label: Text(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 11),
+                  decoration: BoxDecoration(
+                    color: _useCurrentLocation ? _OP.accentSoft : _OP.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: _useCurrentLocation ? _OP.accent : _OP.border,
+                      width: _useCurrentLocation ? 1.5 : 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
                       _isLoadingLocation
-                          ? 'Detecting Location...'
-                          : (_useCurrentLocation && _currentLocationText != null
-                              ? 'Current: $_currentLocationText'
-                              : 'Use Current Location'),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      backgroundColor: _useCurrentLocation
-                          ? AppColors.primary.withValues(alpha: 0.1)
-                          : null,
-                      side: BorderSide(
-                        color: _useCurrentLocation
-                            ? AppColors.primary
-                            : AppColors.grey400,
-                        width: _useCurrentLocation ? 2 : 1,
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: _OP.accent),
+                            )
+                          : Icon(
+                              _useCurrentLocation
+                                  ? Iconsax.gps
+                                  : Iconsax.location,
+                              size: 18,
+                              color: _useCurrentLocation
+                                  ? _OP.accent
+                                  : _OP.textMuted,
+                            ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _isLoadingLocation
+                              ? 'Detecting location...'
+                              : (_useCurrentLocation &&
+                                      _currentLocationText != null
+                                  ? 'Current: $_currentLocationText'
+                                  : 'Use current location'),
+                          style: GoogleFonts.dmSans(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: _useCurrentLocation
+                                ? _OP.accent
+                                : _OP.textSecondary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                    ),
+                      if (_useCurrentLocation)
+                        const Icon(Icons.close_rounded,
+                            size: 16, color: _OP.accent),
+                    ],
                   ),
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
             ],
           ),
         ),
+        // ── List ─────────────────────────────────────────────────────────────
         Expanded(
           child: RefreshIndicator(
             onRefresh: _loadInitial,
+            color: _OP.accent,
+            backgroundColor: _OP.surface,
             child: _buildList(context),
           ),
         ),
@@ -578,10 +649,13 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
           margin: const EdgeInsets.only(bottom: 12),
           height: 120,
           decoration: BoxDecoration(
-            color: ThemeHelper.getSurfaceColor(context),
-            borderRadius: BorderRadius.circular(12),
+            color: _OP.surface,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: _OP.border),
           ),
-          child: const Center(child: CircularProgressIndicator()),
+          child: const Center(
+            child: CircularProgressIndicator(strokeWidth: 2, color: _OP.accent),
+          ),
         ),
       );
     }
@@ -593,26 +667,33 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                Icons.error_outline_rounded,
-                size: 64,
-                color: AppColors.error,
-              ),
+              const Icon(Icons.error_outline_rounded, size: 64, color: _OP.error),
               const SizedBox(height: 16),
               Text(
                 'Failed to load offers',
-                style: Theme.of(context).textTheme.titleMedium,
+                style: GoogleFonts.dmSans(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: _OP.textPrimary,
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
               Text(
                 _errorText!,
-                style: Theme.of(context).textTheme.bodySmall,
+                style: GoogleFonts.dmSans(fontSize: 13, color: _OP.textMuted),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
               ElevatedButton.icon(
                 onPressed: _loadInitial,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _OP.accent,
+                  foregroundColor: _OP.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
                 icon: const Icon(Icons.refresh_rounded),
                 label: const Text('Retry'),
               ),
@@ -634,16 +715,18 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
                     ? Icons.search_off_rounded
                     : Icons.local_offer_outlined,
                 size: 64,
-                color: Theme.of(context).colorScheme.primary.withValues(
-                      alpha: 0.5,
-                    ),
+                color: _OP.textMuted,
               ),
               const SizedBox(height: 16),
               Text(
                 _hasActiveFilters
                     ? 'No offers match your filters'
                     : 'No offers available',
-                style: Theme.of(context).textTheme.titleMedium,
+                style: GoogleFonts.dmSans(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: _OP.textPrimary,
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
@@ -651,7 +734,7 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
                 _hasActiveFilters
                     ? 'Try adjusting your filters or search query'
                     : 'Check back later for new offers',
-                style: Theme.of(context).textTheme.bodySmall,
+                style: GoogleFonts.dmSans(fontSize: 13, color: _OP.textMuted),
                 textAlign: TextAlign.center,
               ),
               if (_hasActiveFilters)
@@ -659,6 +742,7 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
                   padding: const EdgeInsets.only(top: 16),
                   child: TextButton.icon(
                     onPressed: _clearAllFilters,
+                    style: TextButton.styleFrom(foregroundColor: _OP.accent),
                     icon: const Icon(Icons.clear_all_rounded),
                     label: const Text('Clear all filters'),
                   ),
@@ -757,7 +841,6 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
     final defaultPincode = user?.pincode ?? '';
     final categoryOptions = _availableCategories;
 
-    // Pre-fill controllers from current filters
     _cityController.text = _cityFilter ?? '';
     _pincodeController.text = _pincodeFilter ?? '';
     _stateController.text = _stateFilter ?? '';
@@ -766,14 +849,16 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: _OP.surface,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: Text(
             'Filter Offers',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: _hasActiveFilters
-                      ? AppColors.primary
-                      : Theme.of(context).textTheme.titleMedium?.color,
-                ),
+            style: GoogleFonts.dmSans(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: _hasActiveFilters ? _OP.accent : _OP.textPrimary,
+            ),
           ),
           content: SingleChildScrollView(
             child: Column(
@@ -781,23 +866,39 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
               children: [
                 DropdownButtonFormField<String>(
                   isExpanded: true,
-                  initialValue: _categoryFilter,
-                  decoration: const InputDecoration(
+                  value: _categoryFilter,
+                  dropdownColor: _OP.surface,
+                  style: GoogleFonts.dmSans(
+                      color: _OP.textPrimary, fontSize: 14),
+                  decoration: InputDecoration(
                     labelText: 'Category',
-                    prefixIcon: Icon(Icons.category_rounded),
+                    labelStyle: const TextStyle(color: _OP.textMuted),
+                    prefixIcon:
+                        const Icon(Icons.category_rounded, color: _OP.textMuted),
                     isDense: true,
+                    filled: true,
+                    fillColor: _OP.elevated,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: _OP.border),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: _OP.border),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide:
+                          const BorderSide(color: _OP.accent, width: 1.5),
+                    ),
                   ),
                   items: categoryOptions
-                      .map(
-                        (value) => DropdownMenuItem(
-                          value: value,
-                          child: Text(
-                            value == _allKey
+                      .map((value) => DropdownMenuItem(
+                            value: value,
+                            child: Text(value == _allKey
                                 ? 'All Categories'
-                                : _displayLabel(value),
-                          ),
-                        ),
-                      )
+                                : _displayLabel(value)),
+                          ))
                       .toList(),
                   onChanged: (value) {
                     setDialogState(() {
@@ -805,41 +906,31 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
                     });
                   },
                 ),
-                const SizedBox(height: 16),
-                TextField(
+                const SizedBox(height: 14),
+                _filterField(
                   controller: _stateController,
+                  label: 'State (auto)',
+                  icon: Icons.map_rounded,
                   readOnly: true,
-                  decoration: const InputDecoration(
-                    labelText: 'State (auto)',
-                    prefixIcon: Icon(Icons.map_rounded),
-                    isDense: true,
-                  ),
                 ),
-                const SizedBox(height: 16),
-                TextField(
+                const SizedBox(height: 14),
+                _filterField(
                   controller: _cityController,
-                  decoration: const InputDecoration(
-                    labelText: 'City',
-                    prefixIcon: Icon(Icons.location_city_rounded),
-                    isDense: true,
-                  ),
+                  label: 'City',
+                  icon: Icons.location_city_rounded,
                 ),
-                const SizedBox(height: 16),
-                TextField(
+                const SizedBox(height: 14),
+                _filterField(
                   controller: _pincodeController,
+                  label: 'Pincode',
+                  icon: Icons.pin_drop_rounded,
+                  hint: defaultPincode.isNotEmpty
+                      ? 'e.g. $defaultPincode'
+                      : 'Optional',
                   keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    labelText: 'Pincode',
-                    prefixIcon: const Icon(Icons.pin_drop_rounded),
-                    hintText: defaultPincode.isNotEmpty
-                        ? 'Optional (e.g. $defaultPincode)'
-                        : 'Optional',
-                    isDense: true,
-                  ),
                   onChanged: (value) {
                     final trimmed = value.trim();
                     if (trimmed.length == 6) {
-                      // Trigger pincode lookup to auto-fill city/state
                       _lookupFilterPincode(trimmed);
                     } else {
                       setState(() {
@@ -855,12 +946,9 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
                 if (_isFilterPincodeLoading) ...[
                   const SizedBox(height: 8),
                   const LinearProgressIndicator(
-                    minHeight: 2,
-                    color: AppColors.primary,
-                  ),
+                      minHeight: 2, color: _OP.accent),
                 ],
-                const SizedBox(height: 24),
-                // Row 1: Clear + Cancel
+                const SizedBox(height: 20),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -875,31 +963,34 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
                           _pincodeController.clear();
                         });
                       },
+                      style: TextButton.styleFrom(
+                          foregroundColor: _OP.textSecondary),
                       child: const Text('Clear'),
                     ),
                     TextButton(
                       onPressed: () => Navigator.pop(context),
+                      style: TextButton.styleFrom(
+                          foregroundColor: _OP.textSecondary),
                       child: const Text('Cancel'),
                     ),
                   ],
                 ),
                 const SizedBox(height: 8),
-                // Row 2: Apply aligned right
                 Align(
                   alignment: Alignment.centerRight,
                   child: ElevatedButton(
                     onPressed: () {
                       final normalizedCity = _cityController.text
-                        .trim()
-                        .replaceAll(RegExp(r'\s+'), ' ');
-
+                          .trim()
+                          .replaceAll(RegExp(r'\s+'), ' ');
                       setState(() {
-                        _stateFilter = _stateController.text.trim().isEmpty
+                        _stateFilter =
+                            _stateController.text.trim().isEmpty
+                                ? null
+                                : _stateController.text.trim();
+                        _cityFilter = normalizedCity.isEmpty
                             ? null
-                            : _stateController.text.trim();
-                      _cityFilter = normalizedCity.isEmpty
-                            ? null
-                        : normalizedCity;
+                            : normalizedCity;
                         _pincodeFilter =
                             _pincodeController.text.trim().isEmpty
                                 ? null
@@ -908,12 +999,59 @@ class _CustomerOffersBodyState extends State<CustomerOffersBody> {
                       _loadInitial();
                       Navigator.pop(context);
                     },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _OP.accent,
+                      foregroundColor: _OP.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                    ),
                     child: const Text('Apply'),
                   ),
                 ),
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _filterField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    String? hint,
+    bool readOnly = false,
+    TextInputType? keyboardType,
+    ValueChanged<String>? onChanged,
+  }) {
+    return TextField(
+      controller: controller,
+      readOnly: readOnly,
+      keyboardType: keyboardType,
+      style: GoogleFonts.dmSans(color: _OP.textPrimary, fontSize: 14),
+      onChanged: onChanged,
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: _OP.textMuted),
+        hintText: hint,
+        hintStyle: const TextStyle(color: _OP.textMuted),
+        prefixIcon: Icon(icon, color: _OP.textMuted, size: 20),
+        isDense: true,
+        filled: true,
+        fillColor: _OP.elevated,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: _OP.border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: _OP.border),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: _OP.accent, width: 1.5),
         ),
       ),
     );

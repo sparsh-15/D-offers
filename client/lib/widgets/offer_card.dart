@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:google_fonts/google_fonts.dart';
 
-import '../core/constants/app_colors.dart';
 import '../core/constants/app_design_tokens.dart';
 import '../models/offer_model.dart';
 import '../screens/common/offer_detail_screen.dart';
@@ -11,6 +11,21 @@ import '../core/utils/dialog_helper.dart';
 import 'coin_splash_burst.dart';
 import 'offer_banner_preview.dart';
 import 'shop_logo_widget.dart';
+
+// ── Light palette ─────────────────────────────────────────────────────────────
+class _CP {
+  static const surface       = Color(0xFFFFFFFF);
+  static const elevated      = Color(0xFFF4F7FB);
+  static const border        = Color(0xFFDCE3EC);
+  static const accent        = Color(0xFFE88428);
+  static const accentSoft    = Color(0xFFFBE7D6);
+  static const textPrimary   = Color(0xFF1E2433);
+  static const textSecondary = Color(0xFF334155);
+  static const textMuted     = Color(0xFF667085);
+  static const error         = Color(0xFFE24D69);
+  static const inkSplash     = Color(0x14E88428);
+  static const inkHighlight  = Color(0x0AE88428);
+}
 
 class OfferCard extends StatefulWidget {
   final OfferModel offer;
@@ -235,7 +250,6 @@ class _OfferCardState extends State<OfferCard> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final isExpired = widget.offer.status == 'expired';
 
     final shopDisplayName = widget.offer.shopName?.trim().isNotEmpty == true
@@ -267,23 +281,23 @@ class _OfferCardState extends State<OfferCard> with TickerProviderStateMixin {
       clipBehavior: Clip.none,
       children: [
         Material(
-          color: AppColors.cardBackground,
+          color: _CP.surface,
           borderRadius: BorderRadius.circular(AppTokens.radiusLG),
           clipBehavior: Clip.antiAlias,
           child: InkWell(
             onTap: _handleTap,
-            splashColor: AppColors.highlight.withValues(alpha: 0.4),
-            highlightColor: AppColors.highlight.withValues(alpha: 0.2),
+            splashColor: _CP.inkSplash,
+            highlightColor: _CP.inkHighlight,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               mainAxisSize: MainAxisSize.min,
               children: [
-                // ── Banner / image (fixed aspect ratio for consistent thumbnails) ─
+                // ── Banner ──────────────────────────────────────────────────
                 AspectRatio(
                   aspectRatio: _bannerAspectRatio,
                   child: hasPhoto
                       ? Container(
-                          color: AppColors.elevated,
+                          color: _CP.elevated,
                           child: CachedNetworkImage(
                             imageUrl: widget.offer.photos.first,
                             fit: BoxFit.contain,
@@ -291,13 +305,15 @@ class _OfferCardState extends State<OfferCard> with TickerProviderStateMixin {
                               child: SizedBox(
                                 width: 24,
                                 height: 24,
-                                child:
-                                    CircularProgressIndicator(strokeWidth: 2),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: _CP.accent,
+                                ),
                               ),
                             ),
                             errorWidget: (_, __, ___) => const Icon(
                               Icons.broken_image_outlined,
-                              color: AppColors.textMuted,
+                              color: _CP.textMuted,
                             ),
                           ),
                         )
@@ -310,8 +326,14 @@ class _OfferCardState extends State<OfferCard> with TickerProviderStateMixin {
                         ),
                 ),
 
-                // ── Info strip ─────────────────────────────────────────────────
-                Padding(
+                // ── Info strip ───────────────────────────────────────────────
+                Container(
+                  decoration: const BoxDecoration(
+                    color: _CP.surface,
+                    border: Border(
+                      top: BorderSide(color: _CP.border, width: 1),
+                    ),
+                  ),
                   padding: const EdgeInsets.fromLTRB(
                     AppTokens.spaceMD,
                     AppTokens.spaceSM + 2,
@@ -320,7 +342,6 @@ class _OfferCardState extends State<OfferCard> with TickerProviderStateMixin {
                   ),
                   child: Row(
                     children: [
-                      // Shop name + discount badge
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -335,9 +356,10 @@ class _OfferCardState extends State<OfferCard> with TickerProviderStateMixin {
                                 Expanded(
                                   child: Text(
                                     shopDisplayName,
-                                    style:
-                                        theme.textTheme.titleMedium?.copyWith(
-                                      color: AppColors.textPrimary,
+                                    style: GoogleFonts.dmSans(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: _CP.textPrimary,
                                     ),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
@@ -345,61 +367,65 @@ class _OfferCardState extends State<OfferCard> with TickerProviderStateMixin {
                                 ),
                               ],
                             ),
-                            if (tierLabel != null && tierLabel.isNotEmpty) ...[
-                              const SizedBox(height: 6),
+                            if (tierLabel != null &&
+                                tierLabel.isNotEmpty) ...[
+                              const SizedBox(height: 5),
                               Container(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 4,
+                                  horizontal: 8,
+                                  vertical: 3,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: AppColors.accentDim
-                                      .withValues(alpha: 0.18),
+                                  color: _CP.accentSoft,
                                   borderRadius: BorderRadius.circular(
                                       AppTokens.radiusFull),
                                   border: Border.all(
-                                    color: AppColors.accentDim
-                                        .withValues(alpha: 0.5),
+                                    color: _CP.accent.withValues(alpha: 0.4),
                                   ),
                                 ),
                                 child: Text(
                                   tierLabel.toUpperCase(),
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: AppColors.accentDim,
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 9,
                                     fontWeight: FontWeight.w800,
+                                    color: _CP.accent,
                                     letterSpacing: 0.6,
-                                    fontSize: 10,
                                   ),
                                 ),
                               ),
                             ],
-                            const SizedBox(height: 2),
+                            const SizedBox(height: 3),
                             Row(
                               children: [
                                 Text(
                                   discountLabel,
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: AppColors.accent,
-                                    letterSpacing: 0.5,
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 12,
                                     fontWeight: FontWeight.w700,
+                                    color: _CP.accent,
+                                    letterSpacing: 0.3,
                                   ),
                                 ),
-                                if (widget.offer.discountType == 'percentage')
+                                if (widget.offer.discountType ==
+                                    'percentage')
                                   Text(
                                     ' OFF',
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      color: AppColors.accent,
-                                      letterSpacing: 0.5,
+                                    style: GoogleFonts.dmSans(
+                                      fontSize: 12,
                                       fontWeight: FontWeight.w700,
+                                      color: _CP.accent,
+                                      letterSpacing: 0.3,
                                     ),
                                   ),
                                 if (isExpired) ...[
                                   const SizedBox(width: AppTokens.spaceSM),
                                   Text(
                                     'EXPIRED',
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      color: AppColors.error,
-                                      letterSpacing: 0.6,
+                                    style: GoogleFonts.dmSans(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w600,
+                                      color: _CP.error,
+                                      letterSpacing: 0.4,
                                     ),
                                   ),
                                 ],
@@ -410,10 +436,11 @@ class _OfferCardState extends State<OfferCard> with TickerProviderStateMixin {
                                 padding: const EdgeInsets.only(top: 2),
                                 child: Text(
                                   _formatValidity(widget.offer.validTo!),
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: AppColors.textMuted,
-                                    letterSpacing: 0.2,
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 10,
                                     fontWeight: FontWeight.w400,
+                                    color: _CP.textMuted,
+                                    letterSpacing: 0.1,
                                   ),
                                 ),
                               ),
@@ -428,36 +455,31 @@ class _OfferCardState extends State<OfferCard> with TickerProviderStateMixin {
                         Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Stack(
-                              clipBehavior: Clip.none,
-                              alignment: Alignment.center,
-                              children: [
-                                ScaleTransition(
-                                  scale: _heartScale,
-                                  child: GestureDetector(
-                                    onTap: _toggleLike,
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(
-                                          AppTokens.spaceSM),
-                                      child: Icon(
-                                        _isLiked
-                                            ? Icons.favorite_rounded
-                                            : Icons.favorite_outline_rounded,
-                                        color: _isLiked
-                                            ? AppColors.error
-                                            : AppColors.textMuted,
-                                        size: AppTokens.iconMD,
-                                      ),
-                                    ),
+                            ScaleTransition(
+                              scale: _heartScale,
+                              child: GestureDetector(
+                                onTap: _toggleLike,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(
+                                      AppTokens.spaceSM),
+                                  child: Icon(
+                                    _isLiked
+                                        ? Icons.favorite_rounded
+                                        : Icons.favorite_outline_rounded,
+                                    color: _isLiked
+                                        ? _CP.error
+                                        : _CP.textMuted,
+                                    size: AppTokens.iconMD,
                                   ),
                                 ),
-                              ],
+                              ),
                             ),
                             Text(
                               '$_likesCount',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: AppColors.textMuted,
+                              style: GoogleFonts.dmSans(
+                                fontSize: 11,
                                 fontWeight: FontWeight.w400,
+                                color: _CP.textMuted,
                               ),
                             ),
                           ],
@@ -466,6 +488,17 @@ class _OfferCardState extends State<OfferCard> with TickerProviderStateMixin {
                   ),
                 ),
               ],
+            ),
+          ),
+        ),
+        // ── Card border overlay ──────────────────────────────────────────────
+        Positioned.fill(
+          child: IgnorePointer(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(AppTokens.radiusLG),
+                border: Border.all(color: _CP.border),
+              ),
             ),
           ),
         ),

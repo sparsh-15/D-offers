@@ -1,14 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:share_plus/share_plus.dart';
 
-import '../../core/constants/app_colors.dart';
 import '../../models/campaign_model.dart';
-import '../../models/offer_model.dart';
 import '../../screens/common/offer_detail_screen.dart';
 import '../../services/auth_service.dart';
 import '../../services/campaign_service.dart';
 import '../../widgets/data_state_wrapper.dart';
+
+// ── Light palette ─────────────────────────────────────────────────────────────
+class _IP {
+  static const canvas        = Color(0xFFF3F5F8);
+  static const surface       = Color(0xFFFFFFFF);
+  static const elevated      = Color(0xFFF4F7FB);
+  static const border        = Color(0xFFDCE3EC);
+  static const accent        = Color(0xFFE88428);
+  static const accentSoft    = Color(0xFFFBE7D6);
+  static const textPrimary   = Color(0xFF1E2433);
+  static const textSecondary = Color(0xFF334155);
+  static const textMuted     = Color(0xFF667085);
+  static const unreadDot     = Color(0xFFE88428);
+  static const white         = Color(0xFFFFFFFF);
+}
 
 class CustomerInboxScreen extends StatefulWidget {
   const CustomerInboxScreen({super.key});
@@ -29,23 +43,14 @@ class _CustomerInboxScreenState extends State<CustomerInboxScreen> {
   }
 
   Future<void> _loadMessages() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+    setState(() { _loading = true; _error = null; });
     try {
       final messages = await CampaignService.instance.getInboxMessages();
       if (!mounted) return;
-      setState(() {
-        _messages = messages;
-        _loading = false;
-      });
+      setState(() { _messages = messages; _loading = false; });
     } catch (error) {
       if (!mounted) return;
-      setState(() {
-        _error = error.toString();
-        _loading = false;
-      });
+      setState(() { _error = error.toString(); _loading = false; });
     }
   }
 
@@ -78,7 +83,6 @@ class _CustomerInboxScreenState extends State<CustomerInboxScreen> {
         if (mounted) _markRead(message);
       } catch (_) {}
     }
-
     if (!mounted) return;
     await showModalBottomSheet<void>(
       context: context,
@@ -91,7 +95,25 @@ class _CustomerInboxScreenState extends State<CustomerInboxScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Inbox')),
+      backgroundColor: _IP.canvas,
+      appBar: AppBar(
+        backgroundColor: _IP.canvas,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: _IP.canvas,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: _IP.textSecondary),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Text(
+          'Campaigns',
+          style: GoogleFonts.dmSans(
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
+            color: _IP.textPrimary,
+          ),
+        ),
+      ),
       body: DataStateWrapper(
         loading: _loading,
         error: _error,
@@ -102,135 +124,170 @@ class _CustomerInboxScreenState extends State<CustomerInboxScreen> {
             'When shops launch campaigns for your area, they will show up here.',
         child: RefreshIndicator(
           onRefresh: _loadMessages,
+          color: _IP.accent,
+          backgroundColor: _IP.surface,
           child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
             itemCount: _messages.length,
             itemBuilder: (context, index) {
               final message = _messages[index];
-              final initial =
-                  (message.shopkeeperName ?? 'S').isNotEmpty
-                      ? (message.shopkeeperName ?? 'S')[0].toUpperCase()
-                      : 'S';
-              return Card(
-                margin: const EdgeInsets.only(bottom: 10),
-                child: InkWell(
-                  onTap: () => _openMessage(message),
-                  borderRadius: BorderRadius.circular(12),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 10),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Leading avatar
-                        Stack(
-                          children: [
-                            CircleAvatar(
-                              radius: 24,
-                              backgroundColor: message.isRead
-                                  ? AppColors.surface
-                                  : AppColors.accent
-                                      .withValues(alpha: 0.15),
-                              backgroundImage:
-                                  (message.bannerUrl != null &&
-                                          message.bannerUrl!.isNotEmpty)
-                                      ? CachedNetworkImageProvider(
-                                          message.bannerUrl!)
-                                      : null,
-                              child: (message.bannerUrl == null ||
-                                      message.bannerUrl!.isEmpty)
-                                  ? Text(
-                                      initial,
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        color: message.isRead
-                                            ? AppColors.textSecondary
-                                            : AppColors.accent,
-                                      ),
-                                    )
-                                  : null,
-                            ),
-                            if (!message.isRead)
-                              Positioned(
-                                right: 0,
-                                top: 0,
-                                child: Container(
-                                  width: 10,
-                                  height: 10,
-                                  decoration: const BoxDecoration(
-                                    color: AppColors.accent,
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                              ),
-                          ],
+              final initial = message.shopkeeperName.isNotEmpty
+                  ? message.shopkeeperName[0].toUpperCase()
+                  : 'S';
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Material(
+                  color: _IP.surface,
+                  borderRadius: BorderRadius.circular(18),
+                  child: InkWell(
+                    onTap: () => _openMessage(message),
+                    borderRadius: BorderRadius.circular(18),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: message.isRead
+                              ? _IP.border
+                              : _IP.accent.withValues(alpha: 0.35),
+                          width: message.isRead ? 1 : 1.5,
                         ),
-                        const SizedBox(width: 12),
-                        // Content
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 12),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // ── Avatar ─────────────────────────────────────
+                          Stack(
                             children: [
-                              Text(
-                                message.title,
-                                style: TextStyle(
-                                  fontWeight: message.isRead
-                                      ? FontWeight.w500
-                                      : FontWeight.w700,
-                                  fontSize: 14,
-                                  color: message.isRead
-                                      ? AppColors.textSecondary
-                                      : AppColors.textPrimary,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                '${message.shopkeeperName ?? ''} · ${_timeAgo(message.createdAt)}',
-                                style: const TextStyle(
-                                  color: AppColors.textSecondary,
-                                  fontSize: 12,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                message.body,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  color: AppColors.textSecondary,
-                                ),
-                              ),
-                              if ((message.offerId ?? '').isNotEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 6),
-                                  child: Row(
-                                    children: [
-                                      Icon(
-                                        Icons.local_offer_rounded,
-                                        size: 12,
-                                        color: AppColors.accent,
-                                      ),
-                                      const SizedBox(width: 4),
-                                      const Text(
-                                        'Offer attached — tap to view',
-                                        style: TextStyle(
-                                          color: AppColors.accent,
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w600,
+                              CircleAvatar(
+                                radius: 24,
+                                backgroundColor: message.isRead
+                                    ? _IP.elevated
+                                    : _IP.accentSoft,
+                                backgroundImage: (message.bannerUrl != null &&
+                                        message.bannerUrl!.isNotEmpty)
+                                    ? CachedNetworkImageProvider(
+                                        message.bannerUrl!)
+                                    : null,
+                                child: (message.bannerUrl == null ||
+                                        message.bannerUrl!.isEmpty)
+                                    ? Text(
+                                        initial,
+                                        style: GoogleFonts.dmSans(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 18,
+                                          color: message.isRead
+                                              ? _IP.textMuted
+                                              : _IP.accent,
                                         ),
-                                      ),
-                                    ],
+                                      )
+                                    : null,
+                              ),
+                              if (!message.isRead)
+                                Positioned(
+                                  right: 0,
+                                  top: 0,
+                                  child: Container(
+                                    width: 11,
+                                    height: 11,
+                                    decoration: BoxDecoration(
+                                      color: _IP.unreadDot,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                          color: _IP.surface, width: 2),
+                                    ),
                                   ),
                                 ),
                             ],
                           ),
-                        ),
-                        const Icon(
-                          Icons.chevron_right_rounded,
-                          color: AppColors.textMuted,
-                        ),
-                      ],
+                          const SizedBox(width: 12),
+                          // ── Content ────────────────────────────────────
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        message.title,
+                                        style: GoogleFonts.dmSans(
+                                          fontWeight: message.isRead
+                                              ? FontWeight.w500
+                                              : FontWeight.w700,
+                                          fontSize: 14,
+                                          color: message.isRead
+                                              ? _IP.textSecondary
+                                              : _IP.textPrimary,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    Text(
+                                      _timeAgo(message.createdAt),
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 11,
+                                        color: _IP.textMuted,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  message.shopkeeperName,
+                                  style: GoogleFonts.dmSans(
+                                    color: _IP.textMuted,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  message.body,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 13,
+                                    color: _IP.textSecondary,
+                                    height: 1.4,
+                                  ),
+                                ),
+                                if ((message.offerId ?? '').isNotEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 6),
+                                    child: Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.local_offer_rounded,
+                                          size: 12,
+                                          color: _IP.accent,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'Offer attached — tap to view',
+                                          style: GoogleFonts.dmSans(
+                                            color: _IP.accent,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          const Icon(
+                            Icons.chevron_right_rounded,
+                            color: _IP.textMuted,
+                            size: 20,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -243,7 +300,7 @@ class _CustomerInboxScreenState extends State<CustomerInboxScreen> {
   }
 }
 
-// ─── Detail bottom sheet ──────────────────────────────────────────────────────
+// ── Detail bottom sheet ───────────────────────────────────────────────────────
 
 class _InboxDetailSheet extends StatefulWidget {
   const _InboxDetailSheet({required this.message});
@@ -258,19 +315,14 @@ class _InboxDetailSheetState extends State<_InboxDetailSheet> {
   String? _offerError;
 
   Future<void> _viewOffer() async {
-    setState(() {
-      _loadingOffer = true;
-      _offerError = null;
-    });
+    setState(() { _loadingOffer = true; _offerError = null; });
     try {
       final offer =
           await AuthService.instance.getCustomerOffer(widget.message.offerId!);
       if (!mounted) return;
       Navigator.of(context).pop();
       await Navigator.of(context).push<void>(
-        MaterialPageRoute(
-          builder: (_) => OfferDetailScreen(offer: offer),
-        ),
+        MaterialPageRoute(builder: (_) => OfferDetailScreen(offer: offer)),
       );
     } catch (e) {
       if (!mounted) return;
@@ -283,11 +335,11 @@ class _InboxDetailSheetState extends State<_InboxDetailSheet> {
 
   void _share() {
     final msg = widget.message;
-    final text = StringBuffer();
-    text.writeln('🎁 ${msg.title}');
-    text.writeln('From: ${msg.shopkeeperName ?? 'Shop'}');
-    text.writeln();
-    text.write(msg.body);
+    final text = StringBuffer()
+      ..writeln('🎁 ${msg.title}')
+      ..writeln('From: ${msg.shopkeeperName}')
+      ..writeln()
+      ..write(msg.body);
     Share.share(text.toString());
   }
 
@@ -302,14 +354,13 @@ class _InboxDetailSheetState extends State<_InboxDetailSheet> {
       maxChildSize: 0.95,
       builder: (context, scrollController) {
         return Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).scaffoldBackgroundColor,
-            borderRadius:
-                const BorderRadius.vertical(top: Radius.circular(20)),
+          decoration: const BoxDecoration(
+            color: _IP.surface,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           ),
           child: Column(
             children: [
-              // Drag handle + actions bar
+              // ── Handle + actions ────────────────────────────────────────
               Padding(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -320,28 +371,29 @@ class _InboxDetailSheetState extends State<_InboxDetailSheet> {
                         width: 40,
                         height: 4,
                         decoration: BoxDecoration(
-                          color: AppColors.textSecondary
-                              .withValues(alpha: 0.3),
+                          color: _IP.border,
                           borderRadius: BorderRadius.circular(2),
                         ),
                       ),
                     ),
                     const Spacer(),
                     IconButton(
-                      icon: const Icon(Icons.share_rounded),
+                      icon: const Icon(Icons.share_rounded,
+                          color: _IP.textSecondary),
                       tooltip: 'Share',
                       onPressed: _share,
                     ),
                     IconButton(
-                      icon: const Icon(Icons.close_rounded),
+                      icon: const Icon(Icons.close_rounded,
+                          color: _IP.textSecondary),
                       tooltip: 'Close',
                       onPressed: () => Navigator.of(context).pop(),
                     ),
                   ],
                 ),
               ),
-              const Divider(height: 1),
-              // Scrollable content
+              Divider(height: 1, color: _IP.border),
+              // ── Scrollable content ──────────────────────────────────────
               Expanded(
                 child: ListView(
                   controller: scrollController,
@@ -350,42 +402,37 @@ class _InboxDetailSheetState extends State<_InboxDetailSheet> {
                     // Title
                     Text(
                       msg.title,
-                      style: Theme.of(context)
-                          .textTheme
-                          .headlineSmall
-                          ?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
-                          ),
+                      style: GoogleFonts.dmSans(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                        color: _IP.textPrimary,
+                        height: 1.2,
+                      ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 8),
                     // Shop + date row
                     Row(
                       children: [
                         const Icon(Icons.storefront_rounded,
-                            size: 14,
-                            color: AppColors.textSecondary),
+                            size: 14, color: _IP.textMuted),
                         const SizedBox(width: 4),
                         Text(
-                          msg.shopkeeperName ?? 'Shop',
-                          style: const TextStyle(
-                              color: AppColors.textSecondary,
-                              fontSize: 13),
+                          msg.shopkeeperName,
+                          style: GoogleFonts.dmSans(
+                              color: _IP.textSecondary, fontSize: 13),
                         ),
                         const SizedBox(width: 8),
-                        const Text('·',
-                            style: TextStyle(
-                                color: AppColors.textSecondary)),
+                        Text('·',
+                            style: GoogleFonts.dmSans(
+                                color: _IP.textMuted)),
                         const SizedBox(width: 8),
                         const Icon(Icons.schedule_rounded,
-                            size: 14,
-                            color: AppColors.textSecondary),
+                            size: 14, color: _IP.textMuted),
                         const SizedBox(width: 4),
                         Text(
                           _formatDate(msg.createdAt),
-                          style: const TextStyle(
-                              color: AppColors.textSecondary,
-                              fontSize: 13),
+                          style: GoogleFonts.dmSans(
+                              color: _IP.textSecondary, fontSize: 13),
                         ),
                       ],
                     ),
@@ -402,22 +449,25 @@ class _InboxDetailSheetState extends State<_InboxDetailSheet> {
                           fit: BoxFit.cover,
                           placeholder: (_, __) => Container(
                             height: 200,
-                            color: AppColors.surface,
+                            color: _IP.elevated,
                             child: const Center(
-                                child: CircularProgressIndicator()),
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: _IP.accent),
+                            ),
                           ),
-                          errorWidget: (_, __, ___) => const SizedBox.shrink(),
+                          errorWidget: (_, __, ___) =>
+                              const SizedBox.shrink(),
                         ),
                       ),
                     ],
-                    // Message body
+                    // Body
                     const SizedBox(height: 20),
                     Text(
                       msg.body,
-                      style: const TextStyle(
+                      style: GoogleFonts.dmSans(
                         fontSize: 15,
-                        height: 1.5,
-                        color: AppColors.textPrimary,
+                        height: 1.6,
+                        color: _IP.textPrimary,
                       ),
                     ),
                     // Offer CTA
@@ -426,11 +476,10 @@ class _InboxDetailSheetState extends State<_InboxDetailSheet> {
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: AppColors.accent.withValues(alpha: 0.08),
+                          color: _IP.accentSoft,
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
-                            color:
-                                AppColors.accent.withValues(alpha: 0.25),
+                            color: _IP.accent.withValues(alpha: 0.35),
                           ),
                         ),
                         child: Column(
@@ -438,24 +487,24 @@ class _InboxDetailSheetState extends State<_InboxDetailSheet> {
                           children: [
                             Row(
                               children: [
-                                Icon(Icons.local_offer_rounded,
-                                    color: AppColors.accent, size: 18),
+                                const Icon(Icons.local_offer_rounded,
+                                    color: _IP.accent, size: 18),
                                 const SizedBox(width: 8),
-                                const Text(
+                                Text(
                                   'Exclusive Offer Inside',
-                                  style: TextStyle(
+                                  style: GoogleFonts.dmSans(
                                     fontWeight: FontWeight.w700,
                                     fontSize: 14,
-                                    color: AppColors.textPrimary,
+                                    color: _IP.textPrimary,
                                   ),
                                 ),
                               ],
                             ),
                             const SizedBox(height: 6),
-                            const Text(
+                            Text(
                               'This campaign includes an offer from this shop. View full details, validity, and discount.',
-                              style: TextStyle(
-                                color: AppColors.textSecondary,
+                              style: GoogleFonts.dmSans(
+                                color: _IP.textSecondary,
                                 fontSize: 13,
                                 height: 1.4,
                               ),
@@ -465,27 +514,41 @@ class _InboxDetailSheetState extends State<_InboxDetailSheet> {
                                 padding: const EdgeInsets.only(top: 8),
                                 child: Text(
                                   _offerError!,
-                                  style: const TextStyle(
-                                      color: Colors.red, fontSize: 12),
+                                  style: GoogleFonts.dmSans(
+                                      color: const Color(0xFFE24D69),
+                                      fontSize: 12),
                                 ),
                               ),
                             const SizedBox(height: 12),
                             SizedBox(
                               width: double.infinity,
-                              child: FilledButton.icon(
+                              height: 50,
+                              child: ElevatedButton.icon(
                                 onPressed:
                                     _loadingOffer ? null : _viewOffer,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: _IP.accent,
+                                  foregroundColor: _IP.white,
+                                  elevation: 0,
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius:
+                                          BorderRadius.circular(14)),
+                                  textStyle: GoogleFonts.dmSans(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w700),
+                                ),
                                 icon: _loadingOffer
                                     ? const SizedBox(
                                         width: 16,
                                         height: 16,
                                         child: CircularProgressIndicator(
                                             strokeWidth: 2,
-                                            color: Colors.white),
+                                            color: _IP.white),
                                       )
-                                    : const Icon(Icons.arrow_forward_rounded),
+                                    : const Icon(
+                                        Icons.arrow_forward_rounded),
                                 label: Text(_loadingOffer
-                                    ? 'Loading offer…'
+                                    ? 'Loading offer...'
                                     : 'View Offer'),
                               ),
                             ),
@@ -504,7 +567,7 @@ class _InboxDetailSheetState extends State<_InboxDetailSheet> {
   }
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 String _timeAgo(DateTime? dt) {
   if (dt == null) return '';
@@ -519,7 +582,7 @@ String _timeAgo(DateTime? dt) {
 
 String _formatDate(DateTime? dt) {
   if (dt == null) return '';
-  final months = [
+  const months = [
     'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
     'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
   ];

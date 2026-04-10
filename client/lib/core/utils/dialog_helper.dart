@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_strings.dart';
 import '../../screens/shopkeeper/ai_credit_packs_screen.dart';
@@ -17,34 +18,67 @@ class DialogHelper {
       barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
+          backgroundColor: const Color(0xFFFFFFFF),
+          surfaceTintColor: Colors.transparent,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(20),
           ),
           title: Text(
             title,
-            style: Theme.of(context).textTheme.titleLarge,
+            style: GoogleFonts.dmSans(
+              fontSize: 17,
+              fontWeight: FontWeight.w800,
+              color: const Color(0xFF0F172A),
+            ),
           ),
           content: Text(
             message,
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: Text(
-                cancelText,
-                style: TextStyle(
-                  color: Theme.of(context).textTheme.bodyMedium?.color,
-                ),
-              ),
+            style: GoogleFonts.dmSans(
+              fontSize: 14,
+              color: const Color(0xFF64748B),
+              height: 1.5,
             ),
-            ElevatedButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor:
-                    isDestructive ? AppColors.error : AppColors.primary,
-              ),
-              child: Text(confirmText),
+          ),
+          actionsPadding:
+              const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          actions: [
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF334155),
+                      side: const BorderSide(color: Color(0xFFDCE3EC)),
+                      minimumSize: const Size(double.infinity, 46),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                      textStyle: GoogleFonts.dmSans(
+                          fontSize: 14, fontWeight: FontWeight.w600),
+                    ),
+                    child: Text(cancelText),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.of(context).pop(true),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isDestructive
+                          ? const Color(0xFFE24D69)
+                          : const Color(0xFFE88428),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      minimumSize: const Size(double.infinity, 46),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                      textStyle: GoogleFonts.dmSans(
+                          fontSize: 14, fontWeight: FontWeight.w700),
+                    ),
+                    child: Text(confirmText),
+                  ),
+                ),
+              ],
             ),
           ],
         );
@@ -126,42 +160,77 @@ class DialogHelper {
     );
   }
 
-  /// Show dialog when AI banner limit is reached. "Buy AI Credit Pack" opens
-  /// [AiCreditPacksScreen].
   static Future<void> showAiLimitReachedDialog(BuildContext context) async {
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext ctx) {
         return AlertDialog(
+          backgroundColor: const Color(0xFFFFFFFF),
+          surfaceTintColor: Colors.transparent,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(20),
           ),
-          title: const Text('AI Banner Limit Reached'),
-          content: const Text(
-            "You have reached your AI banner limit. Buy AI Credit Pack.",
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: Text(
-                'Cancel',
-                style: TextStyle(
-                  color: Theme.of(ctx).textTheme.bodyMedium?.color,
-                ),
-              ),
+          title: Text(
+            'AI Banner Limit Reached',
+            style: GoogleFonts.dmSans(
+              fontSize: 17,
+              fontWeight: FontWeight.w800,
+              color: const Color(0xFF0F172A),
             ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(ctx).pop();
-                Navigator.of(ctx).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const AiCreditPacksScreen(),
+          ),
+          content: Text(
+            'You have reached your AI banner limit. Buy AI Credit Pack.',
+            style: GoogleFonts.dmSans(
+              fontSize: 14,
+              color: const Color(0xFF64748B),
+              height: 1.5,
+            ),
+          ),
+          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          actions: [
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.of(ctx).pop(),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF334155),
+                      side: const BorderSide(color: Color(0xFFDCE3EC)),
+                      minimumSize: const Size(double.infinity, 46),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                      textStyle: GoogleFonts.dmSans(
+                          fontSize: 14, fontWeight: FontWeight.w600),
+                    ),
+                    child: const Text('Cancel'),
                   ),
-                );
-              },
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-              child: const Text('Buy AI Credit Pack'),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(ctx).pop();
+                      Navigator.of(ctx).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const AiCreditPacksScreen(),
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFE88428),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      minimumSize: const Size(double.infinity, 46),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                      textStyle: GoogleFonts.dmSans(
+                          fontSize: 14, fontWeight: FontWeight.w700),
+                    ),
+                    child: const Text('Buy AI Credit Pack'),
+                  ),
+                ),
+              ],
             ),
           ],
         );

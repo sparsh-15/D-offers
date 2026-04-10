@@ -1,23 +1,11 @@
-import 'package:flutter/material.dart';
-import '../core/constants/app_colors.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
-/// Universal dark-theme error/empty/not-found state for failed API calls,
-/// empty data, or 404. Use as full-screen content or inside a scroll view.
 class UniversalErrorPage extends StatelessWidget {
-  /// Type of state: empty list, API/server error, or page not found.
   final ErrorPageType type;
-
-  /// Optional short title (e.g. "Nothing here").
   final String? title;
-
-  /// Optional longer message (e.g. "No plans found for this category.").
   final String? message;
-
-  /// Optional retry callback; if set, a "Try again" button is shown.
   final VoidCallback? onRetry;
-
-  /// If true, expands to fill available height (e.g. for full-screen).
-  /// If false, only takes the space it needs (e.g. inside ListView).
   final bool fullHeight;
 
   const UniversalErrorPage({
@@ -29,7 +17,6 @@ class UniversalErrorPage extends StatelessWidget {
     this.fullHeight = true,
   });
 
-  /// Convenience: empty state (e.g. no results, empty API response).
   static Widget empty({
     String? title,
     String? message,
@@ -38,14 +25,13 @@ class UniversalErrorPage extends StatelessWidget {
   }) {
     return UniversalErrorPage(
       type: ErrorPageType.empty,
-      title: title ?? 'Nothing here',
+      title: title,
       message: message,
       onRetry: onRetry,
       fullHeight: fullHeight,
     );
   }
 
-  /// Convenience: error state (e.g. failed API call, server error).
   static Widget error({
     String? title,
     String? message,
@@ -54,14 +40,13 @@ class UniversalErrorPage extends StatelessWidget {
   }) {
     return UniversalErrorPage(
       type: ErrorPageType.error,
-      title: title ?? 'Something went wrong',
+      title: title,
       message: message,
       onRetry: onRetry,
       fullHeight: fullHeight,
     );
   }
 
-  /// Convenience: page not found (404).
   static Widget notFound({
     String? title,
     String? message,
@@ -70,7 +55,7 @@ class UniversalErrorPage extends StatelessWidget {
   }) {
     return UniversalErrorPage(
       type: ErrorPageType.notFound,
-      title: title ?? 'Page not found',
+      title: title,
       message: message,
       onRetry: onRetry,
       fullHeight: fullHeight,
@@ -79,28 +64,34 @@ class UniversalErrorPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (IconData icon, Color iconColor, String defaultTitle, String defaultMessage) = switch (type) {
+    const iconBg      = Color(0xFFECEEF2);
+    const iconColor   = Color(0xFF8A95A8);
+    const errorColor  = Color(0xFFE24D69);
+    const textMuted   = Color(0xFF667085);
+    const accent      = Color(0xFFE88428);
+    const white       = Color(0xFFFFFFFF);
+
+    final (IconData icon, Color effectiveIconColor, String defaultTitle, String defaultMessage) = switch (type) {
       ErrorPageType.empty => (
-          Icons.inbox_rounded,
-          AppColors.textMuted,
+          Icons.desktop_windows_outlined,
+          iconColor,
           'Nothing here',
           'No data to show. Check back later or try again.',
         ),
       ErrorPageType.error => (
           Icons.error_outline_rounded,
-          AppColors.error,
+          errorColor,
           'Something went wrong',
           'A problem occurred. Please try again.',
         ),
       ErrorPageType.notFound => (
           Icons.search_off_rounded,
-          AppColors.textMuted,
+          iconColor,
           'Page not found',
-          'This page doesn’t exist or was moved.',
+          'This page does not exist or was moved.',
         ),
     };
 
-    final effectiveTitle = title ?? defaultTitle;
     final effectiveMessage = message ?? defaultMessage;
 
     final content = Column(
@@ -109,52 +100,49 @@ class UniversalErrorPage extends StatelessWidget {
       children: [
         const SizedBox(height: 24),
         Container(
-          padding: const EdgeInsets.all(24),
+          width: 100,
+          height: 100,
           decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.borderMid),
+            color: iconBg,
+            borderRadius: BorderRadius.circular(24),
           ),
-          child: Icon(icon, size: 56, color: iconColor),
+          child: Icon(icon, size: 48, color: effectiveIconColor),
         ),
         const SizedBox(height: 24),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Text(
-            effectiveTitle,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+          padding: const EdgeInsets.symmetric(horizontal: 32),
           child: Text(
             effectiveMessage,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 14,
-              height: 1.4,
+            style: GoogleFonts.dmSans(
+              color: textMuted,
+              fontSize: 15,
+              height: 1.5,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ),
         if (onRetry != null) ...[
           const SizedBox(height: 24),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: FilledButton.icon(
-              onPressed: onRetry,
-              icon: const Icon(Icons.refresh_rounded, size: 20),
-              label: const Text('Try again'),
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.accent,
-                foregroundColor: AppColors.black,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 48),
+            child: SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton.icon(
+                onPressed: onRetry,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: accent,
+                  foregroundColor: white,
+                  elevation: 0,
+                  shape: const StadiumBorder(),
+                  textStyle: GoogleFonts.dmSans(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                icon: const Icon(Icons.refresh_rounded, size: 18),
+                label: const Text('Try again'),
               ),
             ),
           ),
@@ -164,18 +152,10 @@ class UniversalErrorPage extends StatelessWidget {
     );
 
     if (fullHeight) {
-      return Center(
-        child: SingleChildScrollView(
-          child: content,
-        ),
-      );
+      return Center(child: SingleChildScrollView(child: content));
     }
     return content;
   }
 }
 
-enum ErrorPageType {
-  empty,
-  error,
-  notFound,
-}
+enum ErrorPageType { empty, error, notFound }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../core/constants/app_colors.dart';
+import 'package:google_fonts/google_fonts.dart';
+
 import '../../core/constants/app_design_tokens.dart';
 import '../../core/constants/app_strings.dart';
 import '../../core/utils/dialog_helper.dart';
@@ -8,7 +9,22 @@ import '../../services/chat_assistant_service.dart';
 import '../common/offer_detail_screen.dart';
 import 'customer_dashboard.dart';
 
-/// AI chat assistant screen — premium dark design.
+// ── Palette ───────────────────────────────────────────────────────────────────
+class _CP {
+  static const canvas        = Color(0xFFF3F5F8);
+  static const surface       = Color(0xFFFFFFFF);
+  static const elevated      = Color(0xFFF4F7FB);
+  static const border        = Color(0xFFDCE3EC);
+  static const accent        = Color(0xFFE88428);
+  static const accentSoft    = Color(0xFFFBE7D6);
+  static const userBubble    = Color(0xFFE88428);
+  static const botBubble     = Color(0xFFFFFFFF);
+  static const textPrimary   = Color(0xFF1E2433);
+  static const textSecondary = Color(0xFF334155);
+  static const textMuted     = Color(0xFF667085);
+  static const white         = Color(0xFFFFFFFF);
+}
+
 class CustomerChatBotScreen extends StatefulWidget {
   const CustomerChatBotScreen({super.key});
 
@@ -87,8 +103,7 @@ class _CustomerChatBotScreenState extends State<CustomerChatBotScreen> {
 
     _inputController.clear();
     setState(() {
-      _messages
-          .add(_ChatMessage(text: trimmed, isUser: true, actions: const []));
+      _messages.add(_ChatMessage(text: trimmed, isUser: true, actions: const []));
       _isSending = true;
     });
     _scrollToEnd();
@@ -115,9 +130,7 @@ class _CustomerChatBotScreenState extends State<CustomerChatBotScreen> {
         _isSending = false;
       });
       DialogHelper.showErrorSnackBar(
-        context,
-        'Assistant is temporarily unavailable.',
-      );
+          context, 'Assistant is temporarily unavailable.');
     }
     _scrollToEnd();
   }
@@ -125,16 +138,12 @@ class _CustomerChatBotScreenState extends State<CustomerChatBotScreen> {
   void _handleAction(ChatAssistantAction action) {
     switch (action.type) {
       case 'ask_followup':
-        {
-          final msg = action.payload['message']?.toString() ?? action.label;
-          _send(msg);
-        }
+        final msg = action.payload['message']?.toString() ?? action.label;
+        _send(msg);
         break;
       case 'open_offer':
-        {
-          final offerId = action.payload['offerId']?.toString();
-          _openOfferDetail(offerId);
-        }
+        final offerId = action.payload['offerId']?.toString();
+        _openOfferDetail(offerId);
         break;
       case 'open_offers_tab':
       case 'open_favorites':
@@ -159,87 +168,81 @@ class _CustomerChatBotScreenState extends State<CustomerChatBotScreen> {
       DialogHelper.showErrorSnackBar(context, 'Offer id is missing.');
       return;
     }
-
     try {
       final offer = await AuthService.instance.getCustomerOffer(id);
       if (!mounted) return;
-
       await Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => OfferDetailScreen(offer: offer),
-        ),
+        MaterialPageRoute(builder: (_) => OfferDetailScreen(offer: offer)),
       );
     } catch (_) {
       if (!mounted) return;
       DialogHelper.showErrorSnackBar(
-        context,
-        'Unable to open this offer right now.',
-      );
+          context, 'Unable to open this offer right now.');
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: _CP.canvas,
       appBar: AppBar(
-        backgroundColor: AppColors.background,
+        backgroundColor: _CP.surface,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: _CP.surface,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded,
-              color: AppColors.textSecondary),
+          icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF334155)),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Row(
           children: [
             Container(
-              width: 32,
-              height: 32,
+              width: 36,
+              height: 36,
               decoration: BoxDecoration(
-                color: AppColors.accentDim.withValues(alpha: 0.2),
+                color: _CP.accentSoft,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
-                Icons.auto_awesome_rounded,
-                color: AppColors.accent,
-                size: 18,
-              ),
+              child: const Icon(Icons.auto_awesome_rounded,
+                  color: _CP.accent, size: 18),
             ),
-            const SizedBox(width: AppTokens.spaceSM),
+            const SizedBox(width: 10),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   'AI Assistant',
-                  style: theme.textTheme.titleMedium,
+                  style: GoogleFonts.dmSans(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: _CP.textPrimary,
+                  ),
                 ),
                 Text(
                   AppStrings.appName,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppColors.textMuted,
-                    letterSpacing: 0.3,
-                    fontWeight: FontWeight.w400,
+                  style: GoogleFonts.dmSans(
+                    fontSize: 11,
+                    color: _CP.textMuted,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
             ),
           ],
         ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Divider(height: 1, color: _CP.border),
+        ),
       ),
       body: Column(
         children: [
-          // ── Messages ────────────────────────────────────────────────────────
+          // ── Messages ──────────────────────────────────────────────────
           Expanded(
             child: ListView.builder(
               controller: _scrollController,
-              padding: const EdgeInsets.fromLTRB(
-                AppTokens.spaceMD,
-                AppTokens.spaceSM,
-                AppTokens.spaceMD,
-                AppTokens.spaceMD,
-              ),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
               itemCount: _messages.length + (_isSending ? 1 : 0),
               itemBuilder: (ctx, i) {
                 if (_isSending && i == _messages.length) {
@@ -249,47 +252,38 @@ class _CustomerChatBotScreenState extends State<CustomerChatBotScreen> {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _Bubble(
-                      text: msg.text,
-                      isUser: msg.isUser,
-                    ),
+                    _Bubble(text: msg.text, isUser: msg.isUser),
                     if (!msg.isUser && msg.actions.isNotEmpty)
                       Padding(
-                        padding: const EdgeInsets.only(
-                          left: AppTokens.spaceXS,
-                          bottom: AppTokens.spaceSM,
-                        ),
+                        padding: const EdgeInsets.only(left: 4, bottom: 8),
                         child: Wrap(
-                          spacing: AppTokens.spaceSM,
-                          runSpacing: AppTokens.spaceXS,
+                          spacing: 8,
+                          runSpacing: 6,
                           children: msg.actions
-                              .map(
-                                (a) => GestureDetector(
-                                  onTap: () => _handleAction(a),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: AppTokens.spaceMD,
-                                      vertical: AppTokens.spaceXS + 2,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.elevated,
-                                      borderRadius: BorderRadius.circular(
-                                          AppTokens.radiusFull),
-                                      border: Border.all(
-                                        color: AppColors.borderMid,
+                              .map((a) => GestureDetector(
+                                    onTap: () => _handleAction(a),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 14, vertical: 7),
+                                      decoration: BoxDecoration(
+                                        color: _CP.accentSoft,
+                                        borderRadius:
+                                            BorderRadius.circular(20),
+                                        border: Border.all(
+                                          color: _CP.accent
+                                              .withValues(alpha: 0.35),
+                                        ),
+                                      ),
+                                      child: Text(
+                                        a.label,
+                                        style: GoogleFonts.dmSans(
+                                          fontSize: 12,
+                                          color: _CP.accent,
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                       ),
                                     ),
-                                    child: Text(
-                                      a.label,
-                                      style:
-                                          theme.textTheme.bodySmall?.copyWith(
-                                        color: AppColors.accent,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              )
+                                  ))
                               .toList(),
                         ),
                       ),
@@ -299,7 +293,7 @@ class _CustomerChatBotScreenState extends State<CustomerChatBotScreen> {
             ),
           ),
 
-          // ── Suggested questions (expandable) ────────────────────────────────
+          // ── Suggested questions ────────────────────────────────────────
           _SuggestedSection(
             expanded: _askExpanded,
             questions: _suggestedQuestions,
@@ -307,14 +301,14 @@ class _CustomerChatBotScreenState extends State<CustomerChatBotScreen> {
             onTap: (q) => _send(q),
           ),
 
-          // ── Input bar ───────────────────────────────────────────────────────
+          // ── Input bar ──────────────────────────────────────────────────
           Container(
-            color: AppColors.surface,
+            color: _CP.surface,
             padding: EdgeInsets.fromLTRB(
-              AppTokens.spaceMD,
-              AppTokens.spaceSM,
-              AppTokens.spaceSM,
-              MediaQuery.of(context).padding.bottom + AppTokens.spaceSM,
+              14,
+              10,
+              10,
+              MediaQuery.of(context).padding.bottom + 10,
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.end,
@@ -323,52 +317,54 @@ class _CustomerChatBotScreenState extends State<CustomerChatBotScreen> {
                   child: Container(
                     constraints: const BoxConstraints(maxHeight: 120),
                     decoration: BoxDecoration(
-                      color: AppColors.elevated,
-                      borderRadius: BorderRadius.circular(AppTokens.radiusMD),
-                      border: Border.all(color: AppColors.borderSubtle),
+                      color: _CP.elevated,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: _CP.border),
                     ),
                     child: TextField(
                       controller: _inputController,
                       maxLines: null,
                       minLines: 1,
                       textInputAction: TextInputAction.send,
-                      style: theme.textTheme.bodyLarge?.copyWith(
-                        color: AppColors.textPrimary,
+                      style: GoogleFonts.dmSans(
+                        fontSize: 15,
+                        color: _CP.textPrimary,
                       ),
                       decoration: InputDecoration(
                         hintText: 'Ask anything…',
-                        hintStyle: theme.textTheme.bodyLarge?.copyWith(
-                          color: AppColors.textMuted,
+                        hintStyle: GoogleFonts.dmSans(
+                          fontSize: 15,
+                          color: _CP.textMuted,
                         ),
                         border: InputBorder.none,
                         enabledBorder: InputBorder.none,
                         focusedBorder: InputBorder.none,
                         contentPadding: const EdgeInsets.symmetric(
-                          horizontal: AppTokens.spaceMD,
-                          vertical: AppTokens.spaceSM + 2,
-                        ),
+                            horizontal: 16, vertical: 12),
                         filled: false,
                       ),
                       onSubmitted: _send,
                     ),
                   ),
                 ),
-                const SizedBox(width: AppTokens.spaceSM),
+                const SizedBox(width: 8),
                 GestureDetector(
-                  onTap: _isSending ? null : () => _send(_inputController.text),
+                  onTap: _isSending
+                      ? null
+                      : () => _send(_inputController.text),
                   child: AnimatedContainer(
                     duration: AppTokens.durationFast,
-                    width: 40,
-                    height: 40,
+                    width: 42,
+                    height: 42,
                     decoration: BoxDecoration(
                       color: _isSending
-                          ? AppColors.accentDim.withValues(alpha: 0.4)
-                          : AppColors.accent,
+                          ? _CP.border
+                          : _CP.accent,
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
                       Icons.arrow_upward_rounded,
-                      color: _isSending ? AppColors.textMuted : AppColors.black,
+                      color: _isSending ? _CP.textMuted : _CP.white,
                       size: 20,
                     ),
                   ),
@@ -382,7 +378,7 @@ class _CustomerChatBotScreenState extends State<CustomerChatBotScreen> {
   }
 }
 
-// ── Sub-widgets ──────────────────────────────────────────────────────────────
+// ── Data model ────────────────────────────────────────────────────────────────
 
 class _ChatMessage {
   final String text;
@@ -396,6 +392,8 @@ class _ChatMessage {
   });
 }
 
+// ── Chat bubble ───────────────────────────────────────────────────────────────
+
 class _Bubble extends StatelessWidget {
   final String text;
   final bool isUser;
@@ -404,31 +402,40 @@ class _Bubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
-        margin: const EdgeInsets.only(bottom: AppTokens.spaceSM),
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppTokens.spaceMD,
-          vertical: AppTokens.spaceSM + 2,
-        ),
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         constraints: BoxConstraints(
           maxWidth: MediaQuery.of(context).size.width * 0.78,
         ),
         decoration: BoxDecoration(
-          color: isUser ? AppColors.accentDim : AppColors.cardBackground,
+          color: isUser ? _CP.userBubble : _CP.botBubble,
           borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(AppTokens.radiusMD),
-            topRight: const Radius.circular(AppTokens.radiusMD),
-            bottomLeft: Radius.circular(isUser ? AppTokens.radiusMD : 4),
-            bottomRight: Radius.circular(isUser ? 4 : AppTokens.radiusMD),
+            topLeft: const Radius.circular(18),
+            topRight: const Radius.circular(18),
+            bottomLeft: Radius.circular(isUser ? 18 : 4),
+            bottomRight: Radius.circular(isUser ? 4 : 18),
           ),
+          border: isUser
+              ? null
+              : Border.all(color: _CP.border),
+          boxShadow: isUser
+              ? null
+              : [
+                  BoxShadow(
+                    color: _CP.textPrimary.withValues(alpha: 0.04),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
         ),
         child: Text(
           text,
-          style: theme.textTheme.bodyLarge?.copyWith(
-            color: isUser ? AppColors.white : AppColors.textPrimary,
+          style: GoogleFonts.dmSans(
+            fontSize: 14,
+            color: isUser ? _CP.white : _CP.textPrimary,
             height: 1.5,
           ),
         ),
@@ -436,6 +443,8 @@ class _Bubble extends StatelessWidget {
     );
   }
 }
+
+// ── Typing indicator ──────────────────────────────────────────────────────────
 
 class _TypingIndicator extends StatelessWidget {
   const _TypingIndicator();
@@ -445,19 +454,17 @@ class _TypingIndicator extends StatelessWidget {
     return Align(
       alignment: Alignment.centerLeft,
       child: Container(
-        margin: const EdgeInsets.only(bottom: AppTokens.spaceSM),
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppTokens.spaceMD,
-          vertical: AppTokens.spaceSM + 2,
-        ),
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: AppColors.cardBackground,
+          color: _CP.botBubble,
           borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(AppTokens.radiusMD),
-            topRight: Radius.circular(AppTokens.radiusMD),
+            topLeft: Radius.circular(18),
+            topRight: Radius.circular(18),
             bottomLeft: Radius.circular(4),
-            bottomRight: Radius.circular(AppTokens.radiusMD),
+            bottomRight: Radius.circular(18),
           ),
+          border: Border.all(color: _CP.border),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -497,7 +504,7 @@ class _AnimatedDotState extends State<_AnimatedDot>
     Future.delayed(widget.delay, () {
       if (mounted) _ctrl.repeat(reverse: true);
     });
-    _anim = Tween(begin: 0.4, end: 1.0).animate(
+    _anim = Tween(begin: 0.3, end: 1.0).animate(
       CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
     );
   }
@@ -513,16 +520,18 @@ class _AnimatedDotState extends State<_AnimatedDot>
     return FadeTransition(
       opacity: _anim,
       child: Container(
-        width: 6,
-        height: 6,
+        width: 7,
+        height: 7,
         decoration: const BoxDecoration(
-          color: AppColors.textMuted,
+          color: _CP.accent,
           shape: BoxShape.circle,
         ),
       ),
     );
   }
 }
+
+// ── Suggested questions section ───────────────────────────────────────────────
 
 class _SuggestedSection extends StatelessWidget {
   final bool expanded;
@@ -539,24 +548,24 @@ class _SuggestedSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Column(
       children: [
-        const Divider(color: AppColors.borderSubtle, height: 1),
+        Divider(height: 1, color: _CP.border),
         GestureDetector(
           onTap: onToggle,
           behavior: HitTestBehavior.opaque,
           child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppTokens.spaceMD,
-              vertical: AppTokens.spaceXS + 2,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: Row(
               children: [
+                const Icon(Icons.auto_awesome_rounded,
+                    size: 14, color: _CP.accent),
+                const SizedBox(width: 6),
                 Text(
                   'Ask me about…',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppColors.textMuted,
+                  style: GoogleFonts.dmSans(
+                    fontSize: 13,
+                    color: _CP.textMuted,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -565,8 +574,8 @@ class _SuggestedSection extends StatelessWidget {
                   expanded
                       ? Icons.keyboard_arrow_down_rounded
                       : Icons.keyboard_arrow_up_rounded,
-                  color: AppColors.textMuted,
-                  size: AppTokens.iconMD,
+                  color: _CP.textMuted,
+                  size: 20,
                 ),
               ],
             ),
@@ -574,40 +583,31 @@ class _SuggestedSection extends StatelessWidget {
         ),
         if (expanded)
           Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppTokens.spaceMD,
-              0,
-              AppTokens.spaceMD,
-              AppTokens.spaceSM,
-            ),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
             child: Wrap(
-              spacing: AppTokens.spaceSM,
-              runSpacing: AppTokens.spaceXS,
+              spacing: 8,
+              runSpacing: 6,
               children: questions
-                  .map(
-                    (q) => GestureDetector(
-                      onTap: () => onTap(q),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppTokens.spaceMD,
-                          vertical: AppTokens.spaceXS + 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.elevated,
-                          borderRadius:
-                              BorderRadius.circular(AppTokens.radiusFull),
-                          border: Border.all(color: AppColors.borderSubtle),
-                        ),
-                        child: Text(
-                          q,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: AppColors.textSecondary,
-                            fontWeight: FontWeight.w500,
+                  .map((q) => GestureDetector(
+                        onTap: () => onTap(q),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 7),
+                          decoration: BoxDecoration(
+                            color: _CP.elevated,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: _CP.border),
+                          ),
+                          child: Text(
+                            q,
+                            style: GoogleFonts.dmSans(
+                              fontSize: 12,
+                              color: _CP.textSecondary,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ),
-                      ),
-                    ),
-                  )
+                      ))
                   .toList(),
             ),
           ),

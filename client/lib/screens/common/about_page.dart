@@ -1,9 +1,19 @@
 import 'package:flutter/material.dart';
-import '../../core/constants/app_colors.dart';
-import '../../core/constants/app_strings.dart';
-import '../../core/utils/theme_helper.dart';
+import 'package:google_fonts/google_fonts.dart';
 
-/// Shared About page for all roles.
+import '../../core/constants/app_strings.dart';
+
+class _ABP {
+  static const canvas        = Color(0xFFF3F5F8);
+  static const surface       = Color(0xFFFFFFFF);
+  static const border        = Color(0xFFE7E9EE);
+  static const accent        = Color(0xFFE88428);
+  static const accentSoft    = Color(0xFFFBE7D6);
+  static const textPrimary   = Color(0xFF0F172A);
+  static const textSecondary = Color(0xFF334155);
+  static const textMuted     = Color(0xFF64748B);
+}
+
 class AboutPage extends StatelessWidget {
   const AboutPage({super.key});
 
@@ -11,142 +21,139 @@ class AboutPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: ThemeHelper.getBackgroundGradient(context),
-      ),
-      child: Scaffold(
-        backgroundColor: AppColors.transparent,
-        appBar: AppBar(
-          backgroundColor: AppColors.transparent,
-          elevation: 0,
-          title: const Text('About'),
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back_rounded),
-            onPressed: () => Navigator.of(context).pop(),
-          ),
+    return Scaffold(
+      backgroundColor: _ABP.canvas,
+      appBar: AppBar(
+        backgroundColor: _ABP.canvas,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: _ABP.canvas,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded,
+              color: Color(0xFF334155)),
+          onPressed: () => Navigator.of(context).pop(),
         ),
-        body: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              children: [
-                const SizedBox(height: 24),
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.2),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.local_offer_rounded,
-                    size: 64,
-                    color: AppColors.primary,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  AppStrings.appName,
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
+        title: Text(
+          'About',
+          style: GoogleFonts.dmSans(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: _ABP.textPrimary),
+        ),
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(14, 8, 14, 32),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // ── App hero ───────────────────────────────────────────────
+              Center(
+                child: Column(
+                  children: [
+                    const SizedBox(height: 16),
+                    Container(
+                      width: 88,
+                      height: 88,
+                      decoration: BoxDecoration(
+                        color: _ABP.accentSoft,
+                        borderRadius: BorderRadius.circular(24),
                       ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Discover Amazing Deals Near You',
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: Theme.of(context).textTheme.bodySmall?.color,
-                      ),
-                ),
-                const SizedBox(height: 32),
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'About ${AppStrings.companyName}',
-                          style:
-                              Theme.of(context).textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                        ),
-                        const SizedBox(height: 12),
-                        const Text(
-                          'D\'Offer helps you discover hyperlocal deals and offers from shops near you. '
-                          'Customers can browse and save offers; shopkeepers can create and manage offers; '
-                          'admins oversee the platform.',
-                        ),
-                        const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            Text(
-                              'Support',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodyMedium
-                                  ?.copyWith(
-                                    color: Theme.of(context)
-                                        .textTheme
-                                        .bodySmall
-                                        ?.color,
-                                  ),
-                            ),
-                            const Spacer(),
-                            Text(
-                              AppStrings.supportEmail,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodyMedium
-                                  ?.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            Text(
-                              'Version',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodyMedium
-                                  ?.copyWith(
-                                    color: Theme.of(context)
-                                        .textTheme
-                                        .bodySmall
-                                        ?.color,
-                                  ),
-                            ),
-                            const Spacer(),
-                            Text(
-                              appVersion,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodyMedium
-                                  ?.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                            ),
-                          ],
-                        ),
-                      ],
+                      child: const Icon(Icons.local_offer_rounded,
+                          size: 44, color: _ABP.accent),
                     ),
-                  ),
+                    const SizedBox(height: 16),
+                    Text(
+                      AppStrings.appName,
+                      style: GoogleFonts.dmSans(
+                          fontSize: 26,
+                          fontWeight: FontWeight.w800,
+                          color: _ABP.textPrimary),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Discover Amazing Deals Near You',
+                      style: GoogleFonts.dmSans(
+                          fontSize: 13,
+                          color: _ABP.textMuted),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
                 ),
-                const SizedBox(height: 24),
-                Text(
-                  '© ${DateTime.now().year} ${AppStrings.companyName}. All rights reserved.',
-                  style: Theme.of(context).textTheme.bodySmall,
-                  textAlign: TextAlign.center,
+              ),
+
+              // ── About card ─────────────────────────────────────────────
+              Container(
+                padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+                decoration: BoxDecoration(
+                  color: _ABP.surface,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: _ABP.border),
+                  boxShadow: const [
+                    BoxShadow(
+                        color: Color(0x080F172A),
+                        blurRadius: 8,
+                        offset: Offset(0, 2)),
+                  ],
                 ),
-              ],
-            ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'About ${AppStrings.companyName}',
+                      style: GoogleFonts.dmSans(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: _ABP.textPrimary),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      'D\'Offer helps you discover hyperlocal deals and offers from shops near you. '
+                      'Customers can browse and save offers; shopkeepers can create and manage offers; '
+                      'admins oversee the platform.',
+                      style: GoogleFonts.dmSans(
+                          fontSize: 13,
+                          color: _ABP.textSecondary,
+                          height: 1.6),
+                    ),
+                    const SizedBox(height: 16),
+                    _infoRow('Support', AppStrings.supportEmail),
+                    const SizedBox(height: 10),
+                    _infoRow('Version', appVersion),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // ── Copyright ──────────────────────────────────────────────
+              Text(
+                '© ${DateTime.now().year} ${AppStrings.companyName}. All rights reserved.',
+                style: GoogleFonts.dmSans(
+                    fontSize: 12, color: _ABP.textMuted),
+                textAlign: TextAlign.center,
+              ),
+            ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _infoRow(String label, String value) {
+    return Row(
+      children: [
+        Text(label,
+            style: GoogleFonts.dmSans(
+                fontSize: 13,
+                color: _ABP.textMuted,
+                fontWeight: FontWeight.w500)),
+        const Spacer(),
+        Text(value,
+            style: GoogleFonts.dmSans(
+                fontSize: 13,
+                color: _ABP.textPrimary,
+                fontWeight: FontWeight.w700)),
+      ],
     );
   }
 }

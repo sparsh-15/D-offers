@@ -1,8 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
-import '../core/constants/app_colors.dart';
-
 class ShopLogoWidget extends StatelessWidget {
   const ShopLogoWidget({
     super.key,
@@ -17,12 +15,18 @@ class ShopLogoWidget extends StatelessWidget {
   final VoidCallback? onTap;
   final bool isEditable;
 
+  // Light theme colors — no dependency on AppColors
+  static const _bgColor     = Color(0xFFEAEEF4);
+  static const _iconColor   = Color(0xFF667085);
+  static const _accentColor = Color(0xFFE88428);
+  static const _white       = Color(0xFFFFFFFF);
+
   @override
   Widget build(BuildContext context) {
     final hasLogo = logoUrl != null && logoUrl!.trim().isNotEmpty;
     final avatar = CircleAvatar(
       radius: radius,
-      backgroundColor: AppColors.primary,
+      backgroundColor: _bgColor,
       child: ClipOval(
         child: hasLogo
             ? CachedNetworkImage(
@@ -34,19 +38,20 @@ class ShopLogoWidget extends StatelessWidget {
                   width: radius,
                   height: radius,
                   child: const Center(
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: _accentColor),
                   ),
                 ),
                 errorWidget: (_, __, ___) => Icon(
                   Icons.store_rounded,
                   size: radius,
-                  color: AppColors.white,
+                  color: _iconColor,
                 ),
               )
             : Icon(
                 Icons.store_rounded,
                 size: radius,
-                color: AppColors.white,
+                color: _iconColor,
               ),
       ),
     );
@@ -62,14 +67,14 @@ class ShopLogoWidget extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: AppColors.accent,
+                    color: _accentColor,
                     shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.background, width: 2),
+                    border: Border.all(color: _white, width: 2),
                   ),
                   child: const Icon(
                     Icons.photo_camera_rounded,
                     size: 14,
-                    color: AppColors.black,
+                    color: _white,
                   ),
                 ),
               ),

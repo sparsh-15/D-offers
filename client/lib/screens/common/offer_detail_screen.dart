@@ -6,7 +6,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_design_tokens.dart';
 import '../../core/constants/app_strings.dart';
 import '../../models/offer_model.dart';
@@ -18,6 +17,29 @@ import '../../services/offer_like_flow.dart';
 import '../../widgets/coin_splash_burst.dart';
 import '../../widgets/shop_logo_widget.dart';
 import '../customer/customer_dashboard.dart';
+
+// ── Light theme palette (matches home/profile/loans new theme) ───────────────
+class _P {
+  static const canvas         = Color(0xFFF3F5F8);
+  static const surface        = Color(0xFFFFFFFF);
+  static const cardBg         = Color(0xFFFFFFFF);
+  static const elevated       = Color(0xFFF4F7FB);
+  static const border         = Color(0xFFDCE3EC);
+  static const borderSubtle   = Color(0xFFEAEEF4);
+  static const accent         = Color(0xFFE88428);
+  static const accentSoft     = Color(0xFFFBE7D6);
+  static const accentGreen    = Color(0xFF1F9D65);
+  static const accentGreenBg  = Color(0xFFE4F6EC);
+  static const textPrimary    = Color(0xFF1E2433);
+  static const textSecondary  = Color(0xFF334155);
+  static const textMuted      = Color(0xFF667085);
+  static const error          = Color(0xFFE24D69);
+  static const errorBg        = Color(0xFFFDEBEC);
+  static const black          = Color(0xFF000000);
+  static const white          = Color(0xFFFFFFFF);
+  static const white70        = Color(0xB3FFFFFF);
+  static const white54        = Color(0x8AFFFFFF);
+}
 
 /// Premium offer detail screen — full-bleed header, bottom-pinned CTA.
 class OfferDetailScreen extends StatefulWidget {
@@ -307,7 +329,7 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
       showModalBottomSheet(
         context: context,
         isScrollControlled: true,
-        backgroundColor: AppColors.cardBackground,
+        backgroundColor: _P.surface,
         shape: const RoundedRectangleBorder(
           borderRadius:
               BorderRadius.vertical(top: Radius.circular(AppTokens.radiusLG)),
@@ -331,12 +353,12 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                       width: 40,
                       height: 40,
                       decoration: const BoxDecoration(
-                        color: AppColors.accent,
+                        color: _P.accent,
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
                         Icons.check_rounded,
-                        color: AppColors.black,
+                        color: _P.white,
                         size: 24,
                       ),
                     ),
@@ -347,7 +369,7 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                   'Congratulations!',
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: AppColors.textPrimary,
+                        color: _P.textPrimary,
                         fontWeight: FontWeight.w700,
                       ),
                 ),
@@ -358,15 +380,16 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                       : 'Show this coupon code to the shopkeeper and ask them to scan your QR from Claims tab or enter code manually.',
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColors.textSecondary,
+                        color: _P.textSecondary,
                       ),
                 ),
                 const SizedBox(height: AppTokens.spaceLG),
                 Container(
                   padding: const EdgeInsets.all(AppTokens.spaceMD),
                   decoration: BoxDecoration(
-                    color: AppColors.elevated,
+                    color: _P.elevated,
                     borderRadius: BorderRadius.circular(AppTokens.radiusMD),
+                    border: Border.all(color: _P.border),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -375,7 +398,7 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                         'Your claimed coupon',
                         style:
                             Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  color: AppColors.textPrimary,
+                                  color: _P.textPrimary,
                                   fontWeight: FontWeight.w700,
                                 ),
                       ),
@@ -384,7 +407,7 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                         claim.coupon.code,
                         style:
                             Theme.of(context).textTheme.displaySmall?.copyWith(
-                                  color: AppColors.accent,
+                                  color: _P.accent,
                                   letterSpacing: 2,
                                   fontWeight: FontWeight.w700,
                                 ),
@@ -395,7 +418,7 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                         '2. Ask shopkeeper to use Verify Customer Coupon.\n'
                         '3. They can scan QR or enter this code manually.',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: AppColors.textSecondary,
+                              color: _P.textSecondary,
                               height: 1.5,
                             ),
                       ),
@@ -412,6 +435,13 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                         const SnackBar(content: Text('Coupon code copied')),
                       );
                     },
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: _P.textSecondary,
+                      side: const BorderSide(color: _P.border),
+                      minimumSize: const Size(double.infinity, 52),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14)),
+                    ),
                     icon: const Icon(Icons.copy_rounded),
                     label: const Text('Copy Coupon Code'),
                   ),
@@ -430,6 +460,14 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                         (route) => route.isFirst,
                       );
                     },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _P.accent,
+                      foregroundColor: _P.white,
+                      minimumSize: const Size(double.infinity, 52),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14)),
+                    ),
                     icon: const Icon(Icons.qr_code_2_rounded),
                     label: const Text('Open My Claims (QR)'),
                   ),
@@ -439,36 +477,29 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                   Text(
                     'Valid until ${_formatDate(widget.offer.validTo!)}',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppColors.textMuted,
+                          color: _P.textMuted,
                           fontWeight: FontWeight.w400,
                         ),
                   ),
                 ],
                 const SizedBox(height: AppTokens.spaceMD),
-                // Guided tooltip
                 Container(
                   padding: const EdgeInsets.all(AppTokens.spaceSM),
                   decoration: BoxDecoration(
-                    color: AppColors.info.withValues(alpha: 0.08),
+                    color: _P.accentSoft.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(AppTokens.radiusSM),
-                    border: Border.all(
-                      color: AppColors.info.withValues(alpha: 0.2),
-                    ),
+                    border: Border.all(color: _P.accent.withValues(alpha: 0.25)),
                   ),
                   child: Row(
                     children: [
-                      Icon(
-                        Icons.info_rounded,
-                        size: 16,
-                        color: AppColors.info,
-                      ),
+                      const Icon(Icons.info_rounded, size: 16, color: _P.accent),
                       const SizedBox(width: AppTokens.spaceXS),
                       Expanded(
                         child: Text(
                           'Open Claims tab to show QR to shopkeeper',
                           style:
                               Theme.of(context).textTheme.labelSmall?.copyWith(
-                                    color: AppColors.info,
+                                    color: _P.accent,
                                     fontWeight: FontWeight.w500,
                                   ),
                         ),
@@ -498,7 +529,7 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.cardBackground,
+      backgroundColor: _P.surface,
       shape: const RoundedRectangleBorder(
         borderRadius:
             BorderRadius.vertical(top: Radius.circular(AppTokens.radiusLG)),
@@ -516,7 +547,9 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
           children: [
             Text(
               'Send a request',
-              style: Theme.of(context).textTheme.titleLarge,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: _P.textPrimary,
+                  ),
             ),
             const SizedBox(height: AppTokens.spaceSM),
             Text(
@@ -524,14 +557,30 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
               style: Theme.of(context)
                   .textTheme
                   .bodyMedium
-                  ?.copyWith(color: AppColors.textSecondary),
+                  ?.copyWith(color: _P.textSecondary),
             ),
             const SizedBox(height: AppTokens.spaceMD),
             TextField(
               controller: controller,
               maxLines: 3,
-              decoration: const InputDecoration(
+              style: const TextStyle(color: _P.textPrimary),
+              decoration: InputDecoration(
                 hintText: 'What would you like to negotiate?',
+                hintStyle: const TextStyle(color: _P.textMuted),
+                filled: true,
+                fillColor: _P.elevated,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(color: _P.border),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(color: _P.border),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(color: _P.accent, width: 1.5),
+                ),
               ),
             ),
             const SizedBox(height: AppTokens.spaceMD),
@@ -542,6 +591,14 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                   const SnackBar(content: Text('Request sent')),
                 );
               },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _P.accent,
+                foregroundColor: _P.white,
+                minimumSize: const Size(double.infinity, 52),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14)),
+              ),
               child: const Text('Send Request'),
             ),
           ],
@@ -587,7 +644,7 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.cardBackground,
+      backgroundColor: _P.surface,
       shape: const RoundedRectangleBorder(
         borderRadius:
             BorderRadius.vertical(top: Radius.circular(AppTokens.radiusLG)),
@@ -608,7 +665,9 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
               children: [
                 Text(
                   'Request a callback',
-                  style: Theme.of(context).textTheme.titleLarge,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        color: _P.textPrimary,
+                      ),
                 ),
                 const SizedBox(height: AppTokens.spaceXS),
                 Text(
@@ -616,7 +675,7 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                       ? widget.offer.shopName!
                       : 'Shop',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColors.textSecondary,
+                        color: _P.textSecondary,
                       ),
                 ),
                 const SizedBox(height: AppTokens.spaceMD),
@@ -624,8 +683,25 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                   controller: controller,
                   maxLines: 3,
                   maxLength: 200,
-                  decoration: const InputDecoration(
+                  style: const TextStyle(color: _P.textPrimary),
+                  decoration: InputDecoration(
                     hintText: 'Add a short note for the shop (optional)',
+                    hintStyle: const TextStyle(color: _P.textMuted),
+                    filled: true,
+                    fillColor: _P.elevated,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: _P.border),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: _P.border),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide:
+                          const BorderSide(color: _P.accent, width: 1.5),
+                    ),
                   ),
                 ),
                 const SizedBox(height: AppTokens.spaceMD),
@@ -634,6 +710,8 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                   children: [
                     TextButton(
                       onPressed: () => Navigator.of(context).pop(),
+                      style: TextButton.styleFrom(
+                          foregroundColor: _P.textSecondary),
                       child: const Text('Cancel'),
                     ),
                     const SizedBox(width: AppTokens.spaceSM),
@@ -677,6 +755,13 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                                 }
                               }
                             },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _P.accent,
+                        foregroundColor: _P.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
                       child: _isSubmittingCallback
                           ? const SizedBox(
                               width: 18,
@@ -698,7 +783,7 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
   void _showOverflowMenu() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.cardBackground,
+      backgroundColor: _P.surface,
       shape: const RoundedRectangleBorder(
         borderRadius:
             BorderRadius.vertical(top: Radius.circular(AppTokens.radiusLG)),
@@ -709,9 +794,9 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
           children: [
             const SizedBox(height: AppTokens.spaceSM),
             ListTile(
-              leading: const Icon(Icons.share_outlined,
-                  color: AppColors.textSecondary),
-              title: const Text('Share offer'),
+              leading: const Icon(Icons.share_outlined, color: _P.textSecondary),
+              title: const Text('Share offer',
+                  style: TextStyle(color: _P.textPrimary)),
               onTap: () {
                 Navigator.pop(context);
                 _shareOffer();
@@ -719,8 +804,9 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
             ),
             ListTile(
               leading: const Icon(Icons.phone_callback_outlined,
-                  color: AppColors.textSecondary),
-              title: const Text('Request callback'),
+                  color: _P.textSecondary),
+              title: const Text('Request callback',
+                  style: TextStyle(color: _P.textPrimary)),
               onTap: () {
                 Navigator.pop(context);
                 _showCallbackSheet();
@@ -728,9 +814,10 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
             ),
             if (widget.onChatPressed != null)
               ListTile(
-                leading: const Icon(Icons.chat_outlined,
-                    color: AppColors.textSecondary),
-                title: const Text('Ask AI assistant'),
+                leading:
+                    const Icon(Icons.chat_outlined, color: _P.textSecondary),
+                title: const Text('Ask AI assistant',
+                    style: TextStyle(color: _P.textPrimary)),
                 onTap: () {
                   Navigator.pop(context);
                   widget.onChatPressed!();
@@ -785,7 +872,7 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
     final isExpired = offer.status == 'expired';
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: _P.canvas,
       body: Stack(
         children: [
           // ── Scrollable content ─────────────────────────────────────────────
@@ -795,17 +882,23 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
               SliverAppBar(
                 expandedHeight: 200,
                 pinned: true,
-                backgroundColor: AppColors.background,
+                backgroundColor: _P.canvas,
                 leading: GestureDetector(
                   onTap: () => Navigator.of(context).pop(),
                   child: Container(
                     margin: const EdgeInsets.all(AppTokens.spaceSM),
                     decoration: BoxDecoration(
-                      color: AppColors.background.withValues(alpha: 0.7),
+                      color: _P.white.withValues(alpha: 0.85),
                       shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: _P.textPrimary.withValues(alpha: 0.08),
+                          blurRadius: 8,
+                        ),
+                      ],
                     ),
                     child: const Icon(Icons.arrow_back_rounded,
-                        color: AppColors.textPrimary),
+                        color: _P.textPrimary),
                   ),
                 ),
                 actions: [
@@ -815,11 +908,17 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                       margin: const EdgeInsets.all(AppTokens.spaceSM),
                       padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
-                        color: AppColors.background.withValues(alpha: 0.7),
+                        color: _P.white.withValues(alpha: 0.85),
                         shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: _P.textPrimary.withValues(alpha: 0.08),
+                            blurRadius: 8,
+                          ),
+                        ],
                       ),
                       child: const Icon(Icons.more_horiz_rounded,
-                          color: AppColors.textPrimary),
+                          color: _P.textPrimary),
                     ),
                   ),
                 ],
@@ -861,7 +960,7 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                       Text(
                         offer.title,
                         style: theme.textTheme.headlineMedium?.copyWith(
-                          color: AppColors.textPrimary,
+                          color: _P.textPrimary,
                           fontWeight: FontWeight.w700,
                           height: 1.15,
                         ),
@@ -878,7 +977,7 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                             child: Text(
                               shopDisplayName,
                               style: theme.textTheme.titleMedium?.copyWith(
-                                color: AppColors.textSecondary,
+                                color: _P.textSecondary,
                                 fontWeight: FontWeight.w500,
                               ),
                               maxLines: 1,
@@ -895,9 +994,8 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                           _InfoChip(
                             icon: Icons.local_offer_rounded,
                             label: discountText,
-                            foreground: AppColors.accent,
-                            background:
-                                AppColors.accent.withValues(alpha: 0.12),
+                            foreground: _P.accent,
+                            background: _P.accentSoft,
                           ),
                           if (offer.category.trim().isNotEmpty)
                             _InfoChip(
@@ -909,9 +1007,9 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                                 ? Icons.event_busy_rounded
                                 : Icons.verified_rounded,
                             label: isExpired ? 'Expired' : 'Active deal',
-                            foreground: isExpired
-                                ? AppColors.error
-                                : AppColors.textPrimary,
+                            foreground: isExpired ? _P.error : _P.accentGreen,
+                            background:
+                                isExpired ? _P.errorBg : _P.accentGreenBg,
                           ),
                           _InfoChip(
                             icon: Icons.favorite_outline_rounded,
@@ -954,8 +1052,8 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                               : 'No description was added for this offer yet.',
                           style: theme.textTheme.bodyLarge?.copyWith(
                             color: offer.description.trim().isNotEmpty
-                                ? AppColors.textSecondary
-                                : AppColors.textMuted,
+                                ? _P.textSecondary
+                                : _P.textMuted,
                             height: 1.6,
                           ),
                         ),
@@ -1083,7 +1181,7 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                                         'Read important conditions before visiting the store',
                                         style: theme.textTheme.bodyMedium
                                             ?.copyWith(
-                                          color: AppColors.textSecondary,
+                                          color: _P.textSecondary,
                                         ),
                                       ),
                                     ),
@@ -1091,7 +1189,7 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                                       _termsExpanded
                                           ? Icons.keyboard_arrow_up_rounded
                                           : Icons.keyboard_arrow_down_rounded,
-                                      color: AppColors.textMuted,
+                                      color: _P.textMuted,
                                     ),
                                   ],
                                 ),
@@ -1101,7 +1199,7 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                                 Text(
                                   offer.termsAndConditions,
                                   style: theme.textTheme.bodyMedium?.copyWith(
-                                    color: AppColors.textMuted,
+                                    color: _P.textMuted,
                                     height: 1.6,
                                   ),
                                 ),
@@ -1123,7 +1221,7 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                                 height: 18,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  color: AppColors.accentDim,
+                                  color: _P.accent,
                                 ),
                               ),
                               const SizedBox(width: AppTokens.spaceSM),
@@ -1131,7 +1229,7 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                                 child: Text(
                                   'Loading shop details...',
                                   style: theme.textTheme.bodyMedium?.copyWith(
-                                    color: AppColors.textSecondary,
+                                    color: _P.textSecondary,
                                   ),
                                 ),
                               ),
@@ -1163,7 +1261,7 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                                                   'Shop details'),
                                           style: theme.textTheme.titleMedium
                                               ?.copyWith(
-                                            color: AppColors.textPrimary,
+                                            color: _P.textPrimary,
                                             fontWeight: FontWeight.w700,
                                           ),
                                         ),
@@ -1175,7 +1273,7 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                                               _shopProfile!.category,
                                               style: theme.textTheme.bodySmall
                                                   ?.copyWith(
-                                                color: AppColors.textSecondary,
+                                                color: _P.textSecondary,
                                               ),
                                             ),
                                           ),
@@ -1221,7 +1319,7 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                                 Text(
                                   'Map location',
                                   style: theme.textTheme.titleSmall?.copyWith(
-                                    color: AppColors.textPrimary,
+                                    color: _P.textPrimary,
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
@@ -1230,13 +1328,11 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                                   onTap: _openShopLocationInMaps,
                                   child: Container(
                                     decoration: BoxDecoration(
-                                      color: AppColors.cardBackground,
+                                      color: _P.elevated,
                                       borderRadius: BorderRadius.circular(
                                         AppTokens.radiusMD,
                                       ),
-                                      border: Border.all(
-                                        color: AppColors.borderMid,
-                                      ),
+                                      border: Border.all(color: _P.border),
                                     ),
                                     clipBehavior: Clip.antiAlias,
                                     child: Stack(
@@ -1247,23 +1343,23 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                                             imageUrl: _shopMapPreviewUrl!,
                                             fit: BoxFit.cover,
                                             placeholder: (_, __) =>
-                                                const ColoredBox(
-                                              color: AppColors.cardBackground,
-                                              child: Center(
+                                                ColoredBox(
+                                              color: _P.elevated,
+                                              child: const Center(
                                                 child: SizedBox(
                                                   width: 22,
                                                   height: 22,
                                                   child:
                                                       CircularProgressIndicator(
                                                     strokeWidth: 2,
-                                                    color: AppColors.accentDim,
+                                                    color: _P.accent,
                                                   ),
                                                 ),
                                               ),
                                             ),
                                             errorWidget: (_, __, ___) =>
                                                 Container(
-                                              color: AppColors.cardBackground,
+                                              color: _P.elevated,
                                               padding: const EdgeInsets.all(
                                                 AppTokens.spaceMD,
                                               ),
@@ -1273,7 +1369,7 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                                                 children: [
                                                   const Icon(
                                                     Icons.map_outlined,
-                                                    color: AppColors.textMuted,
+                                                    color: _P.textMuted,
                                                     size: 30,
                                                   ),
                                                   const SizedBox(
@@ -1284,8 +1380,7 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                                                     style: theme
                                                         .textTheme.bodyMedium
                                                         ?.copyWith(
-                                                      color: AppColors
-                                                          .textSecondary,
+                                                      color: _P.textSecondary,
                                                     ),
                                                   ),
                                                 ],
@@ -1303,18 +1398,20 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                                               vertical: 10,
                                             ),
                                             decoration: BoxDecoration(
-                                              color: AppColors.background
-                                                  .withValues(alpha: 0.78),
+                                              color: _P.white
+                                                  .withValues(alpha: 0.9),
                                               borderRadius:
                                                   BorderRadius.circular(
                                                 AppTokens.radiusSM,
                                               ),
+                                              border: Border.all(
+                                                  color: _P.border),
                                             ),
                                             child: Row(
                                               children: [
                                                 const Icon(
                                                   Icons.place_rounded,
-                                                  color: AppColors.accent,
+                                                  color: _P.accent,
                                                   size: 18,
                                                 ),
                                                 const SizedBox(
@@ -1326,8 +1423,7 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                                                     style: theme
                                                         .textTheme.bodySmall
                                                         ?.copyWith(
-                                                      color:
-                                                          AppColors.textPrimary,
+                                                      color: _P.textPrimary,
                                                       fontWeight:
                                                           FontWeight.w600,
                                                     ),
@@ -1335,8 +1431,7 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                                                 ),
                                                 const Icon(
                                                   Icons.open_in_new_rounded,
-                                                  color:
-                                                      AppColors.textSecondary,
+                                                  color: _P.textSecondary,
                                                   size: 16,
                                                 ),
                                               ],
@@ -1367,7 +1462,7 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                                 children: [
                                   const Icon(
                                     Icons.storefront_outlined,
-                                    color: AppColors.textMuted,
+                                    color: _P.textMuted,
                                     size: 18,
                                   ),
                                   const SizedBox(width: AppTokens.spaceXS),
@@ -1378,7 +1473,7 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                                           : 'Shop details unavailable',
                                       style:
                                           theme.textTheme.titleMedium?.copyWith(
-                                        color: AppColors.textPrimary,
+                                        color: _P.textPrimary,
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
@@ -1391,7 +1486,7 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                                     ? 'Could not load full shop profile right now.'
                                     : 'Detailed shop profile is not available for this offer yet.',
                                 style: theme.textTheme.bodySmall?.copyWith(
-                                  color: AppColors.textMuted,
+                                  color: _P.textMuted,
                                 ),
                               ),
                             ],
@@ -1416,8 +1511,8 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    AppColors.background.withValues(alpha: 0),
-                    AppColors.background,
+                    _P.canvas.withValues(alpha: 0),
+                    _P.canvas,
                   ],
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
@@ -1438,13 +1533,23 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                     onPressed: widget.offer.isClaimed
                         ? null
                         : ((isExpired || _isClaimingDeal) ? null : _claimOffer),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _P.accent,
+                      foregroundColor: _P.white,
+                      disabledBackgroundColor: _P.border,
+                      disabledForegroundColor: _P.textMuted,
+                      minimumSize: const Size(double.infinity, 54),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16)),
+                      textStyle: const TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.w700),
+                    ),
                     child: Text(widget.offer.isClaimed
                         ? 'Already claimed ✓'
                         : (isExpired
                             ? 'This deal has expired'
-                            : (_isClaimingDeal
-                                ? 'Claiming...'
-                                : 'Claim this deal'))),
+                            : (_isClaimingDeal ? 'Claiming...' : 'Claim this deal'))),
                   ),
                   const SizedBox(height: AppTokens.spaceSM),
                   Row(
@@ -1453,42 +1558,33 @@ class _OfferDetailScreenState extends State<OfferDetailScreen>
                       TextButton(
                         onPressed: _negotiateOffer,
                         style: TextButton.styleFrom(
-                          foregroundColor: AppColors.textSecondary,
+                          foregroundColor: _P.textSecondary,
                         ),
                         child: const Text('Negotiate'),
                       ),
-                      // Like button inline
-                      Stack(
-                        clipBehavior: Clip.none,
-                        alignment: Alignment.centerRight,
-                        children: [
-                          ScaleTransition(
-                            scale: _heartScale,
-                            child: GestureDetector(
-                              onTap: _toggleLike,
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    _isLiked
-                                        ? Icons.favorite_rounded
-                                        : Icons.favorite_outline_rounded,
-                                    color: _isLiked
-                                        ? AppColors.error
-                                        : AppColors.textMuted,
-                                    size: AppTokens.iconMD,
-                                  ),
-                                  const SizedBox(width: AppTokens.spaceXS),
-                                  Text(
-                                    '$_likesCount',
-                                    style: theme.textTheme.bodyMedium?.copyWith(
-                                      color: AppColors.textSecondary,
-                                    ),
-                                  ),
-                                ],
+                      ScaleTransition(
+                        scale: _heartScale,
+                        child: GestureDetector(
+                          onTap: _toggleLike,
+                          child: Row(
+                            children: [
+                              Icon(
+                                _isLiked
+                                    ? Icons.favorite_rounded
+                                    : Icons.favorite_outline_rounded,
+                                color: _isLiked ? _P.error : _P.textMuted,
+                                size: AppTokens.iconMD,
                               ),
-                            ),
+                              const SizedBox(width: AppTokens.spaceXS),
+                              Text(
+                                '$_likesCount',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: _P.textSecondary,
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
                     ],
                   ),
@@ -1552,7 +1648,7 @@ class _OfferPhotoCarousel extends StatelessWidget {
               behavior: HitTestBehavior.opaque,
               onTap: () => onTapPhoto(index),
               child: Container(
-                color: AppColors.cardBackground,
+                color: _P.elevated,
                 alignment: Alignment.center,
                 child: Hero(
                   tag: 'offer_photo_${offerId}_$index',
@@ -1560,9 +1656,9 @@ class _OfferPhotoCarousel extends StatelessWidget {
                     imageUrl: photos[index],
                     fit: BoxFit.contain,
                     placeholder: (_, __) =>
-                        const ColoredBox(color: AppColors.cardBackground),
+                        const ColoredBox(color: _P.elevated),
                     errorWidget: (_, __, ___) =>
-                        const ColoredBox(color: AppColors.cardBackground),
+                        const ColoredBox(color: _P.elevated),
                   ),
                 ),
               ),
@@ -1591,13 +1687,13 @@ class _OfferPhotoCarousel extends StatelessWidget {
                   vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.background.withValues(alpha: 0.7),
+                  color: _P.black.withValues(alpha: 0.45),
                   borderRadius: BorderRadius.circular(AppTokens.radiusFull),
                 ),
                 child: Text(
                   '${currentIndex + 1}/${photos.length}',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.white,
+                        color: _P.white,
                         fontWeight: FontWeight.w600,
                       ),
                 ),
@@ -1621,8 +1717,8 @@ class _OfferPhotoCarousel extends StatelessWidget {
                     margin: const EdgeInsets.symmetric(horizontal: 3),
                     decoration: BoxDecoration(
                       color: index == currentIndex
-                          ? AppColors.white
-                          : AppColors.white.withValues(alpha: 0.45),
+                          ? _P.white
+                          : _P.white.withValues(alpha: 0.45),
                       borderRadius: BorderRadius.circular(
                         AppTokens.radiusFull,
                       ),
@@ -1647,7 +1743,7 @@ class _TypographicHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Container(
-      color: AppColors.cardBackground,
+      color: _P.surface,
       padding: const EdgeInsets.fromLTRB(
         AppTokens.spaceLG,
         AppTokens.space2XL,
@@ -1661,7 +1757,7 @@ class _TypographicHeader extends StatelessWidget {
           Text(
             discountText,
             style: theme.textTheme.displayLarge?.copyWith(
-              color: AppColors.accent,
+              color: _P.accent,
               height: 1,
             ),
           ),
@@ -1669,7 +1765,7 @@ class _TypographicHeader extends StatelessWidget {
           Text(
             title,
             style: theme.textTheme.headlineMedium?.copyWith(
-              color: AppColors.textPrimary,
+              color: _P.textPrimary,
               height: 1.2,
             ),
             maxLines: 2,
@@ -1691,7 +1787,7 @@ class _SectionTitle extends StatelessWidget {
     return Text(
       title,
       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            color: AppColors.textPrimary,
+            color: _P.textPrimary,
             fontWeight: FontWeight.w700,
           ),
     );
@@ -1709,9 +1805,16 @@ class _SectionCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(AppTokens.spaceMD),
       decoration: BoxDecoration(
-        color: AppColors.elevated,
+        color: _P.surface,
         borderRadius: BorderRadius.circular(AppTokens.radiusMD),
-        border: Border.all(color: AppColors.borderSubtle),
+        border: Border.all(color: _P.border),
+        boxShadow: [
+          BoxShadow(
+            color: _P.textPrimary.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: child,
     );
@@ -1733,16 +1836,16 @@ class _InfoChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fg = foreground ?? AppColors.textSecondary;
+    final fg = foreground ?? _P.textSecondary;
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: AppTokens.spaceSM,
         vertical: 8,
       ),
       decoration: BoxDecoration(
-        color: background ?? AppColors.elevated,
+        color: background ?? _P.elevated,
         borderRadius: BorderRadius.circular(AppTokens.radiusFull),
-        border: Border.all(color: AppColors.borderSubtle),
+        border: Border.all(color: _P.borderSubtle),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1837,8 +1940,7 @@ class _PhotoThumbnailTileState extends State<_PhotoThumbnailTile> {
 
   @override
   Widget build(BuildContext context) {
-    final borderColor =
-        widget.isSelected ? AppColors.accent : AppColors.borderSubtle;
+    final borderColor = widget.isSelected ? _P.accent : _P.border;
 
     return AnimatedContainer(
       duration: AppTokens.durationFast,
@@ -1846,7 +1948,7 @@ class _PhotoThumbnailTileState extends State<_PhotoThumbnailTile> {
       height: widget.height,
       padding: const EdgeInsets.all(2),
       decoration: BoxDecoration(
-        color: AppColors.elevated,
+        color: _P.elevated,
         borderRadius: BorderRadius.circular(AppTokens.radiusMD),
         border: Border.all(
           color: borderColor,
@@ -1858,15 +1960,10 @@ class _PhotoThumbnailTileState extends State<_PhotoThumbnailTile> {
         child: CachedNetworkImage(
           imageUrl: widget.imageUrl,
           fit: widget.fit,
-          placeholder: (_, __) => const ColoredBox(
-            color: AppColors.elevated,
-          ),
+          placeholder: (_, __) => const ColoredBox(color: _P.elevated),
           errorWidget: (_, __, ___) => const ColoredBox(
-            color: AppColors.elevated,
-            child: Icon(
-              Icons.broken_image_outlined,
-              color: AppColors.textMuted,
-            ),
+            color: _P.elevated,
+            child: Icon(Icons.broken_image_outlined, color: _P.textMuted),
           ),
         ),
       ),
@@ -1899,10 +1996,10 @@ class _TimelineItem extends StatelessWidget {
             width: 32,
             height: 32,
             decoration: BoxDecoration(
-              color: AppColors.accent.withValues(alpha: 0.12),
+              color: _P.accentSoft,
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, size: 16, color: AppColors.accent),
+            child: Icon(icon, size: 16, color: _P.accent),
           ),
           const SizedBox(width: AppTokens.spaceSM),
           Expanded(
@@ -1912,7 +2009,7 @@ class _TimelineItem extends StatelessWidget {
                 Text(
                   title,
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppColors.textMuted,
+                    color: _P.textMuted,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -1920,7 +2017,7 @@ class _TimelineItem extends StatelessWidget {
                 Text(
                   value,
                   style: theme.textTheme.bodyMedium?.copyWith(
-                    color: AppColors.textPrimary,
+                    color: _P.textPrimary,
                   ),
                 ),
               ],
@@ -1947,7 +2044,7 @@ class _ValidityColumn extends StatelessWidget {
         Text(
           label.toUpperCase(),
           style: theme.textTheme.bodySmall?.copyWith(
-            color: AppColors.textMuted,
+            color: _P.textMuted,
             letterSpacing: 0.8,
           ),
         ),
@@ -1955,7 +2052,7 @@ class _ValidityColumn extends StatelessWidget {
         Text(
           value,
           style: theme.textTheme.titleMedium?.copyWith(
-            color: AppColors.textPrimary,
+            color: _P.textPrimary,
           ),
         ),
       ],
@@ -1984,7 +2081,7 @@ class _ShopDetailRow extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 18, color: AppColors.textMuted),
+          Icon(icon, size: 18, color: _P.textMuted),
           const SizedBox(width: 8),
           Expanded(
             child: Column(
@@ -1993,7 +2090,7 @@ class _ShopDetailRow extends StatelessWidget {
                 Text(
                   label,
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppColors.textMuted,
+                    color: _P.textMuted,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -2003,7 +2100,7 @@ class _ShopDetailRow extends StatelessWidget {
                   maxLines: maxLines,
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.bodyMedium?.copyWith(
-                    color: AppColors.textPrimary,
+                    color: _P.textPrimary,
                   ),
                 ),
               ],
@@ -2050,17 +2147,17 @@ class _PhotoGalleryScreenState extends State<_PhotoGalleryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.black,
+      backgroundColor: _P.black,
       appBar: AppBar(
-        backgroundColor: AppColors.black,
+        backgroundColor: _P.black,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.close_rounded, color: AppColors.white),
+          icon: const Icon(Icons.close_rounded, color: _P.white),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text(
           '${_currentIndex + 1} / ${widget.photos.length}',
-          style: const TextStyle(color: AppColors.white70),
+          style: const TextStyle(color: _P.white70),
         ),
         centerTitle: true,
       ),
@@ -2079,13 +2176,13 @@ class _PhotoGalleryScreenState extends State<_PhotoGalleryScreen> {
                 fit: BoxFit.contain,
                 placeholder: (_, __) => const Center(
                   child: CircularProgressIndicator(
-                    color: AppColors.white54,
+                    color: _P.white54,
                     strokeWidth: 2,
                   ),
                 ),
                 errorWidget: (_, __, ___) => const Center(
                   child: Icon(Icons.broken_image_outlined,
-                      size: 64, color: AppColors.white54),
+                      size: 64, color: _P.white54),
                 ),
               ),
             ),

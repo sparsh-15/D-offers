@@ -139,16 +139,8 @@ class _RewardWalletScreenState extends State<RewardWalletScreen> {
         titleSpacing: 16,
         leading: IconButton(
           onPressed: () => Navigator.of(context).maybePop(),
-          icon: Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: _WalletPalette.border),
-            ),
-            child: const Icon(Icons.arrow_back_ios_new_rounded, size: 16),
-          ),
-          color: _WalletPalette.textPrimary,
+          icon: const Icon(Icons.arrow_back_rounded),
+          color: _WalletPalette.textSecondary,
         ),
         title: Text(
           widget.title,

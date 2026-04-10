@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../core/constants/app_colors.dart';
 import '../../core/utils/dialog_helper.dart';
 import 'customer_home_tab.dart';
 import 'customer_offers_tab.dart';
@@ -136,11 +135,32 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                     ),
                   );
                 },
-                elevation: 4,
-                backgroundColor: const Color(0xFF1E2536),
-                child: const Icon(Icons.chat_bubble_rounded,
-                    color: AppColors.white),
-                tooltip: 'Help',
+                elevation: 3,
+                backgroundColor: const Color(0xFFE88428),
+                tooltip: 'AI Assistant',
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    const Icon(Icons.chat_bubble_rounded,
+                        color: Colors.white, size: 26),
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      child: Container(
+                        width: 14,
+                        height: 14,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF3E0),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                              color: const Color(0xFFE88428), width: 1.5),
+                        ),
+                        child: const Icon(Icons.auto_awesome_rounded,
+                            size: 8, color: Color(0xFFE88428)),
+                      ),
+                    ),
+                  ],
+                ),
               )
             : null,
         bottomNavigationBar: _buildBottomDock(),
